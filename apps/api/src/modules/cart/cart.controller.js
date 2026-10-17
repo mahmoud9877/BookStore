@@ -14,7 +14,7 @@ export class CartController {
 
   addToCart = asyncHandler(async (req, res) => {
     const { bookId, quantity } = req.body;
-    const { cart, created } = await this.#cartService.addItem(req.user._id, bookId, Number(quantity));
+    const { cart, created } = await this.#cartService.addItem(req.user._id, bookId, quantity);
     if (created) {
       return res.status(201).json({ message: "Cart created", newCart: cart });
     }

@@ -76,13 +76,15 @@ export class OrderService {
     return { order, session };
   }
 
-  /** Verifies a Stripe webhook payload; an invalid signature throws BadRequestError. */
-  verifyWebhookEvent(rawBody, signature) {
-    return this.#payments.constructWebhookEvent(rawBody, signature);
+  /**
+   * Verifies a raw Stripe webhook payload and applies it to its order.
+   * An invalid signature throws BadRequestError. Resolves a short outcome message.
+   */
+  async processStripeWebhook(rawBody, signature) {
+    return this.#applyCheckoutEvent(this.#payments.constructWebhookEvent(rawBody, signature));
   }
 
-  /** Applies a verified Stripe event to its order. Resolves a short outcome message. */
-  async handleCheckoutEvent(event) {
+  async #applyCheckoutEvent(event) {
     const orderId = event.data?.object?.metadata?.orderId;
     if (!orderId) return "Ignored";
 

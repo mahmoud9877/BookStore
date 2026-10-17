@@ -12,6 +12,7 @@ export class AuthService {
   #emailTokens;
   #mailer;
   #requireEmailConfirmation;
+  #frontendUrl;
 
   constructor({
     userRepository,
@@ -20,6 +21,7 @@ export class AuthService {
     emailTokens,
     mailer,
     requireEmailConfirmation = true,
+    frontendUrl,
   }) {
     this.#users = userRepository;
     this.#passwordHasher = passwordHasher;
@@ -27,10 +29,11 @@ export class AuthService {
     this.#emailTokens = emailTokens;
     this.#mailer = mailer;
     this.#requireEmailConfirmation = requireEmailConfirmation;
+    this.#frontendUrl = frontendUrl;
   }
 
-  /** `confirmUrl` is the absolute URL of GET /auth/confirmEmail (without the token). */
-  async registerUser({ userName, email, password, phone }, { confirmUrl }) {
+  /** `apiBaseUrl` is the API's public base URL, used to build the confirmation link. */
+  async registerUser({ userName, email, password, phone }, { apiBaseUrl }) {
     const normalizedEmail = email.toLowerCase();
 
     if (await this.#users.findByEmail(normalizedEmail)) {
@@ -49,7 +52,7 @@ export class AuthService {
     });
 
     if (this.#requireEmailConfirmation) {
-      await this.#sendConfirmationEmail({ email: normalizedEmail, userName, phone, confirmUrl });
+      await this.#sendConfirmationEmail({ email: normalizedEmail, userName, phone, apiBaseUrl });
     }
 
     return {
@@ -59,33 +62,38 @@ export class AuthService {
     };
   }
 
+  /**
+   * Confirms the account behind an email token. Resolves `{ redirectUrl, message }`:
+   * `redirectUrl` (the web app's login page) is null when no frontend is configured.
+   */
   async confirmEmail(token) {
     const { email } = this.#emailTokens.verify(token);
     if (!(await this.#users.markEmailConfirmed(email))) {
       throw new NotFoundError("Not registered account");
     }
+    return this.#confirmedResult();
   }
 
   /**
    * Handles the long-lived confirmation link: resends a fresh short-lived link
-   * unless the account is already confirmed. Resolves `{ alreadyConfirmed }`.
+   * unless the account is already confirmed. Resolves `{ redirectUrl, message }`.
    */
-  async resendConfirmationEmail(refreshToken, { confirmUrl }) {
+  async resendConfirmationEmail(refreshToken, { apiBaseUrl }) {
     const { email } = this.#emailTokens.verify(refreshToken);
     const user = await this.#users.findByEmail(email);
     if (!user) {
       throw new NotFoundError("Not registered account");
     }
     if (user.confirmEmail) {
-      return { alreadyConfirmed: true };
+      return this.#confirmedResult();
     }
     await this.#sendConfirmationEmail({
       email,
       userName: user.userName,
       phone: user.phone,
-      confirmUrl,
+      apiBaseUrl,
     });
-    return { alreadyConfirmed: false };
+    return { redirectUrl: null, message: "Check your inbox" };
   }
 
   /** Checks credentials and resolves `{ token, role }`. */
@@ -113,7 +121,14 @@ export class AuthService {
     return this.#users.listWithoutSecrets();
   }
 
-  async #sendConfirmationEmail({ email, userName, phone, confirmUrl }) {
+  #confirmedResult() {
+    return {
+      redirectUrl: this.#frontendUrl ? `${this.#frontendUrl}/#/login` : null,
+      message: "Done",
+    };
+  }
+
+  async #sendConfirmationEmail({ email, userName, phone, apiBaseUrl }) {
     if (!this.#mailer.isConfigured) {
       console.warn("Mailer is not configured; confirmation email not sent.");
       return;
@@ -122,7 +137,11 @@ export class AuthService {
     await this.#mailer.send({
       to: email,
       subject: "Confirmation-Email",
-      html: confirmationEmailHtml({ userName, phone, link: `${confirmUrl}/${token}` }),
+      html: confirmationEmailHtml({
+        userName,
+        phone,
+        link: `${apiBaseUrl}/auth/confirmEmail/${token}`,
+      }),
     });
   }
 }

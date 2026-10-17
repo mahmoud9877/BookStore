@@ -18,10 +18,7 @@ export class BookController {
   });
 
   addBook = asyncHandler(async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "Image file is required" });
-    }
-    const book = await this.#bookService.createBook(req.body, req.file.path);
+    const book = await this.#bookService.createBook(req.body, req.file?.path);
     return res.status(201).json({ message: "Book added successfully", book });
   });
 

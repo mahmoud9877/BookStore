@@ -52,6 +52,7 @@ export function createContainer(config = env) {
     emailTokens,
     mailer,
     requireEmailConfirmation: config.requireEmailConfirmation,
+    frontendUrl: config.frontendUrl,
   });
   const bookService = new BookService({ bookRepository, categoryRepository, imageStorage });
   const categoryService = new CategoryService({ categoryRepository });
@@ -81,7 +82,7 @@ export function createContainer(config = env) {
     cartService,
     orderService,
     authGuard: new AuthGuard({ bearerKey: config.bearerKey, accessTokens, userRepository }),
-    authController: new AuthController(authService, { frontendUrl: config.frontendUrl }),
+    authController: new AuthController(authService),
     bookController: new BookController(bookService),
     categoryController: new CategoryController(categoryService),
     cartController: new CartController(cartService),

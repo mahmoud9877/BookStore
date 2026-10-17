@@ -37,6 +37,7 @@ export const globalErrorHandler = (err, req, res, next) => {
   // Never leak internal error details or stack traces in production.
   const hideDetails = env.isProduction && status >= 500;
   const body = { message: hideDetails ? "Internal server error" : err.message };
+  if (!hideDetails && err instanceof HttpError) Object.assign(body, err.details);
   if (!env.isProduction && err.stack) body.stack = err.stack;
   return res.status(status).json(body);
 };

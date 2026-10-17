@@ -1,4 +1,3 @@
-import { BadRequestError } from "../../core/http-errors.js";
 import { asyncHandler } from "../../middleware/error-handler.js";
 
 export class OrderController {
@@ -18,14 +17,11 @@ export class OrderController {
 
   /** Stripe webhook. Mounted in app.js with a raw body parser (signature verification needs it). */
   stripeWebhook = asyncHandler(async (req, res) => {
-    let event;
-    try {
-      event = this.#orderService.verifyWebhookEvent(req.body, req.headers["stripe-signature"]);
-    } catch (error) {
-      if (!(error instanceof BadRequestError)) throw error;
-      return res.status(400).send(error.message);
-    }
-    return res.json({ message: await this.#orderService.handleCheckoutEvent(event) });
+    const message = await this.#orderService.processStripeWebhook(
+      req.body,
+      req.headers["stripe-signature"]
+    );
+    return res.json({ message });
   });
 
   cancelOrder = asyncHandler(async (req, res) => {

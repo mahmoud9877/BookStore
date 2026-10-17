@@ -149,7 +149,7 @@ describe("stripe webhook", () => {
       headers: { "content-type": "application/json", "stripe-signature": "t=1,v1=bad" },
     });
     assert.equal(res.status, 400);
-    assert.match(res.text, /Webhook Error/);
+    assert.match(res.json.message, /^Webhook Error/);
   });
 
   test("verifies the raw body and marks the order placed on checkout completion", async (t) => {

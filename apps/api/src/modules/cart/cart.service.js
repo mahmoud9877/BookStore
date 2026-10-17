@@ -21,7 +21,8 @@ export class CartService {
    * Adds copies of a book, never exceeding its stock (`book.quantity`).
    * Resolves `{ cart, created }`; `created` is true when this was the user's first item.
    */
-  async addItem(userId, bookId, quantity) {
+  async addItem(userId, bookId, requestedQuantity) {
+    const quantity = Number(requestedQuantity);
     const book = await this.#books.findById(bookId);
     if (!book) throw new NotFoundError("Book not found");
     if (book.quantity < quantity) throw new BadRequestError("Insufficient stock available");

@@ -28,7 +28,8 @@ export class CategoryService {
 
   async updateCategory(id, name) {
     if (!CATEGORY_OPTIONS.includes(name)) {
-      throw new BadRequestError(`Invalid category name. Choose from: ${CATEGORY_OPTIONS.join(", ")}`);
+      const message = `Invalid category name. Choose from: ${CATEGORY_OPTIONS.join(", ")}`;
+      throw new BadRequestError(message, { error: message });
     }
     const category = await this.#categories.updateById(id, { name });
     if (!category) throw new NotFoundError("Category not found");

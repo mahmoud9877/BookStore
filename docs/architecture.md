@@ -29,7 +29,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 | Layer | Files | Responsibility | May depend on |
 | --- | --- | --- | --- |
 | Routes | `<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, validation, upload) → controller method | controller, `AuthGuard`, validators |
-| Controller | `<entity>.controller.js` (`class XController`) | Read `req`, call one service method, choose status code and response shape | its service |
+| Controller | `<entity>.controller.js` (`class XController`) | Read `req`, call one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
 | Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows, throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
 | Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | Every database query for one model | its Mongoose model |
 
@@ -39,8 +39,14 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   To swap an implementation (e.g. another payment provider), change it there.
 - **Encapsulation:** collaborators are stored in private `#fields`; controller handlers are
   arrow-function class fields, so they can be passed to Express without `bind`.
+- **Thin controllers:** a controller method extracts input from `req`, awaits exactly one
+  service call and maps the result to a response. The only branches left choose the
+  response form from facts the service reports (redirect vs JSON after email confirmation,
+  `201 newCart` vs `200 cart`, Stripe `url` vs cash `order`). Request-derived values that
+  services need (the API's public base URL) come from `src/core/http-request.js`.
 - **Errors:** services throw `NotFoundError`, `BadRequestError`, `ConflictError`, … from
-  `src/core/http-errors.js` (all extend `HttpError` with a `status`). `globalErrorHandler`
+  `src/core/http-errors.js` (all extend `HttpError` with a `status`; optional `details`
+  are merged into the JSON body, which keeps legacy fields such as `error`). `globalErrorHandler`
   maps them, plus Mongoose cast/validation errors (400), JWT errors (401) and duplicate
   keys (409).
 - **Authorization:** `authGuard.authenticate([roles])` — role lists live next to the routes.
@@ -174,8 +180,11 @@ returned password hashes) needed no login at all. Now:
 - Like/unlike: key `likeBook`/`unLikeBook` → `book` (these endpoints never worked before).
 - `POST /book/edit/:id`: returns the *updated* book with `200` (was the old document with
   `201`) and no `existingCategory`.
-- `POST /book/add` validation errors use the standard `validationErr` shape.
-- `PUT /category/:id` with a name outside the options: `{message}` (was `{error}`).
+- `POST /book/add` field-validation errors use the standard `validationErr` shape.
+- `PUT /category/:id` with a name outside the options and `POST /book/add` without an
+  image: `{message, error}` (the original `error` field is kept, `message` added).
+- Stripe webhook with an invalid signature: `400` JSON `{message: "Webhook Error: …"}`
+  (was plain text; Stripe only looks at the status code).
 - `PATCH /order/:id/cancel` returns the order *after* cancellation (it returned the
   pre-cancellation snapshot).
 - Stripe: success and cancel URLs are `FRONTEND_URL/#/cart` (were `/#/order` and

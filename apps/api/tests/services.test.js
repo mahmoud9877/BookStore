@@ -3,7 +3,7 @@
 import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
-import { HttpError } from "../src/core/http-errors.js";
+import { BadRequestError, HttpError } from "../src/core/http-errors.js";
 import { CartService } from "../src/modules/cart/cart.service.js";
 import { BookService } from "../src/modules/books/book.service.js";
 import { AuthService } from "../src/modules/auth/auth.service.js";
@@ -60,6 +60,16 @@ describe("BookService", () => {
     assert.equal(bookRepository.create.mock.calls[0].arguments[0].image, "https://img/cover.png");
   });
 
+  test("createBook requires a cover image and keeps the legacy `error` field", async () => {
+    const { service, bookRepository } = makeService();
+    await assert.rejects(service.createBook({ category: "fiction" }, undefined), (error) => {
+      assert.equal(error.status, 400);
+      assert.deepEqual(error.details, { error: "Image file is required" });
+      return true;
+    });
+    assert.equal(bookRepository.create.mock.callCount(), 0);
+  });
+
   test("createBook rejects unknown categories before uploading anything", async () => {
     const { service, imageStorage } = makeService({
       categoryRepository: fake({ findByName: null }),
@@ -110,6 +120,17 @@ describe("CartService", () => {
     assert.equal(created, false);
     assert.equal(cart.books[0].quantity, 3);
     await rejectsWithStatus(service.addItem("u", bookId.toString(), 1), 400, /exceeds/);
+  });
+
+  test("addItem coerces the requested quantity to a number", async () => {
+    const bookId = new Types.ObjectId();
+    const cart = { books: [{ bookId, quantity: 1 }] };
+    const service = new CartService({
+      bookRepository: fake({ findById: { quantity: 5 } }),
+      cartRepository: fake({ findByUserId: cart, save: async (saved) => saved }),
+    });
+    await service.addItem("u", bookId.toString(), "2");
+    assert.equal(cart.books[0].quantity, 3);
   });
 
   test("the first item creates the cart", async () => {
@@ -235,14 +256,45 @@ describe("OrderService", () => {
     }
   });
 
+  const gatewayEmitting = (event) => ({
+    isConfigured: true,
+    constructWebhookEvent: mock.fn(() => event),
+  });
+
+  test("processStripeWebhook verifies the payload before applying it", async () => {
+    const paymentGateway = gatewayEmitting({
+      type: "checkout.session.completed",
+      data: { object: { metadata: { orderId: "o" } } },
+    });
+    const { service, orderRepository } = makeService({ paymentGateway });
+    const outcome = await service.processStripeWebhook("raw-body", "sig");
+    assert.equal(outcome, "Done");
+    assert.deepEqual(paymentGateway.constructWebhookEvent.mock.calls[0].arguments, ["raw-body", "sig"]);
+    assert.deepEqual(orderRepository.updateStatus.mock.calls[0].arguments, ["o", "placed"]);
+  });
+
+  test("processStripeWebhook rejects (not throws synchronously) on a bad signature", async () => {
+    const { service } = makeService({
+      paymentGateway: {
+        constructWebhookEvent: () => {
+          throw new BadRequestError("Webhook Error: bad signature");
+        },
+      },
+    });
+    const pending = service.processStripeWebhook("raw", "bad");
+    assert.ok(pending instanceof Promise);
+    await rejectsWithStatus(pending, 400, /Webhook Error/);
+  });
+
   test("a failure event for an already-handled order does not restock twice", async () => {
     const { service, bookRepository } = makeService({
       orderRepository: fake({ rejectIfAwaitingPayment: null }),
+      paymentGateway: gatewayEmitting({
+        type: "checkout.session.expired",
+        data: { object: { metadata: { orderId: "o" } } },
+      }),
     });
-    const outcome = await service.handleCheckoutEvent({
-      type: "checkout.session.expired",
-      data: { object: { metadata: { orderId: "o" } } },
-    });
+    const outcome = await service.processStripeWebhook("raw", "sig");
     assert.equal(outcome, "rejected link");
     assert.equal(bookRepository.incrementStock.mock.callCount(), 0);
   });
@@ -267,7 +319,7 @@ describe("AuthService", () => {
     const { service, userRepository, mailer } = makeService();
     const result = await service.registerUser(
       { userName: "reader", email: "Reader@Example.com", password: "secret1" },
-      { confirmUrl: "https://shop/api/auth/confirmEmail" }
+      { apiBaseUrl: "https://shop/api" }
     );
 
     const [created] = userRepository.create.mock.calls[0].arguments;
@@ -282,7 +334,7 @@ describe("AuthService", () => {
     const { service, userRepository, mailer } = makeService({ requireEmailConfirmation: false });
     await service.registerUser(
       { userName: "reader", email: "a@b.com", password: "secret1" },
-      { confirmUrl: "x" }
+      { apiBaseUrl: "x" }
     );
     assert.equal(userRepository.create.mock.calls[0].arguments[0].confirmEmail, true);
     assert.equal(mailer.send.mock.callCount(), 0);
@@ -291,9 +343,21 @@ describe("AuthService", () => {
   test("registerUser rejects a duplicate email with 409", async () => {
     const { service } = makeService({ userRepository: fake({ findByEmail: { _id: "x" } }) });
     await rejectsWithStatus(
-      service.registerUser({ email: "a@b.com", password: "p" }, { confirmUrl: "x" }),
+      service.registerUser({ email: "a@b.com", password: "p" }, { apiBaseUrl: "x" }),
       409
     );
+  });
+
+  test("confirmEmail redirects to the web login page only when a frontend is configured", async () => {
+    const token = emailTokens.sign({ email: "a@b.com" });
+    const userRepository = fake({ markEmailConfirmed: { _id: "u1" } });
+    const withFrontend = makeService({ userRepository, frontendUrl: "https://shop" }).service;
+    const withoutFrontend = makeService({ userRepository }).service;
+    assert.deepEqual(await withFrontend.confirmEmail(token), {
+      redirectUrl: "https://shop/#/login",
+      message: "Done",
+    });
+    assert.deepEqual(await withoutFrontend.confirmEmail(token), { redirectUrl: null, message: "Done" });
   });
 
   test("confirmEmail rejects tokens signed with another secret", async () => {

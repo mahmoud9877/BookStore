@@ -36,6 +36,16 @@ describe("authentication and authorization", () => {
     }
   });
 
+  test("POST /book/add without an image keeps the legacy `error` field", async (t) => {
+    const headers = authenticateAs(t, server.container, makeUser("Admin"));
+    const res = await server.request("POST", "/book/add", {
+      headers,
+      body: { bookTitle: "t", author: "a", description: "d", price: 1, category: "fiction", quantity: 1 },
+    });
+    assert.equal(res.status, 400);
+    assert.deepEqual(res.json, { message: "Image file is required", error: "Image file is required" });
+  });
+
   test("lets admins through to request validation", async (t) => {
     const headers = authenticateAs(t, server.container, makeUser("Admin"));
     const res = await server.request("POST", "/book/add", { headers });

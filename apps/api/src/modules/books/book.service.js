@@ -1,6 +1,7 @@
 import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
 
 const IMAGE_FOLDER = "book";
+const IMAGE_REQUIRED = "Image file is required";
 
 const pickBookFields = ({ bookTitle, author, description, price, category, quantity }) => ({
   bookTitle,
@@ -36,8 +37,11 @@ export class BookService {
     return book;
   }
 
-  /** `imagePath` is the uploaded cover's local temp file. */
+  /** `imagePath` is the uploaded cover's local temp file (required). */
   async createBook(fields, imagePath) {
+    if (!imagePath) {
+      throw new BadRequestError(IMAGE_REQUIRED, { error: IMAGE_REQUIRED });
+    }
     const data = pickBookFields(fields);
     await this.#assertCategoryExists(data.category);
     const { secure_url } = await this.#imageStorage.upload(imagePath, IMAGE_FOLDER);
