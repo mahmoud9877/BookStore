@@ -133,7 +133,12 @@ export const stripeWebhook = asyncHandler(async (req, res) => {
     return res.json({ message: "Done" });
   }
   if (CHECKOUT_FAILURE_EVENTS.includes(event.type)) {
-    await orderModel.updateOne({ _id: orderId }, { status: ORDER_STATUSES.rejected });
+    // Only a still-unpaid order is rejected, so stock is released exactly once.
+    const order = await orderModel.findOneAndUpdate(
+      { _id: orderId, status: ORDER_STATUSES.waitPayment },
+      { status: ORDER_STATUSES.rejected }
+    );
+    if (order) await restoreStock(order.books);
     return res.json({ message: "rejected link" });
   }
   return res.json({ message: "Ignored" });

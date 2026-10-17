@@ -154,6 +154,32 @@ describe("stripe webhook", () => {
     assert.deepEqual(update.mock.calls[0].arguments, [{ _id: orderId }, { status: "placed" }]);
   });
 
+  test("an expired checkout rejects the unpaid order and releases its stock", async (t) => {
+    const orderId = new Types.ObjectId().toString();
+    const bookId = new Types.ObjectId();
+    const payload = JSON.stringify({
+      id: "evt_test",
+      object: "event",
+      type: "checkout.session.expired",
+      data: { object: { metadata: { orderId } } },
+    });
+    let filter;
+    t.mock.method(orderModel, "findOneAndUpdate", async (query) => {
+      filter = query;
+      return { books: [{ bookId, quantity: 3 }] };
+    });
+    const restock = t.mock.method(bookModel, "updateOne", async () => ({}));
+
+    const res = await server.request("POST", "/order/webhook", {
+      raw: payload,
+      headers: { "content-type": "application/json", "stripe-signature": sign(payload) },
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(filter, { _id: orderId, status: "waitPayment" });
+    assert.deepEqual(restock.mock.calls[0].arguments, [{ _id: bookId }, { $inc: { quantity: 3 } }]);
+  });
+
   test("ignores events that carry no order id", async (t) => {
     const payload = JSON.stringify({
       id: "evt_test",
