@@ -1,0 +1,415 @@
+{
+  "info": {
+    "_postman_id": "d135f69d-c16a-4618-8648-02867ef7d3ae",
+    "name": "BookSaw",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "33586677"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "signup",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"userName\": \"7oka\",\r\n    \"email\": \"mazen@gmail.com\",\r\n    \"password\":\"fuckyou123Q\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/signup",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["auth", "signup"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"mazenss@gmail.com\",\r\n    \"password\": \"fuckyou123Q\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "name",
+                "value": "wdasd",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\": \"fantasy\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/category",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["category"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "wdas",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Book",
+      "item": [
+        {
+          "name": "Add Book",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "jdfkjsdlkfj;aeijoi",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:3000/category/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["category", "create"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "suddfsdfsdf",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "edit",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "bookTitle",
+                  "value": "kjkjlkjlk",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/C:/Users/Mahmoud Ali/OneDrive/Pictures/Camera Roll/1a0293c21312d62e302c169d6f648c4f.png"
+                },
+                {
+                  "key": "author",
+                  "value": "sdflkajsd",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "sdfsdfsdf",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "234565",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "jdfkad",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:3000/book/editbook/:670fafb156c3057d2e6f9fa9",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["book", "editbook", ":670fafb156c3057d2e6f9fa9"],
+              "variable": [
+                {
+                  "key": "670fafb156c3057d2e6f9fa9",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/book/delete/:670fafb156c3057d2e6f9fa9",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["book", "delete", ":670fafb156c3057d2e6f9fa9"],
+              "variable": [
+                {
+                  "key": "670fafb156c3057d2e6f9fa9",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delete Copy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/book/6717d54bb2ea37c9c232f947",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["book", "6717d54bb2ea37c9c232f947"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Order",
+      "item": [
+        {
+          "name": "create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OWZiMTkwZWQxYmI3MjYzNjgyMjMyNyIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTcyMjA5NDQ4NywiZXhwIjoxNzM3ODYyNDg3fQ.btf94oKYRP8OvTkKOkAEdZpaCszshM7kth6j60KP0-w",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"paymentType\": \"card\",\r\n    \"couponName\": \"iphone pro max\",\r\n    \"address\": \"Maddisdswewe2\",\r\n    \"phone\": [\r\n        \"01143236472\"\r\n    ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/order/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["order", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "cancel order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OWZiMTkwZWQxYmI3MjYzNjgyMjMyNyIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTcyMjA5NDQ4NywiZXhwIjoxNzM3ODYyNDg3fQ.btf94oKYRP8OvTkKOkAEdZpaCszshM7kth6j60KP0-w",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n   \"reason\":\"sjdljs\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/order/66a84ac846a071ef215429f1/cancel",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["order", "66a84ac846a071ef215429f1", "cancel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "delivered",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OWZiMTkwZWQxYmI3MjYzNjgyMjMyNyIsInJvbGUiOiJBZG1pbiIsImlhdCI6MTcyMjM1OTI4OCwiZXhwIjoxNzM4MTI3Mjg4fQ.XzzgjsHDYVqImZFRv0bR3WLZBXfAUqd4vS4fvtVYzEg",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/order/66a84ac846a071ef215429f1/delivered",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["order", "66a84ac846a071ef215429f1", "delivered"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "Add To Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MGY4ODQ3NTBmNWNjZWI0Mjc2NGYwNyIsInVzZXJOYW1lIjoiN29rYSIsImlhdCI6MTcyOTE2NzQzNSwiZXhwIjoxNzQ0OTM1NDM1fQ.2Lb13agwJkfgkoPUy1FJlM8A9-FFmN-CYKmfvEXKDh4",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"bookId\": \"6710daaf1b523653aa2cc69b\",\r\n    \"quantity\": 10\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/cart/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["cart", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MGY4ODQ3NTBmNWNjZWI0Mjc2NGYwNyIsInVzZXJOYW1lIjoiN29rYSIsImlhdCI6MTcyOTE2NzQzNSwiZXhwIjoxNzQ0OTM1NDM1fQ.2Lb13agwJkfgkoPUy1FJlM8A9-FFmN-CYKmfvEXKDh4",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"bookId\": \"6710daaf1b523653aa2cc69b\",\r\n    \"quantity\": 10\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/cart/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["cart", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove From Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "Hamada__eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MGY4ODQ3NTBmNWNjZWI0Mjc2NGYwNyIsInVzZXJOYW1lIjoiN29rYSIsImlhdCI6MTcyOTE2NzQzNSwiZXhwIjoxNzQ0OTM1NDM1fQ.2Lb13agwJkfgkoPUy1FJlM8A9-FFmN-CYKmfvEXKDh4",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"bookId\": \"6710daaf1b523653aa2cc69b\",\r\n    \"quantity\": 10\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/cart/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["cart", ""]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
