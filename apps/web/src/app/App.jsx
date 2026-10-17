@@ -1,15 +1,15 @@
-import Home from "../Home/Home.jsx";
-import Cart from "../Cart/Cart.jsx";
-import Login from "../Login/Login.jsx";
+import Home from "../modules/books/HomePage.jsx";
+import Cart from "../modules/cart/CartPage.jsx";
+import Login from "../modules/auth/LoginPage.jsx";
 import { jwtDecode } from "jwt-decode"; // Remove curly braces
 import React, { useEffect } from "react";
-import Signup from "../Signup/Signup.jsx";
-import Dashboard from "../Dashboard/Dashboard.jsx";
-import OfflineWarning from "../Offline/Offline.jsx";
-import RootLayout from "../Rootlayout/RootLayout.jsx";
-import { useUser } from "../../Context/UserContext.jsx"; // Use useUser instead of useUserContext
-import BookDetails from "../BookDetails/BookDetails.jsx";
-import ProtectedRoute from "../ProtectedRoute/ProtectedRoute.jsx";
+import Signup from "../modules/auth/SignupPage.jsx";
+import Dashboard from "../modules/books/BooksDashboardPage.jsx";
+import OfflineWarning from "../components/OfflineWarning.jsx";
+import RootLayout from "../layouts/RootLayout.jsx";
+import { useUser } from "../modules/auth/UserContext.jsx"; // Use useUser instead of useUserContext
+import BookDetails from "../modules/books/BookDetailsPage.jsx";
+import ProtectedRoute from "../modules/auth/ProtectedRoute.jsx";
 import { createHashRouter, RouterProvider } from "react-router-dom"; // ✅ فقط دول اللي محتاجهم
 
 function App() {

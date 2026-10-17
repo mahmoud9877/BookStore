@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { Helmet } from "react-helmet";
-import { signupSchema } from "../../Utils/Validation.js"; // Assuming this is where your schema is located
+import { signupSchema } from "./auth.validation.js"; // Assuming this is where your schema is located
 import { useNavigate, Link } from "react-router-dom";
 import { baseURL } from "../../index.js";
-import "./Signup.css";
+import "./SignupPage.css";
 const Signup = () => {
   const navigate = useNavigate(); // Use hook for navigation
   const [isLoading, setIsLoading] = useState(false);

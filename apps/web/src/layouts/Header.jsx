@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Logo from "../../images/main-logo.png";
-import "./Header.css";
+import Logo from "../assets/images/main-logo.png";
 
 const Header = ({ userData, logout }) => {
   console.log({ userData }); // التحقق من البيانات في الكونسول

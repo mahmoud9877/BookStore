@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { baseURL, bearerKey } from "../index.js";
+import { baseURL, bearerKey } from "../../index.js";
 
 function useRoute() {
   const [books, setBooks] = useState([]);

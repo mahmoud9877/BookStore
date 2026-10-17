@@ -3,7 +3,7 @@ import { baseURL, bearerKey } from "../../index.js";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import React, { useEffect, useState } from "react";
-import "./Cart.css"; // Import custom styling
+import "./CartPage.css"; // Import custom styling
 
 export default function Cart({ userData }) {
   const [books, setBooks] = useState([]); // Books in cart

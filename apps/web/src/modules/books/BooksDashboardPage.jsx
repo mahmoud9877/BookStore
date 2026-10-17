@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { baseURL, bearerKey } from "../../index.js";
-import "./style.css";
+import "./BooksDashboardPage.css";
 
 export default function BooksManager({ userData }) {
   // State for book details

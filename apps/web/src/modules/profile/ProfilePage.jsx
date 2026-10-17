@@ -1,5 +1,5 @@
 import React from "react";
-import "./Profile.css"; // Importing the external CSS file
+import "./ProfilePage.css"; // Importing the external CSS file
 
 export default function Profile(props) {
   const { userData } = props; // Destructure userData from props
