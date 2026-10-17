@@ -13,8 +13,7 @@ export class CartController {
   });
 
   addToCart = asyncHandler(async (req, res) => {
-    const { bookId, quantity } = req.body;
-    const { cart, created } = await this.#cartService.addItem(req.user._id, bookId, quantity);
+    const { cart, created } = await this.#cartService.addItem(req.user._id, req.dto);
     if (created) {
       return res.status(201).json({ message: "Cart created", newCart: cart });
     }
@@ -22,7 +21,7 @@ export class CartController {
   });
 
   removeCartItem = asyncHandler(async (req, res) => {
-    const cart = await this.#cartService.removeItem(req.user._id, req.params.bookId);
+    const cart = await this.#cartService.removeItem(req.user._id, req.dto.bookId);
     return res.status(200).json({ message: "Book removed from cart", cart });
   });
 

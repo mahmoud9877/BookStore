@@ -8,7 +8,7 @@ export class OrderController {
   }
 
   createOrder = asyncHandler(async (req, res) => {
-    const { order, session } = await this.#orderService.placeOrder(req.user, req.body);
+    const { order, session } = await this.#orderService.placeOrder(req.user, req.dto);
     if (session) {
       return res.status(201).json({ message: "Order created", session, url: session.url });
     }
@@ -25,13 +25,12 @@ export class OrderController {
   });
 
   cancelOrder = asyncHandler(async (req, res) => {
-    const { orderId } = req.params;
-    const order = await this.#orderService.cancelOrder(orderId, req.user._id, req.body.reason);
+    const order = await this.#orderService.cancelOrder(req.dto, req.user._id);
     return res.status(200).json({ message: "Done", order });
   });
 
   deliverOrder = asyncHandler(async (req, res) => {
-    const order = await this.#orderService.deliverOrder(req.params.orderId, req.user._id);
+    const order = await this.#orderService.deliverOrder(req.dto.orderId, req.user._id);
     return res.status(200).json({ message: "Order delivered successfully", order });
   });
 }

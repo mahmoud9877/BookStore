@@ -1,3 +1,4 @@
+import { CartResponseDto } from "./cart.dto.js";
 import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
 
 const isSameBook = (bookId) => (item) => item.bookId.toString() === String(bookId);
@@ -12,17 +13,15 @@ export class CartService {
   }
 
   async getCart(userId) {
-    const cart = await this.#carts.findByUserId(userId);
-    if (!cart) throw new NotFoundError("Cart not found");
-    return cart;
+    return CartResponseDto.from(await this.#findCart(userId));
   }
 
   /**
    * Adds copies of a book, never exceeding its stock (`book.quantity`).
    * Resolves `{ cart, created }`; `created` is true when this was the user's first item.
+   * @param {import("./cart.dto.js").AddToCartDto} dto
    */
-  async addItem(userId, bookId, requestedQuantity) {
-    const quantity = Number(requestedQuantity);
+  async addItem(userId, { bookId, quantity }) {
     const book = await this.#books.findById(bookId);
     if (!book) throw new NotFoundError("Book not found");
     if (book.quantity < quantity) throw new BadRequestError("Insufficient stock available");
@@ -37,7 +36,8 @@ export class CartService {
 
     const cart = await this.#carts.findByUserId(userId);
     if (!cart) {
-      return { cart: await this.#carts.createForUser(userId, [item]), created: true };
+      const created = await this.#carts.createForUser(userId, [item]);
+      return { cart: CartResponseDto.from(created), created: true };
     }
 
     const existingItem = cart.books.find(isSameBook(bookId));
@@ -50,19 +50,25 @@ export class CartService {
       cart.books.push(item);
     }
 
-    return { cart: await this.#carts.save(cart), created: false };
+    return { cart: CartResponseDto.from(await this.#carts.save(cart)), created: false };
   }
 
   async removeItem(userId, bookId) {
-    const cart = await this.getCart(userId);
+    const cart = await this.#findCart(userId);
     const index = cart.books.findIndex(isSameBook(bookId));
     if (index === -1) throw new NotFoundError("Book not found in cart");
     cart.books.splice(index, 1);
-    return this.#carts.save(cart);
+    return CartResponseDto.from(await this.#carts.save(cart));
   }
 
   async clearCart(userId) {
     const cart = await this.#carts.clearByUserId(userId);
+    if (!cart) throw new NotFoundError("Cart not found");
+    return CartResponseDto.from(cart);
+  }
+
+  async #findCart(userId) {
+    const cart = await this.#carts.findByUserId(userId);
     if (!cart) throw new NotFoundError("Cart not found");
     return cart;
   }

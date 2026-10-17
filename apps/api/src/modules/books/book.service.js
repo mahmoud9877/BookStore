@@ -1,16 +1,8 @@
+import { BookResponseDto } from "./book.dto.js";
 import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
 
 const IMAGE_FOLDER = "book";
 const IMAGE_REQUIRED = "Image file is required";
-
-const pickBookFields = ({ bookTitle, author, description, price, category, quantity }) => ({
-  bookTitle,
-  author,
-  description,
-  price,
-  category,
-  quantity,
-});
 
 export class BookService {
   #books;
@@ -23,41 +15,46 @@ export class BookService {
     this.#imageStorage = imageStorage;
   }
 
-  /** Lists books newest first; paginates only when `limit` is a positive number. */
-  listBooks({ page, limit } = {}) {
-    const pageSize = Number(limit);
-    if (!(pageSize > 0)) return this.#books.list();
-    const pageNumber = Math.max(Number(page) || 1, 1);
-    return this.#books.list({ skip: (pageNumber - 1) * pageSize, limit: pageSize });
+  /** @param {import("./book.dto.js").ListBooksQueryDto} query */
+  async listBooks(query) {
+    const books = query.isPaginated
+      ? await this.#books.list({ skip: query.skip, limit: query.limit })
+      : await this.#books.list();
+    return BookResponseDto.fromList(books);
   }
 
   async getBook(bookId) {
     const book = await this.#books.findById(bookId);
     if (!book) throw new NotFoundError("Book not found");
-    return book;
+    return BookResponseDto.from(book);
   }
 
-  /** `imagePath` is the uploaded cover's local temp file (required). */
-  async createBook(fields, imagePath) {
+  /**
+   * @param {import("./book.dto.js").CreateBookDto} dto
+   * @param {string | undefined} imagePath the uploaded cover's local temp file (required)
+   */
+  async createBook(dto, imagePath) {
     if (!imagePath) {
       throw new BadRequestError(IMAGE_REQUIRED, { error: IMAGE_REQUIRED });
     }
-    const data = pickBookFields(fields);
-    await this.#assertCategoryExists(data.category);
+    await this.#assertCategoryExists(dto.category);
     const { secure_url } = await this.#imageStorage.upload(imagePath, IMAGE_FOLDER);
-    return this.#books.create({ ...data, image: secure_url });
+    return BookResponseDto.from(await this.#books.create({ ...dto.toAttributes(), image: secure_url }));
   }
 
-  /** `imagePath` is optional; without it the current cover is kept. */
-  async updateBook(bookId, fields, imagePath) {
-    const update = pickBookFields(fields);
-    await this.#assertCategoryExists(update.category);
+  /**
+   * @param {import("./book.dto.js").UpdateBookDto} dto
+   * @param {string | undefined} imagePath optional new cover; without it the current one is kept
+   */
+  async updateBook(dto, imagePath) {
+    await this.#assertCategoryExists(dto.category);
+    const update = dto.toAttributes();
     if (imagePath) {
       update.image = (await this.#imageStorage.upload(imagePath, IMAGE_FOLDER)).secure_url;
     }
-    const book = await this.#books.updateById(bookId, update);
+    const book = await this.#books.updateById(dto.id, update);
     if (!book) throw new NotFoundError("Book not found");
-    return book;
+    return BookResponseDto.from(book);
   }
 
   async deleteBook(bookId) {
@@ -69,13 +66,13 @@ export class BookService {
   async likeBook(bookId, userId) {
     const book = await this.#books.addLike(bookId, userId);
     if (!book) throw new BadRequestError("Book not found or already liked");
-    return book;
+    return BookResponseDto.from(book);
   }
 
   async unlikeBook(bookId, userId) {
     const book = await this.#books.removeLike(bookId, userId);
     if (!book) throw new BadRequestError("Book not found or not liked yet");
-    return book;
+    return BookResponseDto.from(book);
   }
 
   async #assertCategoryExists(name) {

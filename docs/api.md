@@ -8,6 +8,9 @@ directly followed by the token from `POST /auth/login`).
 
 Access levels: **public**, **user** (any signed-in account), **admin** (`role: "Admin"`).
 
+Unknown request fields are ignored; responses contain only documented fields (see the
+response DTOs in `apps/api/src/modules/*/<entity>.dto.js`).
+
 Errors are JSON: `{ "message": "..." }`. Validation failures return
 `400 { "message": "validationErr", "validationErr": [ ...Joi details ] }`.
 In production, 5xx responses only say `"Internal server error"`; stack traces are
@@ -70,7 +73,7 @@ When `REQUIRE_EMAIL_CONFIRMATION=false`, new accounts are created already confir
 
 | Method | Path | Access | Notes |
 | --- | --- | --- | --- |
-| POST | `/order` | user | `{address, phone (string or array), note?, paymentType: "cash"\|"card"}` (default cash). Orders the whole cart, reserves stock, empties the cart. Cash → `201 {order}`; card → `201 {session, url}` (Stripe Checkout) |
+| POST | `/order` | user | `{address, phone (string or array), note?, paymentType: "cash"\|"card"}` (default cash). Orders the whole cart, reserves stock, empties the cart. Cash → `201 {order}`; card → `201 {session: {id, url}, url}` (Stripe Checkout) |
 | PATCH | `/order/:orderId/cancel` | user (owner) | `{reason}`. Allowed while cash orders are `placed` or card orders are `waitPayment`; restores stock |
 | PATCH | `/order/:orderId/delivered` | admin | Allowed from `placed` / `onWay` |
 | POST | `/order/webhook` | Stripe | Signature-verified raw body. `checkout.session.completed` → `placed`; `checkout.session.expired` / `async_payment_failed` → `rejected` and stock released |

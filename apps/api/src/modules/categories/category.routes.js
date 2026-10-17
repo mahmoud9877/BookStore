@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as validators from "./category.validation.js";
+import { CategoryIdDto, CreateCategoryDto, UpdateCategoryDto } from "./category.dto.js";
 import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 
@@ -10,11 +10,11 @@ export function createCategoryRouter({ categoryController, authGuard }) {
   router.get("/", categoryController.listCategories);
   // Must be registered before "/:id", otherwise "options" is treated as an id.
   router.get("/options", categoryController.listCategoryOptions);
-  router.get("/:id", validate(validators.categoryIdParam), categoryController.getCategoryById);
+  router.get("/:id", validate(CategoryIdDto), categoryController.getCategoryById);
 
-  router.post("/", adminOnly, validate(validators.createCategory), categoryController.createCategory);
-  router.put("/:id", adminOnly, validate(validators.updateCategory), categoryController.updateCategory);
-  router.delete("/:id", adminOnly, validate(validators.categoryIdParam), categoryController.deleteCategory);
+  router.post("/", adminOnly, validate(CreateCategoryDto), categoryController.createCategory);
+  router.put("/:id", adminOnly, validate(UpdateCategoryDto), categoryController.updateCategory);
+  router.delete("/:id", adminOnly, validate(CategoryIdDto), categoryController.deleteCategory);
 
   return router;
 }

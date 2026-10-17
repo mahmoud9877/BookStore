@@ -28,9 +28,10 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 
 | Layer | Files | Responsibility | May depend on |
 | --- | --- | --- | --- |
-| Routes | `<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, validation, upload) → controller method | controller, `AuthGuard`, validators |
-| Controller | `<entity>.controller.js` (`class XController`) | Read `req`, call one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
-| Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows, throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
+| Routes | `<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, `validate(XDto)`, upload) → controller method | controller, `AuthGuard`, request DTOs |
+| DTOs | `<entity>.dto.js` | Request DTOs: Joi schema + typed, whitelisted input. Response DTOs: the fields that leave the API | `core/dto.js` |
+| Controller | `<entity>.controller.js` (`class XController`) | Pass `req.dto` to one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
+| Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows; takes request DTOs, returns response DTOs; throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
 | Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | Every database query for one model | its Mongoose model |
 
 - **Composition root:** `src/container.js` is the only place that instantiates concrete
@@ -39,6 +40,16 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   To swap an implementation (e.g. another payment provider), change it there.
 - **Encapsulation:** collaborators are stored in private `#fields`; controller handlers are
   arrow-function class fields, so they can be passed to Express without `bind`.
+- **DTOs** (`src/core/dto.js`, `modules/*/<entity>.dto.js`):
+  - *Request DTOs* (`CreateBookDto`, `AddToCartDto`, …) extend `RequestDto`: a static Joi
+    `schema` plus a constructor that copies only the declared fields. `validate(XDto)`
+    validates the merged body/params/query, applies Joi conversion and defaults
+    (`"3"` → `3`, trimming, `paymentType` → `"cash"`) and sets `req.dto`. Fields a client
+    adds (e.g. `totalLikes`, `image` URLs, `couponName`) never reach a service.
+  - *Response DTOs* (`BookResponseDto`, `OrderResponseDto`, …) extend `ResponseDto` and
+    whitelist the fields that leave the API. Services return them, never Mongoose documents.
+  - The Stripe webhook is the one handler that reads `req.body` directly: the signature
+    covers the raw bytes.
 - **Thin controllers:** a controller method extracts input from `req`, awaits exactly one
   service call and maps the result to a response. The only branches left choose the
   response form from facts the service reports (redirect vs JSON after email confirmation,
@@ -87,6 +98,7 @@ comment instead.
 | Folders | lowercase, kebab-case, plural for collections of entities | `modules/books`, `middleware` |
 | API module files | `<entity>.<role>.js` | `book.routes.js`, `order.service.js`, `user.repository.js` |
 | API classes | PascalCase, named after their role | `OrderService`, `BookRepository`, `StripePaymentGateway` |
+| DTO classes | `<Action><Entity>Dto` for requests, `<Entity>ResponseDto` for responses | `CreateOrderDto`, `CartResponseDto` |
 | Other API files | kebab-case | `error-handler.js`, `confirmation-email.template.js` |
 | React components / pages | PascalCase file = component name; pages end in `Page` | `CartPage.jsx`, `RootLayout.jsx` |
 | Hooks | `useX.js` | `useBooks.js` |
@@ -115,7 +127,8 @@ depend on them.
 | `src/utils/errorHandling.js` | `src/middleware/error-handler.js` |
 | `src/utils/multer.js` | `src/middleware/upload.js` |
 | `src/middleware/auth.js` (`auth`) | `src/middleware/auth-guard.js` (`class AuthGuard`) |
-| `src/middleware/validation.js` | `src/middleware/validate.js` |
+| `src/middleware/validation.js` | `src/middleware/validate.js` (`validate(Dto)`) |
+| `*.validation.js` / `BookValidation.js` (Joi schemas) | `<entity>.dto.js` (request + response DTO classes) |
 | `src/utils/HashAndCompare.js` | `src/security/password-hasher.js` (`class PasswordHasher`) |
 | `src/utils/GenerateAndVerifyToken.js` | `src/security/jwt-token-service.js` (`class JwtTokenService`) |
 | `DB/connection.js` (`connectDB`) | `src/infrastructure/database.js` (`class Database`) |
@@ -183,6 +196,11 @@ returned password hashes) needed no login at all. Now:
 - `POST /book/add` field-validation errors use the standard `validationErr` shape.
 - `PUT /category/:id` with a name outside the options and `POST /book/add` without an
   image: `{message, error}` (the original `error` field is kept, `message` added).
+- Responses are built from response DTOs: `__v`, the `likes` user-id array on books and the
+  `_id` of cart line items are no longer returned; card orders return
+  `session: {id, url}` instead of the full Stripe session object (which included
+  customer details). Every field the web app reads is unchanged.
+- Request strings are trimmed and numeric fields converted before they are stored.
 - Stripe webhook with an invalid signature: `400` JSON `{message: "Webhook Error: …"}`
   (was plain text; Stripe only looks at the status code).
 - `PATCH /order/:id/cancel` returns the order *after* cancellation (it returned the

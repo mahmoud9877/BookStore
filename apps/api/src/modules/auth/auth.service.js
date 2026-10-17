@@ -1,3 +1,4 @@
+import { UserResponseDto } from "./auth.dto.js";
 import { confirmationEmailHtml } from "./confirmation-email.template.js";
 import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from "../../core/http-errors.js";
 
@@ -32,7 +33,10 @@ export class AuthService {
     this.#frontendUrl = frontendUrl;
   }
 
-  /** `apiBaseUrl` is the API's public base URL, used to build the confirmation link. */
+  /**
+   * @param {import("./auth.dto.js").RegisterUserDto} dto
+   * @param {{ apiBaseUrl: string }} context public API base URL for the confirmation link
+   */
   async registerUser({ userName, email, password, phone }, { apiBaseUrl }) {
     const normalizedEmail = email.toLowerCase();
 
@@ -96,7 +100,10 @@ export class AuthService {
     return { redirectUrl: null, message: "Check your inbox" };
   }
 
-  /** Checks credentials and resolves `{ token, role }`. */
+  /**
+   * Checks credentials and resolves `{ token, role }`.
+   * @param {import("./auth.dto.js").LoginDto} dto
+   */
   async login({ email, password }) {
     const user = await this.#users.findByAnyEmail([email.toLowerCase(), email]);
 
@@ -117,8 +124,8 @@ export class AuthService {
     return { token, role: user.role };
   }
 
-  listUsers() {
-    return this.#users.listWithoutSecrets();
+  async listUsers() {
+    return UserResponseDto.fromList(await this.#users.listWithoutSecrets());
   }
 
   #confirmedResult() {

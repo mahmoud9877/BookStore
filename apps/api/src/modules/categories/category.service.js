@@ -1,4 +1,5 @@
 import { CATEGORY_OPTIONS } from "./category.model.js";
+import { CategoryResponseDto } from "./category.dto.js";
 import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
 
 export class CategoryService {
@@ -8,8 +9,8 @@ export class CategoryService {
     this.#categories = categoryRepository;
   }
 
-  listCategories() {
-    return this.#categories.list();
+  async listCategories() {
+    return CategoryResponseDto.fromList(await this.#categories.list());
   }
 
   listCategoryOptions() {
@@ -19,21 +20,23 @@ export class CategoryService {
   async getCategory(id) {
     const category = await this.#categories.findById(id);
     if (!category) throw new NotFoundError("Category not found");
-    return category;
+    return CategoryResponseDto.from(category);
   }
 
-  createCategory(name) {
-    return this.#categories.create({ name });
+  /** @param {import("./category.dto.js").CreateCategoryDto} dto */
+  async createCategory({ name }) {
+    return CategoryResponseDto.from(await this.#categories.create({ name }));
   }
 
-  async updateCategory(id, name) {
+  /** @param {import("./category.dto.js").UpdateCategoryDto} dto */
+  async updateCategory({ id, name }) {
     if (!CATEGORY_OPTIONS.includes(name)) {
       const message = `Invalid category name. Choose from: ${CATEGORY_OPTIONS.join(", ")}`;
       throw new BadRequestError(message, { error: message });
     }
     const category = await this.#categories.updateById(id, { name });
     if (!category) throw new NotFoundError("Category not found");
-    return category;
+    return CategoryResponseDto.from(category);
   }
 
   async deleteCategory(id) {

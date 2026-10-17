@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as validators from "./order.validation.js";
+import { CancelOrderDto, CreateOrderDto, OrderIdDto } from "./order.dto.js";
 import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 
@@ -10,19 +10,19 @@ export function createOrderRouter({ orderController, authGuard }) {
   router.post(
     "/",
     authGuard.authenticate(),
-    validate(validators.createOrder),
+    validate(CreateOrderDto),
     orderController.createOrder
   );
   router.patch(
     "/:orderId/cancel",
     authGuard.authenticate(),
-    validate(validators.cancelOrder),
+    validate(CancelOrderDto),
     orderController.cancelOrder
   );
   router.patch(
     "/:orderId/delivered",
     authGuard.authenticate([USER_ROLES.Admin]),
-    validate(validators.deliverOrder),
+    validate(OrderIdDto),
     orderController.deliverOrder
   );
 

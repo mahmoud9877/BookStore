@@ -19,12 +19,13 @@ Further reading: [architecture & conventions](docs/architecture.md) ·
 │   ├── api/                  Express REST API
 │   │   ├── src/
 │   │   │   ├── config/       env.js — loads and validates environment variables
-│   │   │   ├── core/         HttpError hierarchy, BaseRepository
+│   │   │   ├── core/         HttpError hierarchy, BaseRepository, RequestDto/ResponseDto
 │   │   │   ├── infrastructure/  Database, StripePaymentGateway, CloudinaryImageStorage, GmailMailer
 │   │   │   ├── middleware/   AuthGuard, validate, upload, error-handler
 │   │   │   ├── security/     PasswordHasher, JwtTokenService
 │   │   │   ├── modules/      auth, books, categories, cart, orders, users —
-│   │   │   │                 each: routes → controller → service → repository → model
+│   │   │   │                 each: routes → controller → service → repository → model,
+│   │   │   │                 with request/response DTOs in <entity>.dto.js
 │   │   │   ├── container.js  composition root: builds and wires every class
 │   │   │   ├── app.js        createApp(container): mounts routers, no side effects
 │   │   │   └── server.js     env check, DB connection, listen, graceful shutdown
@@ -126,7 +127,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 64 tests) + web (Jest/RTL, 24 tests)
+npm test                         # API (node:test, 73 tests) + web (Jest/RTL, 24 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 

@@ -1,4 +1,5 @@
 import { ORDER_STATUSES } from "./order.model.js";
+import { CheckoutSessionResponseDto, OrderResponseDto } from "./order.dto.js";
 import { BadGatewayError, BadRequestError, ServiceUnavailableError } from "../../core/http-errors.js";
 
 const CHECKOUT_FAILURE_EVENTS = [
@@ -28,9 +29,10 @@ export class OrderService {
 
   /**
    * Turns the user's cart into an order. Card orders also get a Stripe Checkout
-   * session. Resolves `{ order, session }` (`session` is undefined for cash).
+   * session. Resolves `{ order, session }` (`session` is null for cash).
+   * @param {import("./order.dto.js").CreateOrderDto} dto
    */
-  async placeOrder(user, { address, phone, note, paymentType = "cash" }) {
+  async placeOrder(user, { address, phone, note, paymentType }) {
     if (paymentType === "card" && !this.#payments.isConfigured) {
       throw new ServiceUnavailableError("Card payments are not configured");
     }
@@ -73,7 +75,10 @@ export class OrderService {
 
     // Only empty the cart once the order (and payment session) definitely exists.
     await this.#carts.clearByUserId(user._id);
-    return { order, session };
+    return {
+      order: OrderResponseDto.from(order),
+      session: CheckoutSessionResponseDto.from(session),
+    };
   }
 
   /**
@@ -100,8 +105,11 @@ export class OrderService {
     return "Ignored";
   }
 
-  /** Customers may cancel their own order until it ships (cash) or is paid (card). */
-  async cancelOrder(orderId, userId, reason) {
+  /**
+   * Customers may cancel their own order until it ships (cash) or is paid (card).
+   * @param {import("./order.dto.js").CancelOrderDto} dto
+   */
+  async cancelOrder({ orderId, reason }, userId) {
     const order = await this.#orders.findByIdForUser(orderId, userId);
     if (!order) throw new BadRequestError("In-Valid OrderId");
 
@@ -117,7 +125,7 @@ export class OrderService {
       reason,
     });
     await this.#releaseStock(order.books);
-    return canceled;
+    return OrderResponseDto.from(canceled);
   }
 
   async deliverOrder(orderId, adminId) {
@@ -126,7 +134,10 @@ export class OrderService {
     if (NOT_DELIVERABLE.includes(order.status)) {
       throw new BadRequestError("Cannot update your order after it has been changed");
     }
-    return this.#orders.updateStatus(orderId, ORDER_STATUSES.delivered, { updatedBy: adminId });
+    const delivered = await this.#orders.updateStatus(orderId, ORDER_STATUSES.delivered, {
+      updatedBy: adminId,
+    });
+    return OrderResponseDto.from(delivered);
   }
 
   /**

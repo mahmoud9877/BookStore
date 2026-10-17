@@ -9,26 +9,26 @@ export class AuthController {
   }
 
   signup = asyncHandler(async (req, res) => {
-    const { _id, token, refreshToken } = await this.#authService.registerUser(req.body, {
+    const { _id, token, refreshToken } = await this.#authService.registerUser(req.dto, {
       apiBaseUrl: publicBaseUrl(req),
     });
     return res.status(201).json({ message: "Done", _id, refreshToken, token });
   });
 
   confirmEmail = asyncHandler(async (req, res) => {
-    const result = await this.#authService.confirmEmail(req.params.token);
+    const result = await this.#authService.confirmEmail(req.dto.token);
     return sendConfirmationResult(res, result);
   });
 
   resendConfirmationEmail = asyncHandler(async (req, res) => {
-    const result = await this.#authService.resendConfirmationEmail(req.params.token, {
+    const result = await this.#authService.resendConfirmationEmail(req.dto.token, {
       apiBaseUrl: publicBaseUrl(req),
     });
     return sendConfirmationResult(res, result);
   });
 
   login = asyncHandler(async (req, res) => {
-    const { token, role } = await this.#authService.login(req.body);
+    const { token, role } = await this.#authService.login(req.dto);
     return res.status(200).json({ message: "Done", token, role });
   });
 

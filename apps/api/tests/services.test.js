@@ -11,6 +11,23 @@ import { OrderService } from "../src/modules/orders/order.service.js";
 import { PasswordHasher } from "../src/security/password-hasher.js";
 import { JwtTokenService } from "../src/security/jwt-token-service.js";
 import { CategoryService } from "../src/modules/categories/category.service.js";
+import { AddToCartDto } from "../src/modules/cart/cart.dto.js";
+import { CreateBookDto, ListBooksQueryDto, UpdateBookDto } from "../src/modules/books/book.dto.js";
+
+/** Parses raw input into a DTO exactly as the validate middleware does. */
+const parse = (Dto, input) => {
+  const { dto, error } = Dto.parse(input);
+  if (error) throw error;
+  return dto;
+};
+const bookInput = {
+  bookTitle: "t",
+  author: "a",
+  description: "d",
+  price: 10,
+  category: "fiction",
+  quantity: 2,
+};
 
 /** Builds a fake whose methods are mock functions resolving the given values. */
 function fake(methods) {
@@ -44,9 +61,9 @@ describe("BookService", () => {
 
   test("listBooks paginates only when a positive limit is given", async () => {
     const { service, bookRepository } = makeService();
-    await service.listBooks({});
-    await service.listBooks({ page: "3", limit: "10" });
-    await service.listBooks({ page: "0", limit: "abc" });
+    await service.listBooks(parse(ListBooksQueryDto, {}));
+    await service.listBooks(parse(ListBooksQueryDto, { page: "3", limit: "10" }));
+    await service.listBooks(parse(ListBooksQueryDto, { page: "0", limit: "abc" }));
     assert.deepEqual(
       bookRepository.list.mock.calls.map((c) => c.arguments),
       [[], [{ skip: 20, limit: 10 }], []]
@@ -55,7 +72,7 @@ describe("BookService", () => {
 
   test("createBook uploads the cover and stores its URL", async () => {
     const { service, bookRepository, imageStorage } = makeService();
-    await service.createBook({ bookTitle: "t", category: "fiction" }, "/tmp/cover.png");
+    await service.createBook(parse(CreateBookDto, bookInput), "/tmp/cover.png");
     assert.deepEqual(imageStorage.upload.mock.calls[0].arguments, ["/tmp/cover.png", "book"]);
     assert.equal(bookRepository.create.mock.calls[0].arguments[0].image, "https://img/cover.png");
   });
@@ -78,11 +95,14 @@ describe("BookService", () => {
     assert.equal(imageStorage.upload.mock.callCount(), 0);
   });
 
-  test("updateBook ignores fields that are not book attributes", async () => {
+  test("updateBook persists only book attributes, never extra client fields", async () => {
     const { service, bookRepository } = makeService();
-    await service.updateBook("id-1", { bookTitle: "t", category: "fiction", totalLikes: 999 });
-    const [, fields] = bookRepository.updateById.mock.calls[0].arguments;
+    const id = new Types.ObjectId().toString();
+    await service.updateBook(parse(UpdateBookDto, { ...bookInput, id, totalLikes: 999 }));
+    const [updatedId, fields] = bookRepository.updateById.mock.calls[0].arguments;
+    assert.equal(updatedId, id);
     assert.equal(fields.bookTitle, "t");
+    assert.equal("id" in fields, false);
     assert.equal("totalLikes" in fields, false);
     assert.equal("image" in fields, false);
   });
@@ -116,21 +136,12 @@ describe("CartService", () => {
       cartRepository: fake({ findByUserId: cart, save: async (saved) => saved }),
     });
 
-    const { created } = await service.addItem("u", bookId.toString(), 2);
+    const add = (quantity) =>
+      service.addItem("u", parse(AddToCartDto, { bookId: bookId.toString(), quantity }));
+    const { created } = await add(2);
     assert.equal(created, false);
     assert.equal(cart.books[0].quantity, 3);
-    await rejectsWithStatus(service.addItem("u", bookId.toString(), 1), 400, /exceeds/);
-  });
-
-  test("addItem coerces the requested quantity to a number", async () => {
-    const bookId = new Types.ObjectId();
-    const cart = { books: [{ bookId, quantity: 1 }] };
-    const service = new CartService({
-      bookRepository: fake({ findById: { quantity: 5 } }),
-      cartRepository: fake({ findByUserId: cart, save: async (saved) => saved }),
-    });
-    await service.addItem("u", bookId.toString(), "2");
-    assert.equal(cart.books[0].quantity, 3);
+    await rejectsWithStatus(add(1), 400, /exceeds/);
   });
 
   test("the first item creates the cart", async () => {
@@ -142,7 +153,10 @@ describe("CartService", () => {
       cartRepository,
       bookRepository: fake({ findById: { quantity: 5, price: 10 } }),
     });
-    const { cart, created } = await service.addItem("u", "b", 1);
+    const { cart, created } = await service.addItem(
+      "u",
+      parse(AddToCartDto, { bookId: new Types.ObjectId().toString(), quantity: 1 })
+    );
     assert.equal(created, true);
     assert.equal(cart.books.length, 1);
   });
@@ -236,11 +250,12 @@ describe("OrderService", () => {
       orderRepository: fake({ findByIdForUser: order, updateStatus: { status: "canceled" } }),
     });
 
-    await rejectsWithStatus(service.cancelOrder("o", user._id, "why"), 400, /delivered/);
+    const cancel = (reason) => service.cancelOrder({ orderId: "o", reason }, user._id);
+    await rejectsWithStatus(cancel("why"), 400, /delivered/);
     assert.equal(orderRepository.updateStatus.mock.callCount(), 0);
 
     order.status = "placed";
-    await service.cancelOrder("o", user._id, "changed my mind");
+    await cancel("changed my mind");
     assert.deepEqual(orderRepository.updateStatus.mock.calls[0].arguments, [
       "o",
       "canceled",
