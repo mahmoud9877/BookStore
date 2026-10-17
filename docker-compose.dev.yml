@@ -1,0 +1,52 @@
+# Development: local MongoDB, hot reload for API (nodemon) and web (CRA dev server).
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "127.0.0.1:${DEV_MONGO_PORT:-27017}:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    networks:
+      - backend
+
+  api:
+    build:
+      target: development
+    environment:
+      NODE_ENV: development
+      # Always the local container, so development can never write to a production database.
+      MONGODB_URI: mongodb://mongo:27017/bookstore
+      FRONTEND_URL: http://localhost:${DEV_WEB_PORT:-3000}
+      REQUIRE_EMAIL_CONFIRMATION: ${REQUIRE_EMAIL_CONFIRMATION:-false}
+    volumes:
+      - ./apps/api/src:/app/src
+    ports:
+      - "127.0.0.1:${DEV_API_PORT:-4000}:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  web:
+    build:
+      target: development
+    environment:
+      # Read by the browser, so it must be the host-published API port.
+      REACT_APP_API_URL: http://localhost:${DEV_API_PORT:-4000}
+      REACT_APP_BEARER_KEY: ${BEARER_KEY:-}
+      WATCHPACK_POLLING: "true"
+      WDS_SOCKET_PORT: ${DEV_WEB_PORT:-3000}
+      BROWSER: none
+    volumes:
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
+    ports:
+      - "127.0.0.1:${DEV_WEB_PORT:-3000}:3000"
+
+volumes:
+  mongo-data:

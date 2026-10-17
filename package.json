@@ -1,0 +1,14 @@
+{
+  "name": "bookstore",
+  "private": true,
+  "description": "Bookstore monorepo: Express/MongoDB API (apps/api) and React web app (apps/web)",
+  "scripts": {
+    "install:all": "npm --prefix apps/api ci && npm --prefix apps/web ci",
+    "test": "npm --prefix apps/api test && CI=true npm --prefix apps/web test -- --watchAll=false",
+    "lint": "npm --prefix apps/web run lint",
+    "build": "npm --prefix apps/web run build",
+    "dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+    "down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.prod.yml down"
+  }
+}

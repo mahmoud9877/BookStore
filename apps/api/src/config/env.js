@@ -85,6 +85,11 @@ export const env = Object.freeze({
  */
 export function checkEnv() {
   const missing = REQUIRED_VARIABLES.filter((name) => !read(name));
+  // .env.example ships "change-me..." placeholders; never run production with them.
+  if (env.isProduction) {
+    const placeholders = REQUIRED_VARIABLES.filter((name) => read(name)?.startsWith("change-me"));
+    missing.push(...placeholders.map((name) => `${name} (still a .env.example placeholder)`));
+  }
   if (process.env.SALT_ROUND && !Number.isInteger(env.saltRounds)) {
     missing.push("SALT_ROUND (must be an integer)");
   }

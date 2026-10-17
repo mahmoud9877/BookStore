@@ -18,7 +18,9 @@ export function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(cors());
-  if (env.nodeEnv === "development") app.use(morgan("dev"));
+  if (env.nodeEnv === "development") {
+    app.use(morgan("dev", { skip: (req) => req.path === "/health" }));
+  }
 
   // Stripe signs the raw payload, so this route must see the body before express.json().
   app.post("/order/webhook", express.raw({ type: "application/json" }), stripeWebhook);

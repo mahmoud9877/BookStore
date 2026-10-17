@@ -1,0 +1,29 @@
+# Production: optimized images, only the web port is published; the API is reachable
+# through nginx at /api. MONGODB_URI (and all secrets) must come from .env.
+services:
+  api:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp # multer stores uploads here before they are sent to Cloudinary
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build:
+      target: production
+      args:
+        REACT_APP_API_URL: ${PUBLIC_API_URL:-/api}
+        REACT_APP_BEARER_KEY: ${BEARER_KEY:?BEARER_KEY must be set in .env}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

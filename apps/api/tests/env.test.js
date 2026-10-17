@@ -48,3 +48,18 @@ test("defaults to production when NODE_ENV and MOOD are unset", () => {
   assert.equal(env.isProduction, true);
   assert.equal(env.requireEmailConfirmation, true);
 });
+
+test("rejects .env.example placeholders in production only", () => {
+  const placeholders = {
+    MONGODB_URI: "mongodb://mongo:27017/bookstore",
+    BEARER_KEY: "change-me-bearer-prefix__",
+    TOKEN_SIGNATURE: "change-me-token-signature",
+    EMAIL_TOKEN: "x",
+    SALT_ROUND: "8",
+  };
+  assert.deepEqual(loadEnv({ ...placeholders, NODE_ENV: "production" }).check.missing, [
+    "BEARER_KEY (still a .env.example placeholder)",
+    "TOKEN_SIGNATURE (still a .env.example placeholder)",
+  ]);
+  assert.deepEqual(loadEnv({ ...placeholders, NODE_ENV: "development" }).check.missing, []);
+});

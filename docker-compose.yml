@@ -1,0 +1,38 @@
+# Shared service definitions. Always combine with an environment override:
+#   development: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#   production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+name: bookstore
+
+services:
+  api:
+    build:
+      context: ./apps/api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      - backend
+
+  web:
+    build:
+      context: ./apps/web
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  backend:

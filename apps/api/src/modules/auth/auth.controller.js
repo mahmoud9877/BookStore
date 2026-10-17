@@ -13,7 +13,9 @@ const LOGIN_TOKEN_TTL = 30 * 60 * 24 * 365;
 const createConfirmationToken = (email, expiresIn) =>
   generateToken({ payload: { email }, signature: env.emailToken, expiresIn });
 
-const baseUrl = (req) => `${req.protocol}://${req.headers.host}`;
+// Behind the production nginx proxy the API is served under /api (X-Forwarded-Prefix).
+const baseUrl = (req) =>
+  `${req.protocol}://${req.headers.host}${req.get("x-forwarded-prefix") ?? ""}`;
 
 async function sendConfirmationEmail({ req, email, userName, phone, token }) {
   if (!isMailerConfigured()) {
