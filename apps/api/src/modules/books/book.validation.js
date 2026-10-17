@@ -1,37 +1,22 @@
-import Joi from "joi";
-import { Types } from "mongoose";
+import joi from "joi";
 import { generalFields } from "../../middleware/validate.js";
 
-export const abbBook = Joi.object({
-  bookTitle: Joi.string().required(), // Ensure bookId is a valid string
-  author: Joi.string().min(2).max(20).required(),
-  price: Joi.number().required(),
-  image: generalFields.file.required(), // Assuming image is passed as a string path or URL
-  quantity: Joi.number().min(1).required(), // Quantity should be a positive integer
-});
-
-export const likeOrUnlike = {
-  params: Joi.object({
-    id: generalFields.id,
-  }).required(),
+const bookFields = {
+  bookTitle: joi.string().trim().required(),
+  author: joi.string().trim().required(),
+  description: joi.string().required(),
+  price: joi.number().min(0).required(),
+  category: joi.string().trim().required(),
+  quantity: joi.number().integer().min(1).required(),
 };
 
-export const deleteBook = Joi.object({
-  bookId: Joi.string()
-    .required()
-    .custom((value, helpers) => {
-      if (!Types.ObjectId.isValid(value)) {
-        return helpers.message("Invalid bookId format");
-      }
-      return value;
-    }), // Ensures bookId is a valid ObjectId
-}); // Ensure bookId is provided for removal
+// Multipart bodies: the image itself arrives as req.file, not as a field.
+export const addBook = joi.object(bookFields).unknown(true);
 
-export const updateBook = Joi.object({
-  bookId: Joi.string(),
-  bookTitle: Joi.string(), // Ensure bookId is a valid string
-  author: Joi.string().min(2).max(20),
-  price: Joi.number(),
-  image: Joi.string().optional(), // Assuming image is passed as a string path or URL
-  quantity: Joi.number().min(1),
-});
+export const updateBook = joi
+  .object({ ...bookFields, id: generalFields.id })
+  .unknown(true);
+
+export const bookIdParam = joi.object({ bookId: generalFields.id });
+
+export const deleteBook = joi.object({ id: generalFields.id });

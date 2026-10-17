@@ -1,12 +1,10 @@
-import mongoose, { Schema, model } from "mongoose";
+import mongoose, { Schema, Types, model } from "mongoose";
 
 const bookSchema = new Schema(
   {
     bookTitle: {
       type: String,
       required: [true, "Title is required"],
-      min: [2, "Minimum length is 2 characters"],
-      max: [100, "Maximum length is 100 characters"],
       set: (value) => value.toLowerCase(),
     },
     author: {
@@ -26,20 +24,21 @@ const bookSchema = new Schema(
       type: Number,
       required: [true, "Price is required"],
     },
-
+    // Units in stock; decremented when an order is placed.
     quantity: {
       type: Number,
       required: true,
     },
+    likes: [{ type: Types.ObjectId, ref: "User" }],
     totalLikes: {
       type: Number,
       default: 0,
     },
+    // Category name (not an ObjectId reference).
     category: {
-      type: String, // Changed from ObjectId to String to store category name directly
+      type: String,
       required: [true, "Category name is required"],
     },
-    changePasswordTime: Date,
   },
   {
     timestamps: true,

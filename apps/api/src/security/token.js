@@ -1,20 +1,14 @@
 import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 
 export const generateToken = ({
   payload = {},
-  signature = process.env.TOKEN_SIGNATURE,
+  signature = env.tokenSignature,
   expiresIn = 60 * 60,
 } = {}) => {
-  const token = jwt.sign(payload, signature, {
-    expiresIn: parseInt(expiresIn),
-  });
-  return token;
+  return jwt.sign(payload, signature, { expiresIn: parseInt(expiresIn) });
 };
 
-export const verifyToken = ({
-  token,
-  signature = process.env.TOKEN_SIGNATURE,
-} = {}) => {
-  const decoded = jwt.verify(token, signature);
-  return decoded;
+export const verifyToken = ({ token, signature = env.tokenSignature } = {}) => {
+  return jwt.verify(token, signature);
 };

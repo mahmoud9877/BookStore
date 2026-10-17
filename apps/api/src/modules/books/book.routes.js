@@ -1,49 +1,50 @@
 import { Router } from "express";
-import * as BookController from "./book.controller.js"; // Ensure this imports the necessary methods
-import { endpoint } from "./book.endpoint.js";
-import { auth } from "../../middleware/authenticate.js";
-import { validation } from "../../middleware/validate.js";
+import * as bookController from "./book.controller.js";
 import * as validators from "./book.validation.js";
-import { fileUpload, fileValidation } from "../../middleware/upload.js"; // Ensure your file upload utility is imported
+import { USER_ROLES } from "../users/user.roles.js";
+import { validate } from "../../middleware/validate.js";
+import { authenticate } from "../../middleware/authenticate.js";
+import { fileUpload, allowedMimeTypes } from "../../middleware/upload.js";
+
 const router = Router();
+const adminOnly = authenticate([USER_ROLES.Admin]);
+const imageUpload = fileUpload(allowedMimeTypes.image).single("image");
 
-// GET route to fetch all books
-router.get("/", BookController.getBook); // Ensure this method is implemented
+router.get("/", bookController.listBooks);
+router.get("/:bookId", validate(validators.bookIdParam), bookController.getBookById);
 
-// POST route to add a new book
 router.post(
   "/add",
-  auth(endpoint.addBook),
-  fileUpload(fileValidation.image).single("image"),
-  BookController.addBook
+  adminOnly,
+  imageUpload,
+  validate(validators.addBook),
+  bookController.addBook
+);
+router.post(
+  "/edit/:id",
+  adminOnly,
+  imageUpload,
+  validate(validators.updateBook),
+  bookController.updateBook
+);
+router.delete(
+  "/delete/:id",
+  adminOnly,
+  validate(validators.deleteBook),
+  bookController.deleteBook
 );
 
 router.patch(
   "/:bookId/like",
-  auth(endpoint.deleteBook),
-  validation(validators.likeOrUnlike),
-  BookController.likeBook
+  authenticate(),
+  validate(validators.bookIdParam),
+  bookController.likeBook
 );
-
 router.patch(
   "/:bookId/unlike",
-  auth,
-  validation(validators.likeOrUnlike),
-  BookController.unLikeBook
-);
-
-router.get("/:bookId", BookController.getBookDetails);
-
-router.delete(
-  "/delete/:id",
-  auth(endpoint.deleteBook),
-  BookController.deleteBook
-);
-router.post(
-  "/edit/:id",
-  auth(endpoint.updateBook),
-  fileUpload(fileValidation.image).single("image"),
-  BookController.updateBook
+  authenticate(),
+  validate(validators.bookIdParam),
+  bookController.unlikeBook
 );
 
 export default router;

@@ -1,10 +1,11 @@
-import Joi from "joi";
+import joi from "joi";
+import { generalFields } from "../../middleware/validate.js";
 
-export const addToCart = Joi.object({
-  bookId: Joi.string().required(), // Ensure bookId is a valid string
-  quantity: Joi.number().min(1).required(), // Quantity should be a positive integer
+export const addToCart = joi.object({
+  bookId: generalFields.id,
+  quantity: joi.number().integer().min(1).required(),
 });
 
-export const deleteFromCart = Joi.object({
-  bookId: Joi.string().required(), // Ensure bookId is provided for removal
+export const removeCartItem = joi.object({
+  bookId: generalFields.id,
 });

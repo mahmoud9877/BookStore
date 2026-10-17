@@ -1,12 +1,35 @@
-import path from "path";
-import express from "express";
-import * as dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import initApp from "./app.js";
+import { createApp } from "./app.js";
+import { env, checkEnv } from "./config/env.js";
+import { connectDatabase, disconnectDatabase } from "./infrastructure/database.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "../config/.env") });
-const app = express();
-const port = 3000;
-initApp(app, express);
-app.listen(port, () => console.log(`server is running............${port}`));
+const { missing, deprecated } = checkEnv();
+if (deprecated.length) {
+  console.warn(`Deprecated environment variable names in use: ${deprecated.join(", ")}`);
+}
+if (missing.length) {
+  console.error(`Missing required environment variables: ${missing.join(", ")}`);
+  process.exit(1);
+}
+
+const app = createApp();
+
+connectDatabase().catch((error) => {
+  console.error(`Error connecting to the database: ${error.message}`);
+  process.exit(1);
+});
+
+const server = app.listen(env.port, () => {
+  console.log(`API listening on port ${env.port} (${env.nodeEnv})`);
+});
+
+function shutdown(signal) {
+  console.log(`${signal} received, shutting down.`);
+  server.close(() => {
+    disconnectDatabase().finally(() => process.exit(0));
+  });
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+// Vercel's @vercel/node runtime (see vercel.json) uses the default export.
+export default app;

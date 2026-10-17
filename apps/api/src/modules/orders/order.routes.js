@@ -1,33 +1,25 @@
-import { auth } from "../../middleware/authenticate.js";
-import express, { Router } from "express";
-import { endpoint } from "./order.endpoint.js";
-import { validation } from "../../middleware/validate.js";
-import * as validators from "./order.validation.js";
+import { Router } from "express";
 import * as orderController from "./order.controller.js";
+import * as validators from "./order.validation.js";
+import { USER_ROLES } from "../users/user.roles.js";
+import { validate } from "../../middleware/validate.js";
+import { authenticate } from "../../middleware/authenticate.js";
+
+// POST /order/webhook is registered in app.js because it needs the raw request body.
 const router = Router();
 
-router.post(
-  "/",
-  auth(endpoint.create),
-  // validation(validators.createOrder),
-  orderController.createOrder
-);
-//
+router.post("/", authenticate(), validate(validators.createOrder), orderController.createOrder);
 router.patch(
   "/:orderId/cancel",
-  auth(endpoint.cancel),
-  validation(validators.cancelOrder),
+  authenticate(),
+  validate(validators.cancelOrder),
   orderController.cancelOrder
-);
-router.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  orderController.webhook
 );
 router.patch(
   "/:orderId/delivered",
-  auth(endpoint.delivered),
-  validation(validators.deliveredOrder),
-  orderController.deliveredOrder
+  authenticate([USER_ROLES.Admin]),
+  validate(validators.deliverOrder),
+  orderController.deliverOrder
 );
+
 export default router;

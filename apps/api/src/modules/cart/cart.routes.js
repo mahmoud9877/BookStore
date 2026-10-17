@@ -1,31 +1,18 @@
 import { Router } from "express";
-import { auth } from "../../middleware/authenticate.js";
-import endpoint from "./cart.endpoint.js";
 import * as cartController from "./cart.controller.js";
+import * as validators from "./cart.validation.js";
+import { validate } from "../../middleware/validate.js";
+import { authenticate } from "../../middleware/authenticate.js";
 
 const router = Router();
 
-// Assuming auth middleware adds the authenticated user's info to req.user
-router.get(
-  "/",
-  auth(),
-  cartController.getCart // Controller to handle the cart retrieval
-);
+// Every cart route acts on the signed-in user's own cart.
+router.use(authenticate());
 
-router.post(
-  "/add",
-  auth(endpoint.addToCart),
-  // validation(validators.addToCart),
-  cartController.addToCart
-);
-
-// Route to clear the cart
-router.delete("/clear", auth(endpoint.addToCart));
-
-router.delete(
-  "/:bookId",
-  auth(endpoint.deleteFromCart),
-  cartController.deleteCartItem
-);
+router.get("/", cartController.getCart);
+router.post("/add", validate(validators.addToCart), cartController.addToCart);
+// Must be registered before "/:bookId".
+router.delete("/clear", cartController.clearCart);
+router.delete("/:bookId", validate(validators.removeCartItem), cartController.removeCartItem);
 
 export default router;

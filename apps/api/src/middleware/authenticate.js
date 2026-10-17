@@ -1,46 +1,40 @@
-import userModel from "../modules/users/user.model.js";
+import { env } from "../config/env.js";
 import { asyncHandler } from "./error-handler.js";
 import { verifyToken } from "../security/token.js";
-export const roles = {
-  Admin: "Admin",
-  User: "User",
-};
+import userModel from "../modules/users/user.model.js";
 
-// Authentication middleware
-export const auth = (accessRoles = []) => {
+/**
+ * Requires a valid `Authorization: <BEARER_KEY><jwt>` header and attaches the
+ * user to `req.user`. When `allowedRoles` is non-empty, the user's role must be in it.
+ */
+export const authenticate = (allowedRoles = []) => {
   return asyncHandler(async (req, res, next) => {
     const { authorization } = req.headers;
-    // console.log(authorization);
 
-    // Check if authorization header starts with the correct bearer key
-    if (!authorization?.startsWith(process.env.BEARER_KEY)) {
-      return next(new Error("Invalid bearer key", { cause: 400 }));
+    if (!env.bearerKey || !authorization?.startsWith(env.bearerKey)) {
+      return next(new Error("Invalid bearer key", { cause: 401 }));
     }
 
-    // Extract the token from the authorization header
-    const token = authorization.split(process.env.BEARER_KEY)[1];
+    const token = authorization.slice(env.bearerKey.length).trim();
     if (!token) {
-      return next(new Error("Missing Token", { cause: 404 }));
+      return next(new Error("Missing Token", { cause: 401 }));
     }
 
-    // Verify the token
     const decoded = verifyToken({ token });
     if (!decoded?.id) {
-      return next(new Error("Invalid payload token", { cause: 404 }));
+      return next(new Error("Invalid payload token", { cause: 401 }));
     }
 
-    // Find the user by ID and select specific fields
     const user = await userModel
       .findById(decoded.id)
-      .select("userName email image role status");
+      .select("userName email image role");
     if (!user) {
       return next(new Error("Not registered account", { cause: 401 }));
     }
-    // if (!accessRoles?.includes(user.role)) {
-    //   return next(new Error("Not authorized account", { cause: 401 }));
-    // }
+    if (allowedRoles.length && !allowedRoles.includes(user.role)) {
+      return next(new Error("Not authorized account", { cause: 403 }));
+    }
 
-    // Attach user to the request object
     req.user = user;
     return next();
   });

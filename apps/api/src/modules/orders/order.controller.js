@@ -1,56 +1,65 @@
-import { asyncHandler } from "../../middleware/error-handler.js";
-import BookModel from "../books/book.model.js";
-import orderModel from "./order.model.js";
-import payment from "../../infrastructure/stripe.js";
 import cartModel from "../cart/cart.model.js";
-import Stripe from "stripe";
+import bookModel from "../books/book.model.js";
+import orderModel, { ORDER_STATUSES } from "./order.model.js";
+import { asyncHandler } from "../../middleware/error-handler.js";
+import {
+  constructWebhookEvent,
+  createCheckoutSession,
+  isStripeConfigured,
+} from "../../infrastructure/stripe.js";
+
+const restoreStock = (items) =>
+  Promise.all(
+    items.map(({ bookId, quantity }) =>
+      bookModel.updateOne({ _id: bookId }, { $inc: { quantity } })
+    )
+  );
+
+/**
+ * Atomically reserves stock for every cart item. If any item is unavailable,
+ * already-reserved items are released and an error is thrown.
+ */
+async function reserveStock(cartItems) {
+  const reserved = [];
+  for (const item of cartItems) {
+    const book = await bookModel.findOneAndUpdate(
+      { _id: item.bookId, quantity: { $gte: item.quantity } },
+      { $inc: { quantity: -item.quantity } }
+    );
+    if (!book) {
+      await restoreStock(reserved);
+      throw new Error(
+        `Book unavailable or out of stock: ${item.bookTitle ?? item.bookId}`,
+        { cause: 400 }
+      );
+    }
+    reserved.push({
+      bookId: book._id,
+      bookTitle: book.bookTitle,
+      quantity: item.quantity,
+      unitPrice: book.price,
+      finalPrice: book.price * item.quantity,
+    });
+  }
+  return reserved;
+}
 
 export const createOrder = asyncHandler(async (req, res, next) => {
-  const { address, phone, note, paymentType } = req.body;
+  const { address, phone, note, paymentType = "cash" } = req.body;
   const userId = req.user._id;
 
-  // Fetch the user's cart
+  if (paymentType === "card" && !isStripeConfigured()) {
+    return next(new Error("Card payments are not configured", { cause: 503 }));
+  }
+
   const cart = await cartModel.findOne({ userId });
-  if (!cart || !cart.books?.length) {
+  if (!cart?.books?.length) {
     return next(new Error("Empty Cart", { cause: 400 }));
   }
 
-  const finalBookList = [];
-  let subtotal = 0;
-  console.log(cart.books);
+  const orderItems = await reserveStock(cart.books);
+  const subtotal = orderItems.reduce((sum, item) => sum + item.finalPrice, 0);
 
-  // Validate books and calculate subtotal
-  try {
-    for (let cartBook of cart.books) {
-      const book = await BookModel.findByIdAndUpdate({
-        _id: cartBook.bookId,
-        stock: { $gte: cartBook.quantity },
-        isDeleted: false,
-      });
-
-      if (book == null) {
-        return next(new Error(`Invalid book ${cartBook.cart}`, { cause: 400 }));
-      }
-
-      // Add book details to the order
-      const bookDetails = {
-        bookTitle: book.bookTitle, // Use book title from your schema
-        bookId: book._id,
-        quantity: cartBook.quantity,
-        unitPrice: book.price, // Make sure to use the correct price field
-        finalPrice: book.price * cartBook.quantity,
-      };
-      finalBookList.push(bookDetails);
-      subtotal += bookDetails.finalPrice;
-    }
-  } catch (error) {
-    return next(new Error("Book validation failed", { cause: 500 }));
-  }
-
-  // Calculate the final price (assuming no discount)
-  const finalPrice = subtotal;
-
-  // Create the order
   let order;
   try {
     order = await orderModel.create({
@@ -58,186 +67,125 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       address,
       note,
       phone,
-      books: finalBookList,
+      books: orderItems,
       subtotal,
-      finalPrice,
+      finalPrice: subtotal,
       paymentType,
-      status: paymentType === "card" ? "waitPayment" : "placed",
+      status: paymentType === "card" ? ORDER_STATUSES.waitPayment : ORDER_STATUSES.placed,
     });
   } catch (error) {
-    if (error.errno === 11000) {
-      // Handle duplicate key error
-      console.error(
-        "Duplicate key error: An entry with the same unique key already exists."
-      );
-    }
-
-    console.error("Order creation failed:", error.message); // Log the specific error message
-    return next(new Error("Order creation failed", { cause: 500 }));
+    await restoreStock(orderItems);
+    throw error;
   }
 
-  // Update book stock in parallel
-  try {
-    await Promise.all(
-      cart.books.map((cartBook) =>
-        BookModel.updateOne(
-          { _id: cartBook.bookId },
-          { $inc: { stock: -Number(cartBook.quantity) } }
-        )
-      )
-    );
-  } catch (error) {
-    return next(new Error("Stock update failed", { cause: 500 }));
-  }
-
-  // Clear the cart
-  try {
-    await cartModel.updateOne(
-      { userId },
-      { $set: { books: [] } } // or you can also delete the cart if needed
-    );
-  } catch (error) {
-    return next(new Error("Cart update failed", { cause: 500 }));
-  }
-
-  // Handle Stripe payment if paymentType is 'card'
+  let session;
   if (paymentType === "card") {
     try {
-      // Initialize Stripe with the secret key
-      const stripe = new Stripe(process.env.SECRET_KEY); // Ensure the environment variable is correctly named and accessible
-
-      // Create a payment session
-      const session = await payment({
-        stripe,
+      session = await createCheckoutSession({
         customer_email: req.user.email,
         metadata: { orderId: order._id.toString() },
-        cancel_url: `${req.protocol}://${
-          req.headers.host
-        }/order/cancel?orderId=${order._id.toString()}`,
-        line_items: finalBookList.map((book) => ({
+        line_items: orderItems.map((item) => ({
           price_data: {
             currency: "egp",
-            product_data: {
-              name: book.bookTitle || "Unknown Book", // Fallback for book title
-            },
-            unit_amount: book.unitPrice * 100, // Ensure unitPrice is in the correct format
+            product_data: { name: item.bookTitle || "Unknown Book" },
+            unit_amount: Math.round(item.unitPrice * 100),
           },
-          quantity: book.quantity,
+          quantity: item.quantity,
         })),
       });
-
-      // Ensure the session has a URL to redirect to
-      const url = session.url; // Get the URL from the session
-
-      // Respond with a success message and session URL
-      return res.status(201).json({ message: "Order created", session, url });
     } catch (error) {
-      console.error("Error creating Stripe session:", error); // Log the error for debugging
-      return next(
-        new Error("Stripe session creation failed", {
-          cause: error,
-          statusCode: 500,
-        })
-      );
+      console.error("Stripe session creation failed:", error.message);
+      await orderModel.updateOne({ _id: order._id }, { status: ORDER_STATUSES.rejected });
+      await restoreStock(orderItems);
+      throw new Error("Stripe session creation failed", { cause: 502 });
     }
   }
 
-  // For non-card payments, return success response
+  await cartModel.updateOne({ userId }, { $set: { books: [] } });
+
+  if (session) {
+    return res.status(201).json({ message: "Order created", session, url: session.url });
+  }
   return res.status(201).json({ message: "Order created successfully", order });
 });
 
-export const webhook = asyncHandler(async (req, res, next) => {
-  const stripe = new Stripe(process.env.Secret_Key);
-  const sig = req.headers["stripe-signature"];
+const CHECKOUT_FAILURE_EVENTS = [
+  "checkout.session.expired",
+  "checkout.session.async_payment_failed",
+];
+
+/** Stripe webhook. Mounted in app.js with a raw body parser (signature verification needs it). */
+export const stripeWebhook = asyncHandler(async (req, res) => {
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.endpointSecret
-    );
-  } catch (err) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
-    return;
+    event = constructWebhookEvent(req.body, req.headers["stripe-signature"]);
+  } catch (error) {
+    if (error.cause === 503) throw error;
+    return res.status(400).send(`Webhook Error: ${error.message}`);
   }
-  const { orderId } = event.data.object.metadata;
-  if (event.type != "checkout.session.completed") {
-    await orderModel.updateOne({ _id: orderId }, { status: "rejected" });
+
+  const orderId = event.data?.object?.metadata?.orderId;
+  if (!orderId) {
+    return res.json({ message: "Ignored" });
+  }
+  if (event.type === "checkout.session.completed") {
+    await orderModel.updateOne({ _id: orderId }, { status: ORDER_STATUSES.placed });
+    return res.json({ message: "Done" });
+  }
+  if (CHECKOUT_FAILURE_EVENTS.includes(event.type)) {
+    await orderModel.updateOne({ _id: orderId }, { status: ORDER_STATUSES.rejected });
     return res.json({ message: "rejected link" });
   }
-  await orderModel.updateOne({ _id: orderId }, { status: "placed" });
-  return res.json({ message: "Done" });
+  return res.json({ message: "Ignored" });
 });
 
 export const cancelOrder = asyncHandler(async (req, res, next) => {
   const { orderId } = req.params;
   const { reason } = req.body;
-  const order = await orderModel.findOne({
-    _id: orderId,
-    userId: req.user._id,
-  });
+  const order = await orderModel.findOne({ _id: orderId, userId: req.user._id });
   if (!order) {
     return next(new Error("In-Valid OrderId", { cause: 400 }));
   }
-  if (
-    (order.status != "placed" && order.paymentType == "cash") ||
-    (order.status != "waitPayment" && order.paymentType == "card")
-  ) {
+  const cancellable =
+    (order.paymentType === "cash" && order.status === ORDER_STATUSES.placed) ||
+    (order.paymentType === "card" && order.status === ORDER_STATUSES.waitPayment);
+  if (!cancellable) {
     return next(
-      new Error(
-        `Cannot cancel your order after it been changed to ${order.status}`,
-        {
-          cause: 400,
-        }
-      )
-    );
-  }
-  await orderModel.updateOne(
-    { _id: orderId, userId: req.user._id },
-    { status: "canceled", updateBy: req.user._id, reason }
-  );
-
-  for (let book of order.books) {
-    await BookModel.updateOne(
-      { _id: book.bookId },
-      { $inc: { stock: parseInt(book.quantity) } }
-    );
-  }
-  if (order.couponId) {
-    await couponModel.updateOne(
-      { _id: order.couponId },
-      { $pull: { usedBy: req.user._id } }
-    );
-  }
-  return res.status(200).json({ message: "Done", order });
-});
-
-export const deliveredOrder = asyncHandler(async (req, res, next) => {
-  const { orderId } = req.params;
-  const order = await orderModel.findOne({
-    _id: orderId,
-  });
-
-  if (!order) {
-    return next(new Error("Invalid order", { cause: 400 }));
-  }
-
-  if (
-    ["waitPayment", "canceled", "rejected", "delivered"].includes(order.status)
-  ) {
-    return next(
-      new Error("Cannot update your order after it has been changed", {
+      new Error(`Cannot cancel your order after it been changed to ${order.status}`, {
         cause: 400,
       })
     );
   }
 
   await orderModel.updateOne(
-    { _id: orderId },
-    { status: "canceled", updatedBy: req.user._id }
+    { _id: orderId, userId: req.user._id },
+    { status: ORDER_STATUSES.canceled, updatedBy: req.user._id, reason }
   );
+  await restoreStock(order.books);
+  return res.status(200).json({ message: "Done", order });
+});
 
-  return res
-    .status(200)
-    .json({ message: "Order canceled successfully", order });
+export const deliverOrder = asyncHandler(async (req, res, next) => {
+  const { orderId } = req.params;
+  const order = await orderModel.findById(orderId);
+  if (!order) {
+    return next(new Error("Invalid order", { cause: 400 }));
+  }
+
+  const finalStatuses = [
+    ORDER_STATUSES.waitPayment,
+    ORDER_STATUSES.canceled,
+    ORDER_STATUSES.rejected,
+    ORDER_STATUSES.delivered,
+  ];
+  if (finalStatuses.includes(order.status)) {
+    return next(
+      new Error("Cannot update your order after it has been changed", { cause: 400 })
+    );
+  }
+
+  order.status = ORDER_STATUSES.delivered;
+  order.updatedBy = req.user._id;
+  await order.save();
+  return res.status(200).json({ message: "Order delivered successfully", order });
 });

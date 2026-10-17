@@ -1,30 +1,27 @@
 import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
 
-async function sendEmail({ to = [], subject, html, attachments = [] } = {}) {
+export const isMailerConfigured = () => Boolean(env.mail.user && env.mail.password);
+
+/** Sends an email through Gmail. Resolves to true when no recipient was rejected. */
+export async function sendEmail({ to = [], subject, html, attachments = [] } = {}) {
   try {
-    // Initialize transporter with Gmail service
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: process.env.EMAIL,
-        pass: process.env.EMAIL_PASSWORD,
-      },
+      auth: { user: env.mail.user, pass: env.mail.password },
     });
 
-    // Send email
     const info = await transporter.sendMail({
-      from: `"70ka Company" <${process.env.EMAIL}>`, // sender address
-      to: Array.isArray(to) ? to.join(",") : to, // list of receivers
-      subject: subject || "Hello ✔", // Subject line
-      html: html || `<p>Hello world?</p>`, // HTML body content
-      attachments, // Optional attachments
+      from: `"70ka Company" <${env.mail.user}>`,
+      to: Array.isArray(to) ? to.join(",") : to,
+      subject: subject || "Hello ✔",
+      html: html || `<p>Hello world?</p>`,
+      attachments,
     });
     console.log("Message sent: %s", info.messageId);
-    return !info.rejected.length; // Returns true if no addresses were rejected
+    return !info.rejected.length;
   } catch (error) {
-    console.error("Error sending email:", error);
-    return false; // Return false if email fails to send
+    console.error("Error sending email:", error.message);
+    return false;
   }
 }
-
-export default sendEmail;

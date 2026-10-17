@@ -1,18 +1,29 @@
-import path from "path";
-import dotenv from "dotenv";
 import cloudinary from "cloudinary";
-import { fileURLToPath } from "url";
+import { env } from "../config/env.js";
 
-// Get the correct path
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "../../config/.env") });
+const { cloudName, apiKey, apiSecret } = env.cloudinary;
+const isConfigured = Boolean(cloudName && apiKey && apiSecret);
 
-// Use the variables from .env to configure Cloudinary
-cloudinary.v2.config({
-  api_key: process.env.API_KEY,
-  api_secret: process.env.API_SECRET,
-  cloud_name: process.env.CLOUD_NAME,
-  secure: true,
-});
+if (isConfigured) {
+  cloudinary.v2.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true,
+  });
+}
 
-export default cloudinary;
+/** Uploads a local file and returns Cloudinary's `{ secure_url, public_id }`. */
+export async function uploadImage(filePath, folder) {
+  if (!isConfigured) {
+    throw new Error("Image uploads are not configured", { cause: 503 });
+  }
+  try {
+    return await cloudinary.v2.uploader.upload(filePath, {
+      folder: `${env.appName}/${folder}`,
+    });
+  } catch (error) {
+    console.error("Cloudinary upload failed:", error.message);
+    throw new Error("Failed to upload image to Cloudinary", { cause: 502 });
+  }
+}

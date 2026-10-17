@@ -1,17 +1,15 @@
-import mongoose, { Schema, Types, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
+import { USER_ROLES } from "./user.roles.js";
 
 const userSchema = new Schema(
   {
     userName: {
       type: String,
-      lower: true,
       required: [true, "userName is required"],
-      min: [2, "minimum length 2 char"],
-      max: [20, "max length 2 char"],
     },
     email: {
       type: String,
-      lower: true,
+      lowercase: true,
       unique: [true, "email must be unique value"],
       required: [true, "email is required"],
       trim: true,
@@ -20,24 +18,17 @@ const userSchema = new Schema(
       type: String,
       required: [true, "password is required"],
     },
- 
+    phone: String,
     address: String,
-
     role: {
       type: String,
-      default: "User",
-      enum: ["User", "Admin"],
+      default: USER_ROLES.User,
+      enum: Object.values(USER_ROLES),
     },
-
     confirmEmail: {
       type: Boolean,
       default: false,
     },
-    // status: {
-    //   type: String,
-    //   default: "offline",
-    //   enum: ["offline", "online", "blocked"],
-    // },
     image: Object,
     DOB: String,
     code: { type: Number, default: null },

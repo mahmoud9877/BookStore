@@ -1,14 +1,12 @@
 import joi from "joi";
 import { Types } from "mongoose";
 
-// Custom validator for MongoDB ObjectId
 const validateObjectId = (value, helper) => {
   return Types.ObjectId.isValid(value)
-    ? true
+    ? value
     : helper.message("Invalid ObjectId");
 };
 
-// General field definitions using Joi
 export const generalFields = {
   email: joi
     .string()
@@ -36,15 +34,15 @@ export const generalFields = {
   }),
 };
 
-// Middleware for validating input data against a Joi schema
-export const validation = (schema) => {
+/** Validates the merged body, route params and query string against a Joi schema. */
+export const validate = (schema) => {
   return (req, res, next) => {
-    let inputsData = { ...req.body, ...req.params, ...req.query };
-    const validationResult = schema.validate(inputsData, { abortEarly: false });
-    if (validationResult.error) {
+    const input = { ...req.body, ...req.params, ...req.query };
+    const { error } = schema.validate(input, { abortEarly: false });
+    if (error) {
       return res.status(400).json({
         message: "validationErr",
-        validationErr: validationResult.error.details,
+        validationErr: error.details,
       });
     }
     return next();

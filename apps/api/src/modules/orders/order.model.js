@@ -1,8 +1,17 @@
 import mongoose, { model, Schema, Types } from "mongoose";
 
+export const ORDER_STATUSES = Object.freeze({
+  waitPayment: "waitPayment",
+  placed: "placed",
+  canceled: "canceled",
+  rejected: "rejected",
+  onWay: "onWay",
+  delivered: "delivered",
+});
+
 const orderSchema = new Schema(
   {
-    userId: { type: Types.ObjectId, ref: "User", required: true }, // Removed 'unique: true'
+    userId: { type: Types.ObjectId, ref: "User", required: true },
     updatedBy: { type: Types.ObjectId, ref: "User" },
     address: { type: String, required: true },
     phone: { type: [String], required: true },
@@ -26,15 +35,8 @@ const orderSchema = new Schema(
     },
     status: {
       type: String,
-      default: "placed",
-      enum: [
-        "waitPayment",
-        "placed",
-        "canceled",
-        "rejected",
-        "onWay",
-        "delivered",
-      ],
+      default: ORDER_STATUSES.placed,
+      enum: Object.values(ORDER_STATUSES),
     },
     reason: String,
     isDeleted: { type: Boolean, default: false },
