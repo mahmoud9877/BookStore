@@ -1,18 +1,25 @@
 import mongoose from "mongoose";
-import { env } from "../config/env.js";
 
 // Keep the pre-Mongoose-7 behavior the queries in this codebase rely on.
 mongoose.set("strictQuery", false);
 
-export async function connectDatabase(uri = env.mongodbUri) {
-  await mongoose.connect(uri);
-  console.log("Database connected.");
-}
+export class Database {
+  #uri;
 
-export function isDatabaseConnected() {
-  return mongoose.connection.readyState === 1;
-}
+  constructor(uri) {
+    this.#uri = uri;
+  }
 
-export function disconnectDatabase() {
-  return mongoose.disconnect();
+  async connect() {
+    await mongoose.connect(this.#uri);
+    console.log("Database connected.");
+  }
+
+  disconnect() {
+    return mongoose.disconnect();
+  }
+
+  get isConnected() {
+    return mongoose.connection.readyState === 1;
+  }
 }

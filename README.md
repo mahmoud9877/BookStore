@@ -19,13 +19,16 @@ Further reading: [architecture & conventions](docs/architecture.md) ·
 │   ├── api/                  Express REST API
 │   │   ├── src/
 │   │   │   ├── config/       env.js — loads and validates environment variables
-│   │   │   ├── infrastructure/  database, cloudinary, mailer, stripe clients
-│   │   │   ├── middleware/   authenticate, validate, upload, error-handler
-│   │   │   ├── security/     password hashing, JWT helpers
-│   │   │   ├── modules/      auth, books, categories, cart, orders, users
-│   │   │   ├── app.js        createApp(): routes + middleware, no side effects
+│   │   │   ├── core/         HttpError hierarchy, BaseRepository
+│   │   │   ├── infrastructure/  Database, StripePaymentGateway, CloudinaryImageStorage, GmailMailer
+│   │   │   ├── middleware/   AuthGuard, validate, upload, error-handler
+│   │   │   ├── security/     PasswordHasher, JwtTokenService
+│   │   │   ├── modules/      auth, books, categories, cart, orders, users —
+│   │   │   │                 each: routes → controller → service → repository → model
+│   │   │   ├── container.js  composition root: builds and wires every class
+│   │   │   ├── app.js        createApp(container): mounts routers, no side effects
 │   │   │   └── server.js     env check, DB connection, listen, graceful shutdown
-│   │   ├── tests/            node:test suites (no database required)
+│   │   ├── tests/            node:test suites: services with fakes, HTTP with stubs (no DB)
 │   │   └── Dockerfile
 │   └── web/                  React single-page app
 │       ├── src/
@@ -123,7 +126,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 35 tests) + web (Jest/RTL, 24 tests)
+npm test                         # API (node:test, 58 tests) + web (Jest/RTL, 24 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 

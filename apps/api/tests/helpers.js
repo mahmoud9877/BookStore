@@ -1,11 +1,14 @@
 import { Types } from "mongoose";
 import { createApp } from "../src/app.js";
-import { generateToken } from "../src/security/token.js";
-import userModel from "../src/modules/users/user.model.js";
+import { createContainer } from "../src/container.js";
 
-/** Starts the app on an ephemeral port. Returns `{ request, close }`. */
+/**
+ * Starts the app on an ephemeral port with a fresh container.
+ * Returns `{ request, close, container }`; stub collaborators on `container`.
+ */
 export async function startServer() {
-  const server = createApp().listen(0);
+  const container = createContainer();
+  const server = createApp(container).listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
@@ -28,7 +31,11 @@ export async function startServer() {
     return { status: response.status, json, text };
   };
 
-  return { request, close: () => new Promise((resolve) => server.close(resolve)) };
+  return {
+    request,
+    container,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
 }
 
 export function makeUser(role = "User") {
@@ -41,11 +48,11 @@ export function makeUser(role = "User") {
 }
 
 /**
- * Returns an Authorization header for `user` and stubs the user lookup
- * performed by the authenticate middleware.
+ * Returns an Authorization header for `user` and stubs the repository lookup
+ * performed by the AuthGuard.
  */
-export function authenticateAs(t, user) {
-  t.mock.method(userModel, "findById", () => ({ select: async () => user }));
-  const token = generateToken({ payload: { id: user._id.toString(), role: user.role } });
+export function authenticateAs(t, container, user) {
+  t.mock.method(container.userRepository, "findAuthUserById", async () => user);
+  const token = container.accessTokens.sign({ id: user._id.toString(), role: user.role });
   return { authorization: `${process.env.BEARER_KEY}${token}` };
 }

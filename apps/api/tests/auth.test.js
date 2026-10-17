@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import userModel from "../src/modules/users/user.model.js";
-import { hashPassword } from "../src/security/password.js";
+import { PasswordHasher } from "../src/security/password-hasher.js";
 import { authenticateAs, makeUser, startServer } from "./helpers.js";
 
 describe("authentication and authorization", () => {
@@ -25,7 +24,7 @@ describe("authentication and authorization", () => {
   });
 
   test("forbids regular users from admin-only book routes", async (t) => {
-    const headers = authenticateAs(t, makeUser("User"));
+    const headers = authenticateAs(t, server.container, makeUser("User"));
     for (const [method, path] of [
       ["POST", "/book/add"],
       ["POST", "/book/edit/507f1f77bcf86cd799439011"],
@@ -38,7 +37,7 @@ describe("authentication and authorization", () => {
   });
 
   test("lets admins through to request validation", async (t) => {
-    const headers = authenticateAs(t, makeUser("Admin"));
+    const headers = authenticateAs(t, server.container, makeUser("Admin"));
     const res = await server.request("POST", "/book/add", { headers });
     assert.equal(res.status, 400);
     assert.equal(res.json.message, "validationErr");
@@ -51,30 +50,24 @@ describe("authentication and authorization", () => {
 
   test("tolerates a space between bearer key and token", async (t) => {
     const user = makeUser();
-    const { authorization } = authenticateAs(t, user);
-    const cartModel = (await import("../src/modules/cart/cart.model.js")).default;
-    t.mock.method(cartModel, "findOne", async () => ({ userId: user._id, books: [] }));
+    const { authorization } = authenticateAs(t, server.container, user);
+    t.mock.method(server.container.cartRepository, "findByUserId", async () => ({ userId: user._id, books: [] }));
     const spaced = authorization.replace(process.env.BEARER_KEY, `${process.env.BEARER_KEY} `);
     const res = await server.request("GET", "/cart", { headers: { authorization: spaced } });
     assert.equal(res.status, 200);
   });
 
   test("GET /auth/user is admin-only and never returns password hashes", async (t) => {
-    const userHeaders = authenticateAs(t, makeUser("User"));
+    const userHeaders = authenticateAs(t, server.container, makeUser("User"));
     assert.equal((await server.request("GET", "/auth/user", { headers: userHeaders })).status, 403);
 
     t.mock.restoreAll();
-    const adminHeaders = authenticateAs(t, makeUser("Admin"));
-    let projection;
-    t.mock.method(userModel, "find", () => ({
-      select: async (fields) => {
-        projection = fields;
-        return [];
-      },
-    }));
+    const adminHeaders = authenticateAs(t, server.container, makeUser("Admin"));
+    const list = t.mock.method(server.container.userRepository, "listWithoutSecrets", async () => []);
     const res = await server.request("GET", "/auth/user", { headers: adminHeaders });
     assert.equal(res.status, 200);
-    assert.match(projection, /-password/);
+    assert.deepEqual(res.json.users, []);
+    assert.equal(list.mock.callCount(), 1);
   });
 });
 
@@ -101,13 +94,10 @@ describe("signup and login", () => {
   });
 
   test("signup normalizes the email and does not query by an absent phone", async (t) => {
-    const lookups = [];
-    t.mock.method(userModel, "findOne", async (filter) => {
-      lookups.push(filter);
-      return null;
-    });
+    const emailLookup = t.mock.method(server.container.userRepository, "findByEmail", async () => null);
+    const phoneLookup = t.mock.method(server.container.userRepository, "findByPhone", async () => null);
     let created;
-    t.mock.method(userModel, "create", async (doc) => {
+    t.mock.method(server.container.userRepository, "create", async (doc) => {
       created = doc;
       return { _id: "id-1" };
     });
@@ -118,7 +108,8 @@ describe("signup and login", () => {
     });
     assert.equal(res.status, 201);
     assert.equal(res.json.message, "Done");
-    assert.deepEqual(lookups, [{ email: "reader@example.com" }]);
+    assert.deepEqual(emailLookup.mock.calls[0].arguments, ["reader@example.com"]);
+    assert.equal(phoneLookup.mock.callCount(), 0);
     assert.equal(created.email, "reader@example.com");
     assert.notEqual(created.password, "secret1");
   });
@@ -129,9 +120,9 @@ describe("signup and login", () => {
       userName: "reader",
       role: "User",
       confirmEmail: false,
-      password: hashPassword({ plaintext: "secret1" }),
+      password: new PasswordHasher(4).hash("secret1"),
     };
-    t.mock.method(userModel, "findOne", async () => stored);
+    t.mock.method(server.container.userRepository, "findByAnyEmail", async () => stored);
     const login = (password) =>
       server.request("POST", "/auth/login", { body: { email: "reader@example.com", password } });
 

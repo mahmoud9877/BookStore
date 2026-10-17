@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
+import { createContainer } from "./container.js";
 import { env, checkEnv } from "./config/env.js";
-import { connectDatabase, disconnectDatabase } from "./infrastructure/database.js";
 
 const { missing, deprecated } = checkEnv();
 if (deprecated.length) {
@@ -11,9 +11,10 @@ if (missing.length) {
   process.exit(1);
 }
 
-const app = createApp();
+const container = createContainer();
+const app = createApp(container);
 
-connectDatabase().catch((error) => {
+container.database.connect().catch((error) => {
   console.error(`Error connecting to the database: ${error.message}`);
   process.exit(1);
 });
@@ -25,7 +26,7 @@ const server = app.listen(env.port, () => {
 function shutdown(signal) {
   console.log(`${signal} received, shutting down.`);
   server.close(() => {
-    disconnectDatabase().finally(() => process.exit(0));
+    container.database.disconnect().finally(() => process.exit(0));
   });
 }
 process.on("SIGTERM", shutdown);

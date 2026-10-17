@@ -56,6 +56,13 @@ mongo "db.users.updateOne({email:'$EMAIL'},{\$set:{role:'Admin'}})" >/dev/null
 CATEGORY="smoke-${RUN_ID}"
 request POST /category "{\"name\":\"$CATEGORY\"}" "$USER_TOKEN"
 expect_status 201 "admins can create categories"
+CATEGORY_ID="$(json "$BODY" d.category._id)"
+
+request GET "/category/$CATEGORY_ID"
+expect_status 200 "get a category by id"
+
+request PUT "/category/$CATEGORY_ID" '{"name":"poetry"}' "$USER_TOKEN"
+expect_status 400 "category names outside the predefined options are rejected"
 
 BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'smoke book',author:'tester',description:'d',image:'https://example.com/x.png',price:25,quantity:5,category:'$CATEGORY',totalLikes:0,likes:[],createdAt:new Date(),updatedAt:new Date()}).insertedId.toString())" | tail -1)"
 
@@ -123,6 +130,13 @@ ok "user list excludes password hashes"
 
 request GET /category/options
 expect_status 200 "category options route is reachable"
+
+request POST /category "{\"name\":\"${CATEGORY}-tmp\"}" "$USER_TOKEN"
+TMP_CATEGORY_ID="$(json "$BODY" d.category._id)"
+request DELETE "/category/$TMP_CATEGORY_ID" "" "$USER_TOKEN"
+expect_status 200 "admins can delete categories"
+request GET "/category/$TMP_CATEGORY_ID"
+expect_status 404 "deleted categories are gone"
 
 request GET /no-such-route
 expect_status 404 "unknown routes return 404"

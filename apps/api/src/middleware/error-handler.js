@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { HttpError } from "../core/http-errors.js";
 
 /** Forwards rejected promises from async route handlers to the error handler. */
 export const asyncHandler = (handler) => {
@@ -10,6 +11,7 @@ export const asyncHandler = (handler) => {
 const isHttpStatus = (value) => Number.isInteger(value) && value >= 400 && value < 600;
 
 function resolveStatus(err) {
+  if (err instanceof HttpError) return err.status;
   if (isHttpStatus(err.cause)) return err.cause;
   if (isHttpStatus(err.status)) return err.status; // body-parser, multer
   if (isHttpStatus(err.statusCode)) return err.statusCode;

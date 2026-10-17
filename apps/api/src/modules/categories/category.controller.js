@@ -1,50 +1,36 @@
 import { asyncHandler } from "../../middleware/error-handler.js";
-import { categoryModel, CATEGORY_OPTIONS } from "./category.model.js";
 
-export const listCategories = asyncHandler(async (req, res) => {
-  const categories = await categoryModel.find({});
-  res.status(200).json(categories);
-});
+export class CategoryController {
+  #categoryService;
 
-export const listCategoryOptions = asyncHandler(async (req, res) => {
-  res.status(200).json({ categories: CATEGORY_OPTIONS });
-});
-
-export const getCategoryById = asyncHandler(async (req, res) => {
-  const category = await categoryModel.findById(req.params.id);
-  if (!category) {
-    return res.status(404).json({ message: "Category not found" });
+  constructor(categoryService) {
+    this.#categoryService = categoryService;
   }
-  return res.status(200).json(category);
-});
 
-export const createCategory = asyncHandler(async (req, res) => {
-  const category = await categoryModel.create({ name: req.body.name });
-  res.status(201).json({ message: "Category created successfully", category });
-});
+  listCategories = asyncHandler(async (req, res) => {
+    return res.status(200).json(await this.#categoryService.listCategories());
+  });
 
-export const updateCategory = asyncHandler(async (req, res) => {
-  const { name } = req.body;
-  if (!CATEGORY_OPTIONS.includes(name)) {
-    return res.status(400).json({
-      error: `Invalid category name. Choose from: ${CATEGORY_OPTIONS.join(", ")}`,
-    });
-  }
-  const category = await categoryModel.findById(req.params.id);
-  if (!category) {
-    return res.status(404).json({ message: "Category not found" });
-  }
-  category.name = name;
-  await category.save();
-  return res
-    .status(200)
-    .json({ message: "Category updated successfully", category });
-});
+  listCategoryOptions = (req, res) => {
+    return res.status(200).json({ categories: this.#categoryService.listCategoryOptions() });
+  };
 
-export const deleteCategory = asyncHandler(async (req, res) => {
-  const category = await categoryModel.findByIdAndDelete(req.params.id);
-  if (!category) {
-    return res.status(404).json({ message: "Category not found" });
-  }
-  return res.status(200).json({ message: "Category deleted successfully" });
-});
+  getCategoryById = asyncHandler(async (req, res) => {
+    return res.status(200).json(await this.#categoryService.getCategory(req.params.id));
+  });
+
+  createCategory = asyncHandler(async (req, res) => {
+    const category = await this.#categoryService.createCategory(req.body.name);
+    return res.status(201).json({ message: "Category created successfully", category });
+  });
+
+  updateCategory = asyncHandler(async (req, res) => {
+    const category = await this.#categoryService.updateCategory(req.params.id, req.body.name);
+    return res.status(200).json({ message: "Category updated successfully", category });
+  });
+
+  deleteCategory = asyncHandler(async (req, res) => {
+    await this.#categoryService.deleteCategory(req.params.id);
+    return res.status(200).json({ message: "Category deleted successfully" });
+  });
+}

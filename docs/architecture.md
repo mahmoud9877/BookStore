@@ -14,22 +14,44 @@ In development the browser talks to the CRA dev server (`:3000`) and directly to
 
 ### API (`apps/api`)
 
-- **Layering per module** (`src/modules/<domain>/`): `*.routes.js` (routing, auth, validation
-  middleware) → `*.controller.js` (HTTP handling and business rules) → `*.model.js`
-  (Mongoose). A separate service/repository layer was deliberately not introduced: the
-  controllers are small and a further split would add indirection without benefit.
-- **Cross-cutting code** has explicit homes instead of a generic `utils/`:
-  `config/` (environment), `infrastructure/` (external systems), `middleware/`, `security/`.
-- **`createApp()`** builds the Express app with no side effects (no DB connection, no
-  listening), which is what the tests use. `server.js` validates the environment,
-  connects to MongoDB, listens, handles `SIGTERM`, and default-exports the app for Vercel.
-- **Errors:** handlers throw or `next()` an `Error` whose `cause` is the HTTP status;
-  `globalErrorHandler` also maps Mongoose cast/validation errors (400), JWT errors (401),
-  duplicate keys (409) and multer/body-parser errors.
-- **Authorization:** `authenticate([roles])` — role lists live next to the routes.
-- **Stock:** `book.quantity` is stock. Placing an order reserves stock atomically per item
-  (`findOneAndUpdate` with `quantity >= n`) and rolls back on failure; cancelling, failed
-  Stripe sessions and expired checkouts release it.
+Object-oriented, layered, with constructor dependency injection:
+
+```text
+routes ──► Controller ──► Service ──► Repository ──► Mongoose model
+(router     (HTTP only:     (business     (all queries;
+ factory)    req/res,        rules,        extends
+             status codes)   orchestration) BaseRepository)
+                                 │
+                                 └──► infrastructure: StripePaymentGateway,
+                                      CloudinaryImageStorage, GmailMailer
+```
+
+| Layer | Files | Responsibility | May depend on |
+| --- | --- | --- | --- |
+| Routes | `<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, validation, upload) → controller method | controller, `AuthGuard`, validators |
+| Controller | `<entity>.controller.js` (`class XController`) | Read `req`, call one service method, choose status code and response shape | its service |
+| Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows, throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
+| Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | Every database query for one model | its Mongoose model |
+
+- **Composition root:** `src/container.js` is the only place that instantiates concrete
+  classes and wires them together. `createApp(container)` mounts the routers;
+  `server.js` builds the container, connects `container.database` and listens.
+  To swap an implementation (e.g. another payment provider), change it there.
+- **Encapsulation:** collaborators are stored in private `#fields`; controller handlers are
+  arrow-function class fields, so they can be passed to Express without `bind`.
+- **Errors:** services throw `NotFoundError`, `BadRequestError`, `ConflictError`, … from
+  `src/core/http-errors.js` (all extend `HttpError` with a `status`). `globalErrorHandler`
+  maps them, plus Mongoose cast/validation errors (400), JWT errors (401) and duplicate
+  keys (409).
+- **Authorization:** `authGuard.authenticate([roles])` — role lists live next to the routes.
+- **Security helpers** are classes too: `PasswordHasher` and `JwtTokenService` (two
+  instances: login tokens signed with `TOKEN_SIGNATURE`, email tokens with `EMAIL_TOKEN`).
+- **Stock:** `book.quantity` is stock. `OrderService` reserves it atomically per item
+  (`BookRepository.decrementStock`, a conditional `$inc`) and releases it on failure,
+  cancellation and expired checkouts.
+- **Testing:** service tests construct a service with fake collaborators
+  (`tests/services.test.js`); HTTP tests start the real app and stub methods on the
+  container's instances (`tests/helpers.js`).
 
 ### Web (`apps/web`)
 
@@ -57,7 +79,8 @@ comment instead.
 | Thing | Convention | Example |
 | --- | --- | --- |
 | Folders | lowercase, kebab-case, plural for collections of entities | `modules/books`, `middleware` |
-| API module files | `<entity>.<role>.js` | `book.routes.js`, `order.controller.js`, `user.model.js` |
+| API module files | `<entity>.<role>.js` | `book.routes.js`, `order.service.js`, `user.repository.js` |
+| API classes | PascalCase, named after their role | `OrderService`, `BookRepository`, `StripePaymentGateway` |
 | Other API files | kebab-case | `error-handler.js`, `confirmation-email.template.js` |
 | React components / pages | PascalCase file = component name; pages end in `Page` | `CartPage.jsx`, `RootLayout.jsx` |
 | Hooks | `useX.js` | `useBooks.js` |
@@ -81,14 +104,15 @@ depend on them.
 | `bookStore_/` (repo) | `apps/web/` |
 | `book_Store/index.js` | `apps/api/src/server.js` |
 | `src/app.router.js` (`initApp`) | `src/app.js` (`createApp`) |
-| `DB/connection.js` | `src/infrastructure/database.js` |
 | `DB/modules/*Model.js` | `src/modules/<domain>/<entity>.model.js` |
-| `src/utils/{cloudinary,email,payment}.js` | `src/infrastructure/{cloudinary,mailer,stripe}.js` |
+| `src/utils/{cloudinary,email,payment}.js` | `src/infrastructure/{cloudinary-image-storage,gmail-mailer,stripe-payment-gateway}.js` (classes) |
 | `src/utils/errorHandling.js` | `src/middleware/error-handler.js` |
 | `src/utils/multer.js` | `src/middleware/upload.js` |
-| `src/middleware/{auth,validation}.js` | `src/middleware/{authenticate,validate}.js` |
-| `src/utils/HashAndCompare.js` | `src/security/password.js` |
-| `src/utils/GenerateAndVerifyToken.js` | `src/security/token.js` |
+| `src/middleware/auth.js` (`auth`) | `src/middleware/auth-guard.js` (`class AuthGuard`) |
+| `src/middleware/validation.js` | `src/middleware/validate.js` |
+| `src/utils/HashAndCompare.js` | `src/security/password-hasher.js` (`class PasswordHasher`) |
+| `src/utils/GenerateAndVerifyToken.js` | `src/security/jwt-token-service.js` (`class JwtTokenService`) |
+| `DB/connection.js` (`connectDB`) | `src/infrastructure/database.js` (`class Database`) |
 | `src/modules/{Book,Category,order}` | `src/modules/{books,categories,orders}` |
 | `registration.js`, `Book.js`, `category.js`, `cart.js`, `controller/order.js` | `*.controller.js` |
 | `*Router.js` / `*.router.js` | `*.routes.js` |
@@ -151,6 +175,9 @@ returned password hashes) needed no login at all. Now:
 - `POST /book/edit/:id`: returns the *updated* book with `200` (was the old document with
   `201`) and no `existingCategory`.
 - `POST /book/add` validation errors use the standard `validationErr` shape.
+- `PUT /category/:id` with a name outside the options: `{message}` (was `{error}`).
+- `PATCH /order/:id/cancel` returns the order *after* cancellation (it returned the
+  pre-cancellation snapshot).
 - Stripe: success and cancel URLs are `FRONTEND_URL/#/cart` (were `/#/order` and
   `/order/cancel` on the API, neither of which existed).
 - `PATCH /order/:id/delivered` now sets `delivered` (it set `canceled`).
