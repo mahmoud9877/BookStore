@@ -1,32 +1,27 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { clearAuthToken, readSession, setAuthToken } from "../../lib/auth-token.js";
 
-const UserContext = createContext();
+const UserContext = createContext(null);
 
-export const UserProvider = ({ children }) => {
-  const [userData, setUserData] = useState(null);
+export const USER_ROLES = Object.freeze({ Admin: "Admin", User: "User" });
 
-  useEffect(() => {
-    const token = localStorage.getItem("userToken");
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
-        setUserData({ ...decodedToken, token });
-        console.log(('ده الكود المتشفر'),decodedToken);
-      } catch (error) {
-        console.error("Invalid token:", error);
-        setUserData(null);
-      }
-    }
+export function UserProvider({ children }) {
+  // Read synchronously so protected routes never render before the session is known.
+  const [userData, setUserData] = useState(readSession);
+
+  const login = useCallback((token) => {
+    setAuthToken(token);
+    setUserData(readSession());
   }, []);
 
-  return (
-    <UserContext.Provider value={{ userData, setUserData }}>
-      {children}
-    </UserContext.Provider>
-  );
-};
+  const logout = useCallback(() => {
+    clearAuthToken();
+    setUserData(null);
+  }, []);
 
-export const useUser = () => {
-  return useContext(UserContext);
-};
+  const value = useMemo(() => ({ userData, login, logout }), [userData, login, logout]);
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
+}
+
+export const useUser = () => useContext(UserContext);

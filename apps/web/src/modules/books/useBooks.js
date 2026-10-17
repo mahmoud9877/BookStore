@@ -1,53 +1,28 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { baseURL, bearerKey } from "../../index.js";
+import { useCallback, useEffect, useState } from "react";
+import { listBooks } from "./book.service.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 
-function useRoute() {
+/** Loads the book catalogue with loading and error state. */
+export default function useBooks() {
   const [books, setBooks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Fetch books from the API
-  async function getBooks() {
+  const reload = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const { data } = await axios.get(`${baseURL}/book`);
-      const { book } = data;
-      setBooks(book); // Set the books state
-    } catch (error) {
-      console.error("Error fetching books:", error);
+      setBooks(await listBooks());
+      setError("");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to fetch books. Please try again later."));
+    } finally {
+      setIsLoading(false);
     }
-  }
-
-  useEffect(() => {
-    getBooks();
   }, []);
 
-  // Handle adding a book to the cart
-  const handleAddToCart = async (bookId) => {
-    const token = localStorage.getItem("userToken"); // Get the token from localStorage
-    if (!token) {
-      alert("Please log in to add books to your cart.");
-      console.log("No token found in localStorage.");
-      return;
-    }
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
-    try {
-      await axios.post(
-        `${baseURL}/cart/add`, // Corrected endpoint
-        { bookId, quantity: 1 }, // Include both bookId and quantity in the request body
-        {
-          headers: {
-            Authorization: `${bearerKey}${token}`, // Corrected the capitalization and token usage
-          },
-        }
-      );
-      console.log("Book added to cart:", bookId);
-      alert("Book added to cart!");
-    } catch (error) {
-      console.error("Error adding book to cart:", error);
-      alert("Failed to add book to cart. Please try again.");
-    }
-  };
-
-  return { books, getBooks, handleAddToCart };
+  return { books, isLoading, error, reload };
 }
-
-export default useRoute;

@@ -1,133 +1,101 @@
-import Joi from "joi";
-import axios from "axios";
 import { Helmet } from "react-helmet";
 import React, { useState } from "react";
-import { baseURL } from "../../index.js";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { login } from "./auth.service.js";
+import { useUser } from "./UserContext.jsx";
+import { loginSchema } from "./auth.validation.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 
-const Login = ({ saveUserData }) => {
-  let navigate = useNavigate();
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login: startSession } = useUser();
   const [errorList, setErrorList] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState({
-    email: "",
-    password: "",
-  });
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const notice = location.state?.notice;
 
-  // Define Joi schema for validation
-  const validationLoginForm = Joi.object({
-    email: Joi.string()
-      .email({ tlds: { allow: false } })
-      .required()
-      .label("Email"),
-    password: Joi.string().min(6).required().label("Password"),
-  });
-
-  function getData(eventInfo) {
-    let myUser = { ...user };
-    myUser[eventInfo.target.name] = eventInfo.target.value;
-    setUser(myUser);
-
-    // Reset error states when user starts typing
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setCredentials((current) => ({ ...current, [name]: value }));
     setError("");
     setErrorList([]);
   }
 
-  async function sendData() {
-    try {
-      const { data } = await axios.post(`${baseURL}/auth/login`, user);
-      console.log(data);
-
-      // Check for different responses from the backend
-      if (data.message === "Done") {
-        const roleUser = data.role; // Get the user role from response
-        const token = data.token; // Extract the token
-        localStorage.setItem("userToken", token); // Store token in localStorage
-        // Save user data including role
-        saveUserData(token, roleUser); // Pass the token and role to saveUserData
-        navigate("/home"); // Redirect to home page
-      } else {
-        setError(
-          data.message === "Wrong Password"
-            ? "Wrong password or email"
-            : data.message
-        );
-      }
-    } catch (err) {
-      setError("An error occurred during login. Please try again.");
-    } finally {
-      setIsLoading(false); // Ensure loading state is reset
-    }
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault(); // Prevent default form submission
-    setIsLoading(true); // Set loading state to true
-
-    // Perform validation on user input
-    let validation = validationLoginForm.validate(user, { abortEarly: false });
-
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const validation = loginSchema.validate(credentials, { abortEarly: false });
     if (validation.error) {
-      setIsLoading(false); // Stop loading if there's a validation error
       setErrorList(validation.error.details);
-    } else {
-      sendData(); // Call the sendData function
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await login(credentials);
+      startSession(data.token);
+      navigate(location.state?.from || "/", { replace: true });
+    } catch (err) {
+      const message = getErrorMessage(err, "An error occurred during login. Please try again.");
+      setError(message === "Wrong Password" ? "Wrong password or email" : message);
+      setIsLoading(false);
     }
   }
 
   return (
     <div className="d-flex justify-content-center py-4">
       <Helmet>
-        <meta charSet="utf-8" />
         <title>Login</title>
-        <link rel="canonical" href="http://mysite.com/example" />
       </Helmet>
-      <form className="form" onSubmit={handleSubmit}>
+      <form className="form" onSubmit={handleSubmit} noValidate>
         <p className="title">Log-In</p>
 
-        {/* Display error messages */}
-        {error && <div className="alert alert-danger">{error}</div>}
-
-        {/* Display individual validation errors */}
-        {errorList.map((err, index) => (
-          <div key={index} className="alert alert-danger">
+        {notice && <div className="alert alert-success">{notice}</div>}
+        {error && <div className="alert alert-danger" role="alert">{error}</div>}
+        {errorList.map((err) => (
+          <div key={err.path.join(".")} className="alert alert-danger" role="alert">
             {err.message}
           </div>
         ))}
 
         <div className="mb-2">
-          <h6 className="pt-3 ">Email</h6>
+          <label htmlFor="login-email" className="h6 pt-3">Email</label>
           <input
-            type="text"
+            id="login-email"
+            type="email"
             className="form-control pt-2"
             placeholder="Your Email"
-            aria-label="Your Email"
             name="email"
-            onChange={getData}
-          ></input>
+            autoComplete="email"
+            onChange={handleChange}
+          />
         </div>
         <div className="mb-2">
-          <h6 className="pt-3 ">Password</h6>
+          <label htmlFor="login-password" className="h6 pt-3">Password</label>
           <input
+            id="login-password"
             type="password"
             className="form-control pt-2"
             placeholder="Your Password"
-            aria-label="Your Password"
             name="password"
-            onChange={getData}
-          ></input>
+            autoComplete="current-password"
+            onChange={handleChange}
+          />
         </div>
-        <button className="btn py-2 w-75 bg-black" type="submit">
-          {isLoading ? <i className="fas fa-spinner fa-spin"></i> : "Login"}
+        <button className="btn py-2 w-75 bg-black" type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <span className="spinner-border spinner-border-sm" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </span>
+          ) : (
+            "Login"
+          )}
         </button>
         <p>
           Don't have an account? <Link to="/signup">Sign-Up</Link>
         </p>
-        <p>forget password</p>
       </form>
     </div>
   );
-};
-
-export default Login;
+}

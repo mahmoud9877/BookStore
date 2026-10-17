@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
 
-const Footer = () => {
+export default function Footer() {
   return (
     <>
       <footer id="footer" className="bg-light pt-5">
@@ -12,7 +12,7 @@ const Footer = () => {
             <div className="col-md-4 mb-4 mb-md-0">
               <div className="footer-item">
                 <div className="company-brand">
-                  <img src={Logo} alt="logo" className="footer-logo mb-3" />
+                  <img src={Logo} alt="BookSaw" className="footer-logo mb-3" />
                   <p>
                     Lorem ipsum dolor sit amet, consectetur advising elit.
                     Sagittis sed ptibus libero lectus nonet psryroin. Amet sed
@@ -52,10 +52,10 @@ const Footer = () => {
                 <h5>Discover</h5>
                 <ul className="list-unstyled">
                   <li className="mb-2">
-                    <Link to="home">Home</Link>
+                    <Link to="/">Home</Link>
                   </li>
                   <li className="mb-2">
-                    <Link to="addbooks">Books</Link>
+                    <Link to="/">Books</Link>
                   </li>
                   <li className="mb-2">
                     <Link to="#">Authors</Link>
@@ -75,10 +75,10 @@ const Footer = () => {
                 <h5>My Account</h5>
                 <ul className="list-unstyled">
                   <li className="mb-2">
-                    <Link to="signup">Sign In</Link>
+                    <Link to="/login">Sign In</Link>
                   </li>
                   <li className="mb-2">
-                    <Link to="cart">View Cart</Link>
+                    <Link to="/cart">View Cart</Link>
                   </li>
                   <li className="mb-2">
                     <Link to="#">My Wishlist</Link>
@@ -119,22 +119,23 @@ const Footer = () => {
             <div className="col-md-6 text-center text-md-start text-white mb-3 mb-md-0">
               <p className="mb-0">
                 © 2022 All rights reserved. Free HTML Template by{" "}
-                <Link
-                  to={{ pathname: "https://www.templatesjungle.com/" }}
+                <a
+                  href="https://www.templatesjungle.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-white text-decoration-underline"
                 >
                   TemplatesJungle
-                </Link>
+                </a>
               </p>
             </div>
 
             <div className="col-md-6 text-center text-md-end">
               <ul className="list-inline mb-0">
                 <li className="list-inline-item">
-                  <Link
-                    to="https://facebook.com"
+                  <a
+                    href="https://facebook.com"
+                    aria-label="Facebook"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -146,11 +147,12 @@ const Footer = () => {
                         color: "white",
                       }}
                     ></i>
-                  </Link>
+                  </a>
                 </li>
                 <li className="list-inline-item">
-                  <Link
-                    to="http://twitter.com"
+                  <a
+                    href="http://twitter.com"
+                    aria-label="Twitter"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -162,11 +164,12 @@ const Footer = () => {
                         color: "white",
                       }}
                     ></i>
-                  </Link>
+                  </a>
                 </li>
                 <li className="list-inline-item">
-                  <Link
-                    to="http://youtube.com"
+                  <a
+                    href="http://youtube.com"
+                    aria-label="Youtube"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -178,11 +181,12 @@ const Footer = () => {
                         color: "white",
                       }}
                     ></i>
-                  </Link>
+                  </a>
                 </li>
                 <li className="list-inline-item">
-                  <Link
-                    to="http://behance.com"
+                  <a
+                    href="http://behance.com"
+                    aria-label="Behance"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -194,7 +198,7 @@ const Footer = () => {
                         color: "white",
                       }}
                     ></i>
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -203,6 +207,4 @@ const Footer = () => {
       </div>
     </>
   );
-};
-
-export default Footer;
+}

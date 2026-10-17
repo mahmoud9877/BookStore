@@ -1,21 +1,10 @@
-import ReactDOM from "react-dom/client"; // Correctly importing from the latest React version
 import React from "react";
-import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
-import "bootstrap/dist/js/bootstrap.bundle.min"; // Optional: Bootstrap JS
+import ReactDOM from "react-dom/client";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import App from "./app/App.jsx";
 import "./styles/normalize.css";
 import "./styles/vendor.css";
-import { UserProvider } from "./modules/auth/UserContext.jsx";
+import App from "./app/App.jsx";
 
-export const baseURL = `https://book-store-liart-zeta.vercel.app`;
-export const bearerKey = `Hamada__`;
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
-// Wrap the App component with UserProvider
-root.render(
-  <UserProvider>
-    <App />
-  </UserProvider>
-);
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

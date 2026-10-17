@@ -1,10 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
+import { USER_ROLES } from "../modules/auth/UserContext.jsx";
 
-const Header = ({ userData, logout }) => {
-  console.log({ userData }); // التحقق من البيانات في الكونسول
-
+export default function Header({ userData, onLogout }) {
   return (
     <header id="header-wrap" className="bg-light py-3 border-bottom vh-20">
       <div className="top-content">
@@ -17,7 +16,7 @@ const Header = ({ userData, logout }) => {
                   <div className="col-6 col-md-2">
                     <div className="main-logo">
                       <Link to="/">
-                        <img src={Logo} alt="logo" className="img-fluid" />
+                        <img src={Logo} alt="BookSaw home" className="img-fluid" />
                       </Link>
                     </div>
                   </div>
@@ -30,27 +29,31 @@ const Header = ({ userData, logout }) => {
               <div className="right-element d-flex align-items-center">
                 {userData ? (
                   <>
-                    {/* الحساب الشخصي */}
                     <Link to="/profile" className="user-account me-3">
-                      <i className="bi bi-person-circle fs-5"></i>
+                      <i className="bi bi-person-circle fs-5" aria-hidden="true"></i>
                       <span className="ms-2">{userData.userName}</span>
                     </Link>
 
-                    {/* سلة المشتريات */}
+                    {userData.role === USER_ROLES.Admin && (
+                      <Link to="/dashboard" className="me-3">
+                        <i className="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
+                        <span className="ms-2">Dashboard</span>
+                      </Link>
+                    )}
+
                     <Link to="/cart" className="cart me-3">
-                      <i className="bi bi-cart fs-5"></i>
-                      <span className="ms-2">{userData?.cart ?? 0}</span>
+                      <i className="bi bi-cart fs-5" aria-hidden="true"></i>
+                      <span className="ms-2">Cart</span>
                     </Link>
 
-                    {/* زر تسجيل الخروج */}
-                    <button onClick={logout} className="btn btn-link text-dark">
-                      <i className="bi bi-box-arrow-right fs-5"></i>
+                    <button type="button" onClick={onLogout} className="btn btn-link text-dark">
+                      <i className="bi bi-box-arrow-right fs-5" aria-hidden="true"></i>
                       <span className="ms-1">Logout</span>
                     </button>
                   </>
                 ) : (
                   <Link to="/signup" className="user-account">
-                    <i className="bi bi-person-circle fs-5"></i>
+                    <i className="bi bi-person-circle fs-5" aria-hidden="true"></i>
                     <span className="ms-2">Signup</span>
                   </Link>
                 )}
@@ -61,6 +64,4 @@ const Header = ({ userData, logout }) => {
       </div>
     </header>
   );
-};
-
-export default Header;
+}

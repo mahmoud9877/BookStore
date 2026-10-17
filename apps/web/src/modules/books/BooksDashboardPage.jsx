@@ -1,129 +1,76 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { baseURL, bearerKey } from "../../index.js";
+import React, { useState } from "react";
+import useBooks from "./useBooks.js";
+import { createBook, deleteBook, updateBook } from "./book.service.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 import "./BooksDashboardPage.css";
 
-export default function BooksManager({ userData }) {
-  // State for book details
-  const [books, setBooks] = useState([]);
-  const [bookForm, setBookForm] = useState({
-    bookTitle: "",
-    author: "",
-    description: "",
-    quantity: "",
-    price: "",
-    category: "",
-    image: null, // For handling image uploads
-  });
-  const [selectedBook, setSelectedBook] = useState(null); // Book selected for update
+const EMPTY_FORM = {
+  bookTitle: "",
+  author: "",
+  description: "",
+  quantity: "",
+  price: "",
+  category: "",
+  image: null,
+};
+
+const TEXT_FIELDS = ["bookTitle", "author", "description", "quantity", "price", "category"];
+
+export default function BooksDashboardPage() {
+  const { books, error: loadError, reload } = useBooks();
+  const [bookForm, setBookForm] = useState(EMPTY_FORM);
+  const [selectedBook, setSelectedBook] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const error = actionError || loadError;
 
-  console.log({ userData });
-
-  // Fetch all books from the server
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const { data } = await axios.get(`${baseURL}/book`);
-        setBooks(data.book || []);
-      } catch (error) {
-        console.error("Error fetching books:", error);
-        setError("Failed to fetch books. Please try again later.");
-      }
-    };
-    fetchBooks();
-  }, []);
-
-  // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
-    setBookForm((prevData) => ({
-      ...prevData,
-      [name]: files ? files[0] : value,
-    }));
+    setBookForm((current) => ({ ...current, [name]: files ? files[0] : value }));
   };
 
-  // Handle Add/Update book submission
+  const resetForm = () => {
+    setBookForm(EMPTY_FORM);
+    setSelectedBook(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setActionError("");
     const formData = new FormData();
-    formData.append("bookTitle", bookForm.bookTitle);
-    formData.append("author", bookForm.author);
-    formData.append("description", bookForm.description);
-    formData.append("quantity", bookForm.quantity);
-    formData.append("price", bookForm.price);
-    formData.append("category", bookForm.category);
+    TEXT_FIELDS.forEach((field) => formData.append(field, bookForm[field]));
     if (bookForm.image) formData.append("image", bookForm.image);
 
     try {
       if (selectedBook) {
-        // Update book
-        await axios.post(`${baseURL}/book/edit/${selectedBook._id}`, formData, {
-          headers: {
-            authorization: bearerKey + userData.token,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await updateBook(selectedBook._id, formData);
         alert("Book updated successfully");
       } else {
-        // Add new book
-        await axios.post(`${baseURL}/book/add`, formData, {
-          headers: {
-            authorization: bearerKey + userData.token,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await createBook(formData);
         alert("Book added successfully");
       }
-
-      // Refresh the book list
-      const { data } = await axios.get(`${baseURL}/book`);
-      setBooks(data.book || []);
-      // Reset form after submission
+      await reload();
       resetForm();
-    } catch (error) {
-      console.error("Error saving book:", error);
-      setError("Failed to save book. Please try again.");
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Failed to save book. Please try again."));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to reset form fields
-  const resetForm = () => {
-    setBookForm({
-      bookTitle: "",
-      author: "",
-      description: "",
-      quantity: "",
-      price: "",
-      category: "",
-      image: null,
-    });
-    setSelectedBook(null); // Clear form after submission
-  };
-
-  // Handle Delete book
-  async function handleDelete(bookId) {
+  async function handleDelete(book) {
+    if (!window.confirm(`Delete "${book.bookTitle}"?`)) return;
+    setActionError("");
     try {
-      await axios.delete(`${baseURL}/book/delete/${bookId}`, {
-        headers: {
-          authorization: bearerKey + userData.token,
-        },
-      });
+      await deleteBook(book._id);
       alert("Book deleted successfully");
-      // Refresh the book list after delete
-      const { data } = await axios.get(`${baseURL}/book`);
-      setBooks(data.book || []);
-    } catch (error) {
-      console.error("Failed to delete the book", error);
-      setError("Failed to delete book. Please try again.");
+      await reload();
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Failed to delete book. Please try again."));
     }
   }
 
-  // Handle selecting a book for update
   const handleUpdateClick = (book) => {
     setSelectedBook(book);
     setBookForm({
@@ -133,7 +80,7 @@ export default function BooksManager({ userData }) {
       price: book.price,
       quantity: book.quantity,
       category: book.category,
-      image: null, // No image initially
+      image: null,
     });
   };
 
@@ -145,10 +92,11 @@ export default function BooksManager({ userData }) {
       >
         <div className="row">
           <div className="col-md-6 mb-4">
-            <label className="form-label fw-bold">Name of the Book</label>
+            <label htmlFor="book-bookTitle" className="form-label fw-bold">Name of the Book</label>
             <input
               type="text"
               className="form-control book-input shadow-sm rounded-3"
+              id="book-bookTitle"
               name="bookTitle"
               value={bookForm.bookTitle}
               onChange={handleInputChange}
@@ -158,10 +106,11 @@ export default function BooksManager({ userData }) {
           </div>
 
           <div className="col-md-6 mb-4">
-            <label className="form-label fw-bold">Author Name</label>
+            <label htmlFor="book-author" className="form-label fw-bold">Author Name</label>
             <input
               type="text"
               className="form-control book-input shadow-sm rounded-3"
+              id="book-author"
               name="author"
               value={bookForm.author}
               onChange={handleInputChange}
@@ -172,7 +121,7 @@ export default function BooksManager({ userData }) {
         </div>
 
         <div className="mb-4">
-          <label className="form-label fw-bold">Category</label>
+          <label htmlFor="category" className="form-label fw-bold">Category</label>
           <select
             id="category"
             name="category"
@@ -193,9 +142,10 @@ export default function BooksManager({ userData }) {
         </div>
 
         <div className="mb-4">
-          <label className="form-label fw-bold">Description</label>
+          <label htmlFor="book-description" className="form-label fw-bold">Description</label>
           <textarea
             className="form-control book-input shadow-sm rounded-3"
+            id="book-description"
             name="description"
             rows="3"
             value={bookForm.description}
@@ -207,10 +157,11 @@ export default function BooksManager({ userData }) {
 
         <div className="row">
           <div className="col-md-6 mb-4">
-            <label className="form-label fw-bold">Quantity</label>
+            <label htmlFor="book-quantity" className="form-label fw-bold">Quantity</label>
             <input
               type="number"
               className="form-control book-input shadow-sm rounded-3"
+              id="book-quantity"
               name="quantity"
               value={bookForm.quantity}
               onChange={handleInputChange}
@@ -220,10 +171,11 @@ export default function BooksManager({ userData }) {
           </div>
 
           <div className="col-md-6 mb-4">
-            <label className="form-label fw-bold">Price $</label>
+            <label htmlFor="book-price" className="form-label fw-bold">Price $</label>
             <input
               type="number"
               className="form-control book-input shadow-sm rounded-3"
+              id="book-price"
               name="price"
               value={bookForm.price}
               onChange={handleInputChange}
@@ -234,10 +186,11 @@ export default function BooksManager({ userData }) {
         </div>
 
         <div className="mb-4">
-          <label className="form-label fw-bold">Book Image</label>
+          <label htmlFor="book-image" className="form-label fw-bold">Book Image</label>
           <input
             type="file"
             className="form-control book-input bg-light shadow-sm rounded-3"
+            id="book-image"
             name="image"
             onChange={handleInputChange}
           />
@@ -272,9 +225,9 @@ export default function BooksManager({ userData }) {
                 <strong>{book.bookTitle}</strong> by {book.author}
               </div>
               <div>
-                <button onClick={() => handleUpdateClick(book)}>Edit</button>
-                <button onClick={() => handleDelete(book._id)}>
-                  <i class="bi bi-trash-fill"></i>
+                <button type="button" onClick={() => handleUpdateClick(book)}>Edit</button>
+                <button onClick={() => handleDelete(book)} aria-label={`Delete ${book.bookTitle}`}>
+                  <i className="bi bi-trash-fill" aria-hidden="true"></i>
                 </button>
               </div>
             </li>

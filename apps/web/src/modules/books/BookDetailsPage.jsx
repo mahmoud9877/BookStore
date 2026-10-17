@@ -1,42 +1,33 @@
-import axios from "axios";
 import { Helmet } from "react-helmet";
-import { baseURL } from "../../index.js";
 import { useParams } from "react-router-dom";
 import React, { useState, useEffect } from "react";
+import { getBook } from "./book.service.js";
 
-const BookDetails = () => {
-  const { bookId } = useParams(); // Get the book ID from the URL
-  const [book, setBook] = useState(null); // State to store the book details
-  const [loading, setLoading] = useState(true); // State to manage loading
-  const [error, setError] = useState(null); // State to manage errors
+export default function BookDetailsPage() {
+  const { bookId } = useParams();
+  const [book, setBook] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Fetch book details from the backend
   useEffect(() => {
-    const fetchBookDetails = async () => {
-      try {
-        const response = await axios.get(`${baseURL}/book/${bookId}`); // API call
-        setBook(response.data.book); // Assuming the book data is under "book"
-        setLoading(false); // Turn off loading after fetching
-      } catch (err) {
-        setError("Failed to fetch book details.");
-        setLoading(false);
-      }
+    let isCurrent = true;
+    setIsLoading(true);
+    getBook(bookId)
+      .then((result) => isCurrent && setBook(result))
+      .catch(() => isCurrent && setError("Failed to fetch book details."))
+      .finally(() => isCurrent && setIsLoading(false));
+    return () => {
+      isCurrent = false;
     };
-    if (bookId) {
-      fetchBookDetails();
-    }
   }, [bookId]);
 
-  if (loading) return <div>Loading...</div>; // Loading state
-  if (error) return <div className="alert alert-danger">{error}</div>; // Error state
+  if (isLoading) return <div className="container mt-5">Loading...</div>;
+  if (error) return <div className="alert alert-danger">{error}</div>;
 
   return (
     <div className="container mt-5">
-      {/* Helmet should be inside the JSX */}
       <Helmet>
-        <meta charSet="utf-8" />
         <title>{book ? book.bookTitle : "Book Details"}</title>
-        <link rel="canonical" href={`http://mysite.com/book/${bookId}`} />
       </Helmet>
 
       {book ? (
@@ -61,9 +52,7 @@ const BookDetails = () => {
                   <strong>Price:</strong> ${book.price}
                 </p>
                 <p className="card-text">
-                  <small className="text-muted">
-                    Category: {book.category}
-                  </small>
+                  <small className="text-muted">Category: {book.category}</small>
                 </p>
               </div>
             </div>
@@ -74,6 +63,4 @@ const BookDetails = () => {
       )}
     </div>
   );
-};
-
-export default BookDetails;
+}

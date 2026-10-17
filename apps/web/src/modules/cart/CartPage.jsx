@@ -1,96 +1,67 @@
-import axios from "axios";
-import { baseURL, bearerKey } from "../../index.js";
-import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
 import React, { useEffect, useState } from "react";
-import "./CartPage.css"; // Import custom styling
+import { createOrder } from "../orders/order.service.js";
+import { getErrorMessage } from "../../lib/api-client.js";
+import { clearCart, getCartItems, removeFromCart } from "./cart.service.js";
+import "./CartPage.css";
 
-export default function Cart({ userData }) {
-  const [books, setBooks] = useState([]); // Books in cart
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error message
-  const [orderStatus, setOrderStatus] = useState(null); // Order status
-  const [deleteStatus, setDeleteStatus] = useState(null); // Deletion status
-  const [showOrderForm, setShowOrderForm] = useState(false); // Toggle for order form
-  const [address, setAddress] = useState(""); // Delivery address
-  const [phone, setPhone] = useState(""); // Phone number
-  const [note, setNote] = useState(""); // Additional order note
-  const [paymentType, setPaymentType] = useState("card"); // Payment method
+export default function CartPage() {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [orderStatus, setOrderStatus] = useState(null);
+  const [deleteStatus, setDeleteStatus] = useState(null);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [note, setNote] = useState("");
+  const [paymentType, setPaymentType] = useState("card");
 
   useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        const response = await axios.get(`${baseURL}/cart`, {
-          headers: {
-            authorization: `${bearerKey}${userData.token}`,
-          },
-        });
-        if (response.data.cart && response.data.cart.books) {
-          setBooks(response.data.cart.books);
-        } else {
-          setError("No books found in the cart.");
-        }
-      } catch (error) {
-        setError("Failed to load cart.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userData?.token) {
-      fetchCart();
-    }
-    // console.log(userData);
-  }, [userData?.token]); // Add token as dependency to refetch when it changes
+    getCartItems()
+      .then(setBooks)
+      .catch(() => setError("Failed to load cart."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleMakeOrder = async () => {
+    setIsPlacingOrder(true);
+    setOrderStatus(null);
     try {
-      const response = await axios.post(
-        `${baseURL}/order`,
-        { address, phone, note, paymentType },
-        {
-          headers: {
-            authorization: `${bearerKey}${userData.token}`,
-          },
-        }
-      );
-
-      const { url } = response.data;
-      if (url) {
-        window.location.href = url;
-      } else {
-        setOrderStatus("Order created but checkout URL is missing.");
+      const data = await createOrder({ address, phone, note, paymentType });
+      if (data.url) {
+        window.location.href = data.url;
+        return;
       }
-    } catch (error) {
-      setOrderStatus("Failed to create order.");
+      setBooks([]);
+      setShowOrderForm(false);
+      setOrderStatus("Order placed successfully.");
+    } catch (err) {
+      setOrderStatus(getErrorMessage(err, "Failed to create order."));
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
   const handleDeleteBook = async (bookId) => {
     try {
-      await axios.delete(`${baseURL}/cart/${bookId}`, {
-        headers: {
-          authorization: `${bearerKey} ${userData.token}`,
-        },
-      });
-      setBooks(books.filter((book) => book.bookId !== bookId));
+      await removeFromCart(bookId);
+      setBooks((current) => current.filter((book) => book.bookId !== bookId));
       setDeleteStatus("Book removed from cart.");
-    } catch (error) {
-      setDeleteStatus("Failed to delete book.");
+    } catch (err) {
+      setDeleteStatus(getErrorMessage(err, "Failed to delete book."));
     }
   };
 
   const handleClearCart = async () => {
     try {
-      await axios.delete(`${baseURL}/cart/clear`, {
-        headers: {
-          authorization: `${bearerKey} ${userData.token}`,
-        },
-      });
+      await clearCart();
       setBooks([]);
       setDeleteStatus("Cart cleared successfully.");
-    } catch (error) {
-      setDeleteStatus("Failed to clear cart.");
+    } catch (err) {
+      setDeleteStatus(getErrorMessage(err, "Failed to clear cart."));
     }
   };
 
@@ -100,9 +71,7 @@ export default function Cart({ userData }) {
   return (
     <>
       <Helmet>
-        <meta charSet="utf-8" />
         <title>Cart</title>
-        <link rel="canonical" href="http://mysite.com/example" />
       </Helmet>
       <div className="cart-container">
         <h2 className="cart-title">Your Cart</h2>
@@ -112,11 +81,13 @@ export default function Cart({ userData }) {
               <div key={book.bookId} className="col-lg-4 col-md-6 col-sm-12">
                 <div className="card shadow-sm cart-card">
                   <div className="card-body d-flex flex-column align-items-center">
-                    <img
-                      src={book.image || "default-image-url.jpg"}
-                      alt={book.bookTitle || "Unknown Title"}
-                      className="book-image mb-3"
-                    />
+                    {book.image && (
+                      <img
+                        src={book.image}
+                        alt={book.bookTitle || "Unknown Title"}
+                        className="book-image mb-3"
+                      />
+                    )}
                     <h5 className="card-title text-center mb-2">
                       {book.bookTitle || "Unknown Title"}
                     </h5>
@@ -166,6 +137,7 @@ export default function Cart({ userData }) {
                   type="text"
                   className="form-control mb-3"
                   placeholder="Enter your address"
+                  aria-label="Address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />
@@ -173,25 +145,32 @@ export default function Cart({ userData }) {
                   type="tel"
                   className="form-control mb-3"
                   placeholder="Enter your phone"
+                  aria-label="Phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
                 <textarea
                   className="form-control mb-3"
                   placeholder="Add special instructions"
+                  aria-label="Order note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                 />
                 <select
                   className="form-select mb-3"
+                  aria-label="Payment method"
                   value={paymentType}
                   onChange={(e) => setPaymentType(e.target.value)}
                 >
                   <option value="card">Card</option>
                   <option value="cash">Cash</option>
                 </select>
-                <button className="btn btn-success" onClick={handleMakeOrder}>
-                  Confirm Order
+                <button
+                  className="btn btn-success"
+                  onClick={handleMakeOrder}
+                  disabled={isPlacingOrder || !address.trim() || !phone.trim()}
+                >
+                  {isPlacingOrder ? "Placing Order..." : "Confirm Order"}
                 </button>
               </div>
             )}

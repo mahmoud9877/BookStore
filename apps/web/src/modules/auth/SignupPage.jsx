@@ -1,142 +1,111 @@
-import React, { useState } from "react";
-import axios from "axios";
 import { Helmet } from "react-helmet";
-import { signupSchema } from "./auth.validation.js"; // Assuming this is where your schema is located
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { baseURL } from "../../index.js";
+import { signup } from "./auth.service.js";
+import { signupSchema } from "./auth.validation.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 import "./SignupPage.css";
-const Signup = () => {
-  const navigate = useNavigate(); // Use hook for navigation
+
+const SIGNUP_SUCCESS_NOTICE =
+  "Account created. If email confirmation is required, confirm your email before logging in.";
+
+export default function SignupPage() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(""); // State to store error messages
-  const [user, setUser] = useState({
-    userName: "",
-    email: "",
-    password: "",
-  });
+  const [error, setError] = useState("");
+  const [user, setUser] = useState({ userName: "", email: "", password: "", cPassword: "" });
 
-  // Handle input changes and update the user state
-  function getData(eventInfo) {
-    const { name, value } = eventInfo.target;
-    setUser({ ...user, [name]: value });
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setUser((current) => ({ ...current, [name]: value }));
   }
 
-  // Function to validate form data using Joi
-  function validationSignup() {
-    const { userName, email, password, cPassword } = user;
-    const result = signupSchema.validate(
-      { userName, email, password, cPassword },
-      { abortEarly: false }
-    );
-    if (result.error) {
-      const errorMessages = result.error.details
-        .map((detail) => detail.message)
-        .join(", ");
-      setError(errorMessages);
-      return false; // Validation failed
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+
+    const validation = signupSchema.validate(user, { abortEarly: false });
+    if (validation.error) {
+      setError(validation.error.details.map((detail) => detail.message).join(", "));
+      return;
     }
-    return true; // Validation passed
-  }
 
-  // Function to send signup data to the server
-  async function sendData() {
+    setIsLoading(true);
     try {
-      const { data } = await axios.post(`${baseURL}/auth/signup`, user);
-
-      // If the signup is successful, navigate to the login page
-      if (data.message === "Done") {
-        setIsLoading(false);
-        navigate("/home"); // Redirect to login page only after signup succeeds
-      } else {
-        setIsLoading(false);
-        setError(data.message); // Show error message if signup fails
-      }
+      await signup(user);
+      navigate("/login", { state: { notice: SIGNUP_SUCCESS_NOTICE } });
     } catch (err) {
+      setError(getErrorMessage(err, "An error occurred during signup. Please try again."));
       setIsLoading(false);
-      setError("An error occurred during signup. Please try again.");
-      console.error("Signup error:", err); // Log the error for debugging
     }
-  }
-
-  // Handle form submission
-  function submitSignup(eventInfo) {
-    eventInfo.preventDefault(); // Prevent form from refreshing the page
-    setError(""); // Reset any previous errors
-
-    // Validate form data before sending
-    if (!validationSignup()) {
-      setIsLoading(false);
-      return; // Stop form submission if validation fails
-    }
-
-    setIsLoading(true); // Show loading spinner
-    sendData(); // Call sendData to handle the signup request
   }
 
   return (
     <div>
       <Helmet>
-        <meta charSet="utf-8" />
         <title>Signup</title>
-        <link rel="canonical" href="" />
       </Helmet>
-      {/* Show an alert if there's an error */}
-      {error && <div className="alert alert-danger my-2">{error}</div>}
+      {error && <div className="alert alert-danger my-2" role="alert">{error}</div>}
 
       <div className="d-flex justify-content-center py-1">
-        <form className="form" method="post" onSubmit={submitSignup}>
+        <form className="form" method="post" onSubmit={handleSubmit} noValidate>
           <h3 className="title d-flex justify-content-center">Sign-Up</h3>
           <div className="mb-2">
-            <h6 className="pt-3 ">Name</h6>
+            <label htmlFor="userName" className="h6 pt-3">Name</label>
             <input
+              id="userName"
               type="text"
               className="form-control pt-2"
               placeholder="Your Name"
-              aria-label="Your Name"
               name="userName"
-              onChange={getData}
-            ></input>
+              autoComplete="name"
+              onChange={handleChange}
+            />
           </div>
           <div className="mb-2">
-            <h6>Email</h6>
+            <label htmlFor="email" className="h6">Email</label>
             <input
-              placeholder="Your Email"
               id="email"
+              placeholder="Your Email"
               className="form-control"
               type="email"
               name="email"
-              onChange={getData}
+              autoComplete="email"
+              onChange={handleChange}
               required
             />
           </div>
           <div className="mb-2">
-            <h6>Password</h6>
+            <label htmlFor="password" className="h6">Password</label>
             <input
-              placeholder="Password"
               id="password"
+              placeholder="Password"
               className="form-control"
               type="password"
               name="password"
-              onChange={getData}
+              autoComplete="new-password"
+              onChange={handleChange}
               required
             />
           </div>
           <div className="mb-2">
-            <h6>Confirm Password</h6>
+            <label htmlFor="cPassword" className="h6">Confirm Password</label>
             <input
-              placeholder="Confirm Password"
               id="cPassword"
+              placeholder="Confirm Password"
               className="form-control"
               type="password"
               name="cPassword"
-              onChange={getData}
+              autoComplete="new-password"
+              onChange={handleChange}
               required
             />
           </div>
           <div className="button d-flex justify-content-center">
             <button
-              className="btn btn btn-outline-secondary py-2 w-50 bg-black"
+              className="btn btn-outline-secondary py-2 w-50 bg-black"
               type="submit"
+              disabled={isLoading}
             >
               {isLoading ? (
                 <div className="spinner-border text-light" role="status">
@@ -154,6 +123,4 @@ const Signup = () => {
       </div>
     </div>
   );
-};
-
-export default Signup;
+}

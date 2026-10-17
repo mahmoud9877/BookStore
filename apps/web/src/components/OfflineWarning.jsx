@@ -1,7 +1,7 @@
 import React from "react";
 import { Offline } from "react-detect-offline";
 
-const OfflineWarning = () => {
+export default function OfflineWarning() {
   return (
     <div>
       <Offline>
@@ -13,6 +13,5 @@ const OfflineWarning = () => {
       </Offline>
     </div>
   );
-};
+}
 
-export default OfflineWarning;

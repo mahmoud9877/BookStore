@@ -2,18 +2,23 @@ import React from "react";
 import Header from "./Header.jsx";
 import Footer from "./Footer.jsx";
 import { Outlet, useNavigate } from "react-router-dom";
+import { useUser } from "../modules/auth/UserContext.jsx";
 
-export default function RootLayout({ userData, setUserData }) {
-  let navigate = useNavigate();
-  function logout() {
-    localStorage.removeItem("userToken");
-    setUserData(null);
+export default function RootLayout() {
+  const navigate = useNavigate();
+  const { userData, logout } = useUser();
+
+  function handleLogout() {
+    logout();
     navigate("/login");
   }
+
   return (
     <>
-      <Header logout={logout} userData={userData} />
-      <Outlet></Outlet>
+      <Header userData={userData} onLogout={handleLogout} />
+      <main>
+        <Outlet />
+      </main>
       <Footer />
     </>
   );
