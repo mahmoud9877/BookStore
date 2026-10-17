@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 export class GmailMailer {
   #user;
   #password;
+  #transporter;
 
   constructor({ user, password } = {}) {
     this.#user = user;
@@ -16,11 +17,11 @@ export class GmailMailer {
   /** Resolves true when no recipient was rejected; never throws. */
   async send({ to = [], subject, html, attachments = [] } = {}) {
     try {
-      const transporter = nodemailer.createTransport({
+      this.#transporter ??= nodemailer.createTransport({
         service: "gmail",
         auth: { user: this.#user, pass: this.#password },
       });
-      const info = await transporter.sendMail({
+      const info = await this.#transporter.sendMail({
         from: `"70ka Company" <${this.#user}>`,
         to: Array.isArray(to) ? to.join(",") : to,
         subject: subject || "Hello ✔",

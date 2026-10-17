@@ -1,8 +1,8 @@
-import { apiClient } from "../../lib/api-client.js";
+import { apiClient, responseData } from "../../lib/api-client.js";
 
-export const listBooks = async () => (await apiClient.get("/book")).data.book ?? [];
+export const listBooks = async () => (await responseData(apiClient.get("/book"))).book ?? [];
 
-export const getBook = async (bookId) => (await apiClient.get(`/book/${bookId}`)).data.book;
+export const getBook = async (bookId) => (await responseData(apiClient.get(`/book/${bookId}`))).book;
 
 export const createBook = (formData) => apiClient.post("/book/add", formData);
 

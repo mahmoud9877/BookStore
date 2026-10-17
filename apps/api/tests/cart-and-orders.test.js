@@ -1,14 +1,16 @@
 import Stripe from "stripe";
 import { Types } from "mongoose";
 import assert from "node:assert/strict";
-import { after, before, describe, test } from "node:test";
-import { authenticateAs, makeUser, startServer } from "./helpers.js";
+import { describe, test } from "node:test";
+import { authenticateAs, makeUser, useTestServer } from "./helpers.js";
 
-let server;
-before(async () => {
-  server = await startServer();
-});
-after(() => server.close());
+const server = useTestServer();
+
+/** POST /order with `body` as the authenticated user. */
+const postOrder = (headers, body) => server.request("POST", "/order", { headers, body });
+
+/** A Stripe checkout event for `orderId`. */
+const checkoutEvent = (type, orderId) => ({ type, data: { object: { metadata: { orderId } } } });
 
 describe("cart", () => {
   test("DELETE /cart/clear empties the cart (route previously had no handler)", async (t) => {
@@ -71,10 +73,7 @@ describe("orders", () => {
     t.mock.method(server.container.orderRepository, "create", async (doc) => (createdOrder = doc));
     const clearCart = t.mock.method(server.container.cartRepository, "clearByUserId", async () => ({}));
 
-    const res = await server.request("POST", "/order", {
-      headers,
-      body: { address: "1 Nile St", phone: "01012345678", paymentType: "cash" },
-    });
+    const res = await postOrder(headers, { address: "1 Nile St", phone: "01012345678", paymentType: "cash" });
 
     assert.equal(res.status, 201);
     assert.equal(res.json.message, "Order created successfully");
@@ -93,10 +92,7 @@ describe("orders", () => {
     const create = t.mock.method(server.container.orderRepository, "create", async () => ({}));
     const clearCart = t.mock.method(server.container.cartRepository, "clearByUserId", async () => ({}));
 
-    const res = await server.request("POST", "/order", {
-      headers,
-      body: { address: "1 Nile St", phone: ["01012345678"] },
-    });
+    const res = await postOrder(headers, { address: "1 Nile St", phone: ["01012345678"] });
 
     assert.equal(res.status, 400);
     assert.match(res.json.message, /out of stock/);
@@ -155,10 +151,7 @@ describe("stripe webhook", () => {
     const orderId = new Types.ObjectId().toString();
     const update = t.mock.method(server.container.orderRepository, "updateStatus", async () => ({}));
 
-    const res = await postEvent({
-      type: "checkout.session.completed",
-      data: { object: { metadata: { orderId } } },
-    });
+    const res = await postEvent(checkoutEvent("checkout.session.completed", orderId));
 
     assert.equal(res.status, 200);
     assert.deepEqual(update.mock.calls[0].arguments, [orderId, "placed"]);
@@ -172,10 +165,7 @@ describe("stripe webhook", () => {
     }));
     const release = t.mock.method(server.container.bookRepository, "releaseStock", async () => {});
 
-    const res = await postEvent({
-      type: "checkout.session.expired",
-      data: { object: { metadata: { orderId } } },
-    });
+    const res = await postEvent(checkoutEvent("checkout.session.expired", orderId));
 
     assert.equal(res.status, 200);
     assert.deepEqual(reject.mock.calls[0].arguments, [orderId]);
@@ -184,7 +174,7 @@ describe("stripe webhook", () => {
 
   test("ignores events that carry no order id", async (t) => {
     const update = t.mock.method(server.container.orderRepository, "updateStatus", async () => ({}));
-    const res = await postEvent({ type: "payment_intent.created", data: { object: { metadata: {} } } });
+    const res = await postEvent(checkoutEvent("payment_intent.created", undefined));
     assert.equal(res.status, 200);
     assert.equal(res.json.message, "Ignored");
     assert.equal(update.mock.callCount(), 0);

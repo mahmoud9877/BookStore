@@ -1,5 +1,7 @@
 import { CartResponseDto } from "./cart.dto.js";
-import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
+import { BadRequestError, NotFoundError, ensureFound } from "../../core/http-errors.js";
+
+const CART_NOT_FOUND = "Cart not found";
 
 const isSameBook = (bookId) => (item) => item.bookId.toString() === String(bookId);
 
@@ -22,8 +24,7 @@ export class CartService {
    * @param {import("./cart.dto.js").AddToCartDto} dto
    */
   async addItem(userId, { bookId, quantity }) {
-    const book = await this.#books.findById(bookId);
-    if (!book) throw new NotFoundError("Book not found");
+    const book = ensureFound(await this.#books.findById(bookId), "Book not found");
     if (book.quantity < quantity) throw new BadRequestError("Insufficient stock available");
 
     const item = {
@@ -58,14 +59,10 @@ export class CartService {
   }
 
   async clearCart(userId) {
-    const cart = await this.#carts.clearByUserId(userId);
-    if (!cart) throw new NotFoundError("Cart not found");
-    return CartResponseDto.from(cart);
+    return CartResponseDto.from(ensureFound(await this.#carts.clearByUserId(userId), CART_NOT_FOUND));
   }
 
   async #findCart(userId) {
-    const cart = await this.#carts.findByUserId(userId);
-    if (!cart) throw new NotFoundError("Cart not found");
-    return cart;
+    return ensureFound(await this.#carts.findByUserId(userId), CART_NOT_FOUND);
   }
 }

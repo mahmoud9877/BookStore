@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet";
 import React, { useState } from "react";
+import useForm from "../../hooks/useForm.js";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { login } from "./auth.service.js";
 import { useUser } from "./UserContext.jsx";
@@ -13,12 +14,11 @@ export default function LoginPage() {
   const [errorList, setErrorList] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const { values: credentials, handleChange: updateField } = useForm({ email: "", password: "" });
   const notice = location.state?.notice;
 
   function handleChange(event) {
-    const { name, value } = event.target;
-    setCredentials((current) => ({ ...current, [name]: value }));
+    updateField(event);
     setError("");
     setErrorList([]);
   }

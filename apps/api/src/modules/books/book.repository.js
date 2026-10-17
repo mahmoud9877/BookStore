@@ -8,8 +8,7 @@ export class BookRepository extends BaseRepository {
 
   /** Newest first; `limit` is optional. */
   list({ skip = 0, limit } = {}) {
-    const query = this.model.find({}).sort({ createdAt: -1 }).skip(skip).lean();
-    return limit ? query.limit(limit) : query;
+    return this.findMany({}, { sort: { createdAt: -1 }, skip, limit });
   }
 
   /**
@@ -25,12 +24,11 @@ export class BookRepository extends BaseRepository {
   async reserveStock(items) {
     const reserved = [];
     for (const item of items) {
-      const book = await this.model
-        .findOneAndUpdate(
-          { _id: item.bookId, quantity: { $gte: item.quantity } },
-          { $inc: { quantity: -item.quantity } }
-        )
-        .lean();
+      const book = await this.updateWhere(
+        { _id: item.bookId, quantity: { $gte: item.quantity } },
+        { $inc: { quantity: -item.quantity } },
+        { returnOriginal: true }
+      );
       if (!book) {
         await this.releaseStock(reserved.map(({ book: taken, quantity }) => ({ bookId: taken._id, quantity })));
         return { unavailable: item };
@@ -43,7 +41,7 @@ export class BookRepository extends BaseRepository {
   /** Puts copies back into stock in one round trip. */
   async releaseStock(items) {
     if (!items.length) return;
-    await this.model.bulkWrite(
+    await this.bulkWrite(
       items.map(({ bookId, quantity }) => ({
         updateOne: { filter: { _id: bookId }, update: { $inc: { quantity } } },
       }))
@@ -52,23 +50,17 @@ export class BookRepository extends BaseRepository {
 
   /** Resolves null when the book does not exist or the user already liked it. */
   addLike(id, userId) {
-    return this.model
-      .findOneAndUpdate(
-        { _id: id, likes: { $ne: userId } },
-        { $push: { likes: userId }, $inc: { totalLikes: 1 } },
-        { new: true }
-      )
-      .lean();
+    return this.updateWhere(
+      { _id: id, likes: { $ne: userId } },
+      { $push: { likes: userId }, $inc: { totalLikes: 1 } }
+    );
   }
 
   /** Resolves null when the book does not exist or the user has not liked it. */
   removeLike(id, userId) {
-    return this.model
-      .findOneAndUpdate(
-        { _id: id, likes: userId },
-        { $pull: { likes: userId }, $inc: { totalLikes: -1 } },
-        { new: true }
-      )
-      .lean();
+    return this.updateWhere(
+      { _id: id, likes: userId },
+      { $pull: { likes: userId }, $inc: { totalLikes: -1 } }
+    );
   }
 }

@@ -8,6 +8,9 @@ import { StripePaymentGateway } from "./infrastructure/stripe-payment-gateway.js
 import { CloudinaryImageStorage } from "./infrastructure/cloudinary-image-storage.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { AuthController } from "./modules/auth/auth.controller.js";
+import { EmailConfirmationService } from "./modules/auth/email-confirmation.service.js";
+import { UserService } from "./modules/users/user.service.js";
+import { UserController } from "./modules/users/user.controller.js";
 import { UserRepository } from "./modules/users/user.repository.js";
 import { BookService } from "./modules/books/book.service.js";
 import { BookController } from "./modules/books/book.controller.js";
@@ -45,15 +48,20 @@ export function createContainer(config = env) {
   const orderRepository = new OrderRepository();
 
   // Services
+  const emailConfirmationService = new EmailConfirmationService({
+    userRepository,
+    emailTokens,
+    mailer,
+    frontendUrl: config.frontendUrl,
+  });
   const authService = new AuthService({
     userRepository,
     passwordHasher,
     accessTokens,
-    emailTokens,
-    mailer,
+    emailConfirmation: emailConfirmationService,
     requireEmailConfirmation: config.requireEmailConfirmation,
-    frontendUrl: config.frontendUrl,
   });
+  const userService = new UserService({ userRepository });
   const bookService = new BookService({ bookRepository, categoryRepository, imageStorage });
   const categoryService = new CategoryService({ categoryRepository });
   const cartService = new CartService({ cartRepository, bookRepository });
@@ -65,6 +73,7 @@ export function createContainer(config = env) {
   });
 
   return {
+    config,
     database,
     imageStorage,
     paymentGateway,
@@ -76,13 +85,16 @@ export function createContainer(config = env) {
     categoryRepository,
     cartRepository,
     orderRepository,
+    emailConfirmationService,
     authService,
+    userService,
     bookService,
     categoryService,
     cartService,
     orderService,
     authGuard: new AuthGuard({ bearerKey: config.bearerKey, accessTokens, userRepository }),
-    authController: new AuthController(authService),
+    authController: new AuthController(authService, emailConfirmationService),
+    userController: new UserController(userService),
     bookController: new BookController(bookService),
     categoryController: new CategoryController(categoryService),
     cartController: new CartController(cartService),

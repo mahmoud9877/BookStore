@@ -6,13 +6,12 @@ import {
   ListBooksQueryDto,
   UpdateBookDto,
 } from "./book.dto.js";
-import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 import { fileUpload, allowedMimeTypes } from "../../middleware/upload.js";
 
 export function createBookRouter({ bookController, authGuard }) {
   const router = Router();
-  const adminOnly = authGuard.authenticate([USER_ROLES.Admin]);
+  const adminOnly = authGuard.adminOnly();
   const imageUpload = fileUpload(allowedMimeTypes.image).single("image");
 
   router.get("/", validate(ListBooksQueryDto), bookController.listBooks);
@@ -35,13 +34,13 @@ export function createBookRouter({ bookController, authGuard }) {
 
   router.patch(
     "/:bookId/like",
-    authGuard.authenticate(),
+    authGuard.signedIn(),
     validate(BookIdDto),
     bookController.likeBook
   );
   router.patch(
     "/:bookId/unlike",
-    authGuard.authenticate(),
+    authGuard.signedIn(),
     validate(BookIdDto),
     bookController.unlikeBook
   );

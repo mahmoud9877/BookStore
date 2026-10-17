@@ -1,9 +1,9 @@
-import { apiClient } from "../../lib/api-client.js";
+import { apiClient, responseData } from "../../lib/api-client.js";
 
 /** Returns the cart's items; a user without a cart yet has an empty one. */
 export async function getCartItems() {
   try {
-    return (await apiClient.get("/cart")).data.cart?.books ?? [];
+    return (await responseData(apiClient.get("/cart"))).cart?.books ?? [];
   } catch (error) {
     if (error.response?.status === 404) return [];
     throw error;

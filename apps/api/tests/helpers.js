@@ -1,4 +1,6 @@
 import { Types } from "mongoose";
+import assert from "node:assert/strict";
+import { after, before } from "node:test";
 import { createApp } from "../src/app.js";
 import { createContainer } from "../src/container.js";
 
@@ -36,6 +38,23 @@ export async function startServer() {
     container,
     close: () => new Promise((resolve) => server.close(resolve)),
   };
+}
+
+/**
+ * Starts a fresh server for the enclosing describe() (or file) and stops it
+ * afterwards. Returns a handle whose `request`/`container` are ready inside tests.
+ */
+export function useTestServer() {
+  const handle = {};
+  before(async () => Object.assign(handle, await startServer()));
+  after(() => handle.close());
+  return handle;
+}
+
+/** Asserts a 400 response produced by the validate(Dto) middleware. */
+export function expectValidationError(res) {
+  assert.equal(res.status, 400);
+  assert.equal(res.json.message, "validationErr");
 }
 
 export function makeUser(role = "User") {

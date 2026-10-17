@@ -1,9 +1,8 @@
 import { Router } from "express";
 import { ConfirmationTokenDto, LoginDto, RegisterUserDto } from "./auth.dto.js";
-import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 
-export function createAuthRouter({ authController, authGuard }) {
+export function createAuthRouter({ authController }) {
   const router = Router();
 
   router.post("/signup", validate(RegisterUserDto), authController.signup);
@@ -18,7 +17,6 @@ export function createAuthRouter({ authController, authGuard }) {
     validate(ConfirmationTokenDto),
     authController.resendConfirmationEmail
   );
-  router.get("/user", authGuard.authenticate([USER_ROLES.Admin]), authController.listUsers);
 
   return router;
 }

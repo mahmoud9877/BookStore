@@ -1,18 +1,13 @@
+import { OrderPolicy } from "./order-policy.js";
 import { ORDER_STATUSES } from "./order-statuses.js";
+import { PAYMENT_OUTCOMES } from "./payment-gateway.js";
 import { CheckoutSessionResponseDto, OrderResponseDto } from "./order.dto.js";
-import { BadGatewayError, BadRequestError, ServiceUnavailableError } from "../../core/http-errors.js";
-
-const CHECKOUT_FAILURE_EVENTS = [
-  "checkout.session.expired",
-  "checkout.session.async_payment_failed",
-];
-
-const NOT_DELIVERABLE = [
-  ORDER_STATUSES.waitPayment,
-  ORDER_STATUSES.canceled,
-  ORDER_STATUSES.rejected,
-  ORDER_STATUSES.delivered,
-];
+import {
+  BadGatewayError,
+  BadRequestError,
+  ServiceUnavailableError,
+  ensureFound,
+} from "../../core/http-errors.js";
 
 export class OrderService {
   #orders;
@@ -20,6 +15,7 @@ export class OrderService {
   #books;
   #payments;
 
+  /** `paymentGateway` implements the port described in ./payment-gateway.js. */
   constructor({ orderRepository, cartRepository, bookRepository, paymentGateway }) {
     this.#orders = orderRepository;
     this.#carts = cartRepository;
@@ -28,7 +24,7 @@ export class OrderService {
   }
 
   /**
-   * Turns the user's cart into an order. Card orders also get a Stripe Checkout
+   * Turns the user's cart into an order. Card orders also get a checkout
    * session. Resolves `{ order, session }` (`session` is null for cash).
    * @param {import("./order.dto.js").CreateOrderDto} dto
    */
@@ -41,37 +37,14 @@ export class OrderService {
     if (!cart?.books?.length) throw new BadRequestError("Empty Cart");
 
     const items = await this.#reserveStock(cart.books);
-    const subtotal = items.reduce((sum, item) => sum + item.finalPrice, 0);
-
-    let order;
-    try {
-      order = await this.#orders.create({
-        userId: user._id,
-        address,
-        note,
-        phone,
-        books: items,
-        subtotal,
-        finalPrice: subtotal,
-        paymentType,
-        status: paymentType === "card" ? ORDER_STATUSES.waitPayment : ORDER_STATUSES.placed,
-      });
-    } catch (error) {
-      await this.#books.releaseStock(items);
-      throw error;
-    }
-
-    let session;
-    if (paymentType === "card") {
-      try {
-        session = await this.#startCheckout(order, items, user.email);
-      } catch (error) {
-        console.error("Stripe session creation failed:", error.message);
-        await this.#orders.updateStatus(order._id, ORDER_STATUSES.rejected);
-        await this.#books.releaseStock(items);
-        throw new BadGatewayError("Stripe session creation failed");
-      }
-    }
+    const order = await this.#createOrReleaseStock(items, {
+      userId: user._id,
+      address,
+      note,
+      phone,
+      paymentType,
+    });
+    const session = paymentType === "card" ? await this.#startCheckout(order, items, user.email) : null;
 
     // Only empty the cart once the order (and payment session) definitely exists.
     await this.#carts.clearByUserId(user._id);
@@ -82,41 +55,27 @@ export class OrderService {
   }
 
   /**
-   * Verifies a raw Stripe webhook payload and applies it to its order.
+   * Verifies a payment provider webhook and applies its outcome to the order.
    * An invalid signature throws BadRequestError. Resolves a short outcome message.
    */
-  async processStripeWebhook(rawBody, signature) {
-    return this.#applyCheckoutEvent(this.#payments.constructWebhookEvent(rawBody, signature));
-  }
+  async processPaymentWebhook(rawBody, signature) {
+    const { outcome, orderId } = this.#payments.parseWebhookEvent(rawBody, signature);
+    if (!orderId || outcome === PAYMENT_OUTCOMES.ignored) return "Ignored";
 
-  async #applyCheckoutEvent(event) {
-    const orderId = event.data?.object?.metadata?.orderId;
-    if (!orderId) return "Ignored";
-
-    if (event.type === "checkout.session.completed") {
+    if (outcome === PAYMENT_OUTCOMES.paid) {
       await this.#orders.updateStatus(orderId, ORDER_STATUSES.placed);
       return "Done";
     }
-    if (CHECKOUT_FAILURE_EVENTS.includes(event.type)) {
-      const order = await this.#orders.rejectIfAwaitingPayment(orderId);
-      if (order) await this.#books.releaseStock(order.books);
-      return "rejected link";
-    }
-    return "Ignored";
+    const rejected = await this.#orders.rejectIfAwaitingPayment(orderId);
+    if (rejected) await this.#books.releaseStock(rejected.books);
+    return "rejected link";
   }
 
-  /**
-   * Customers may cancel their own order until it ships (cash) or is paid (card).
-   * @param {import("./order.dto.js").CancelOrderDto} dto
-   */
+  /** @param {import("./order.dto.js").CancelOrderDto} dto */
   async cancelOrder({ orderId, reason }, userId) {
     const order = await this.#orders.findByIdForUser(orderId, userId);
     if (!order) throw new BadRequestError("In-Valid OrderId");
-
-    const cancellable =
-      (order.paymentType === "cash" && order.status === ORDER_STATUSES.placed) ||
-      (order.paymentType === "card" && order.status === ORDER_STATUSES.waitPayment);
-    if (!cancellable) {
+    if (!OrderPolicy.canBeCancelled(order)) {
       throw new BadRequestError(`Cannot cancel your order after it been changed to ${order.status}`);
     }
 
@@ -131,13 +90,13 @@ export class OrderService {
   async deliverOrder(orderId, adminId) {
     const order = await this.#orders.findById(orderId);
     if (!order) throw new BadRequestError("Invalid order");
-    if (NOT_DELIVERABLE.includes(order.status)) {
+    if (!OrderPolicy.canBeDelivered(order)) {
       throw new BadRequestError("Cannot update your order after it has been changed");
     }
     const delivered = await this.#orders.updateStatus(orderId, ORDER_STATUSES.delivered, {
       updatedBy: adminId,
     });
-    return OrderResponseDto.from(delivered);
+    return OrderResponseDto.from(ensureFound(delivered, "Order not found"));
   }
 
   /** Reserves stock for every cart item and returns the priced order lines. */
@@ -156,18 +115,36 @@ export class OrderService {
     }));
   }
 
-  #startCheckout(order, items, customerEmail) {
-    return this.#payments.createCheckoutSession({
-      customerEmail,
-      metadata: { orderId: order._id.toString() },
-      lineItems: items.map((item) => ({
-        price_data: {
-          currency: "egp",
-          product_data: { name: item.bookTitle || "Unknown Book" },
-          unit_amount: Math.round(item.unitPrice * 100),
-        },
-        quantity: item.quantity,
-      })),
-    });
+  async #createOrReleaseStock(items, { paymentType, ...details }) {
+    const subtotal = items.reduce((sum, item) => sum + item.finalPrice, 0);
+    try {
+      return await this.#orders.create({
+        ...details,
+        books: items,
+        subtotal,
+        finalPrice: subtotal,
+        paymentType,
+        status: OrderPolicy.initialStatus(paymentType),
+      });
+    } catch (error) {
+      await this.#books.releaseStock(items);
+      throw error;
+    }
+  }
+
+  /** Opens a checkout session; on failure the order is rejected and its stock released. */
+  async #startCheckout(order, items, customerEmail) {
+    try {
+      return await this.#payments.createCheckout({
+        orderId: order._id.toString(),
+        customerEmail,
+        items: items.map(({ bookTitle, unitPrice, quantity }) => ({ name: bookTitle, unitPrice, quantity })),
+      });
+    } catch (error) {
+      console.error("Checkout session creation failed:", error.message);
+      await this.#orders.updateStatus(order._id, ORDER_STATUSES.rejected);
+      await this.#books.releaseStock(items);
+      throw new BadGatewayError("Stripe session creation failed");
+    }
   }
 }

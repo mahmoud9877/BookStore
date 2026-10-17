@@ -1,14 +1,10 @@
 import assert from "node:assert/strict";
-import { after, before, describe, test } from "node:test";
-import { startServer } from "./helpers.js";
-import { globalErrorHandler } from "../src/middleware/error-handler.js";
+import { describe, test } from "node:test";
+import { expectValidationError, useTestServer } from "./helpers.js";
+import { createErrorHandler, resolveStatus } from "../src/middleware/error-handler.js";
 
 describe("app", () => {
-  let server;
-  before(async () => {
-    server = await startServer();
-  });
-  after(() => server.close());
+  const server = useTestServer();
 
   test("GET / returns the welcome message", async () => {
     const res = await server.request("GET", "/");
@@ -44,12 +40,13 @@ describe("app", () => {
 
   test("invalid ObjectIds are rejected with 400 instead of a 500", async () => {
     const res = await server.request("GET", "/book/not-an-id");
-    assert.equal(res.status, 400);
-    assert.equal(res.json.message, "validationErr");
+    expectValidationError(res);
   });
 });
 
-describe("globalErrorHandler", () => {
+describe("error handler", () => {
+  const productionHandler = createErrorHandler({ isProduction: true });
+
   const fakeResponse = () => ({
     statusCode: undefined,
     body: undefined,
@@ -66,22 +63,38 @@ describe("globalErrorHandler", () => {
   test("hides internal error details and stack traces in production", (t) => {
     t.mock.method(console, "error", () => {});
     const res = fakeResponse();
-    globalErrorHandler(new Error("connection string leaked"), {}, res, () => {});
+    productionHandler(new Error("connection string leaked"), {}, res, () => {});
     assert.equal(res.statusCode, 500);
     assert.deepEqual(res.body, { message: "Internal server error" });
   });
 
   test("uses Error#cause as the HTTP status and keeps client error messages", () => {
     const res = fakeResponse();
-    globalErrorHandler(new Error("Empty Cart", { cause: 400 }), {}, res, () => {});
+    productionHandler(new Error("Empty Cart", { cause: 400 }), {}, res, () => {});
     assert.equal(res.statusCode, 400);
     assert.deepEqual(res.body, { message: "Empty Cart" });
+  });
+
+  test("development responses include the stack trace", () => {
+    const res = fakeResponse();
+    createErrorHandler({ isProduction: false })(new Error("Empty Cart", { cause: 400 }), {}, res, () => {});
+    assert.ok(res.body.stack);
+  });
+
+  test("maps library errors to HTTP statuses through the rule table", () => {
+    const named = (name, extra = {}) => Object.assign(new Error(name), { name, ...extra });
+    assert.equal(resolveStatus(named("CastError")), 400);
+    assert.equal(resolveStatus(named("MulterError")), 400);
+    assert.equal(resolveStatus(named("TokenExpiredError")), 401);
+    assert.equal(resolveStatus(named("MongoServerError", { code: 11000 })), 409);
+    assert.equal(resolveStatus(Object.assign(new Error("too large"), { status: 413 })), 413);
+    assert.equal(resolveStatus(new Error("unknown")), 500);
   });
 
   test("does not crash when cause is not a status code", () => {
     const res = fakeResponse();
     const err = new Error("boom", { cause: new Error("inner") });
-    globalErrorHandler(err, {}, res, () => {});
+    productionHandler(err, {}, res, () => {});
     assert.equal(res.statusCode, 500);
   });
 });

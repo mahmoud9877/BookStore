@@ -3,7 +3,8 @@
 import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { RegisterUserDto, UserResponseDto } from "../src/modules/auth/auth.dto.js";
+import { RegisterUserDto } from "../src/modules/auth/auth.dto.js";
+import { UserResponseDto } from "../src/modules/users/user.dto.js";
 import { AddToCartDto, CartResponseDto } from "../src/modules/cart/cart.dto.js";
 import {
   BookResponseDto,

@@ -1,6 +1,8 @@
 import { CATEGORY_OPTIONS } from "./category-options.js";
 import { CategoryResponseDto } from "./category.dto.js";
-import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
+import { BadRequestError, ensureFound } from "../../core/http-errors.js";
+
+const CATEGORY_NOT_FOUND = "Category not found";
 
 export class CategoryService {
   #categories;
@@ -18,9 +20,7 @@ export class CategoryService {
   }
 
   async getCategory(id) {
-    const category = await this.#categories.findById(id);
-    if (!category) throw new NotFoundError("Category not found");
-    return CategoryResponseDto.from(category);
+    return CategoryResponseDto.from(ensureFound(await this.#categories.findById(id), CATEGORY_NOT_FOUND));
   }
 
   /** @param {import("./category.dto.js").CreateCategoryDto} dto */
@@ -35,13 +35,10 @@ export class CategoryService {
       throw new BadRequestError(message, { error: message });
     }
     const category = await this.#categories.updateById(id, { name });
-    if (!category) throw new NotFoundError("Category not found");
-    return CategoryResponseDto.from(category);
+    return CategoryResponseDto.from(ensureFound(category, CATEGORY_NOT_FOUND));
   }
 
   async deleteCategory(id) {
-    if (!(await this.#categories.deleteById(id))) {
-      throw new NotFoundError("Category not found");
-    }
+    ensureFound(await this.#categories.deleteById(id), CATEGORY_NOT_FOUND);
   }
 }

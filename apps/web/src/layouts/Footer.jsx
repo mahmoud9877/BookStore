@@ -2,13 +2,79 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
 
+const MENUS = [
+  {
+    title: "About Us",
+    links: [
+      { label: "Vision", to: "" },
+      { label: "Articles", to: "" },
+      { label: "Careers", to: "" },
+      { label: "Service Terms", to: "" },
+      { label: "Donate", to: "" },
+    ],
+  },
+  {
+    title: "Discover",
+    links: [
+      { label: "Home", to: "/" },
+      { label: "Books", to: "/" },
+      { label: "Authors", to: "#" },
+      { label: "Subjects", to: "#" },
+      { label: "Advanced Search", to: "#" },
+    ],
+  },
+  {
+    title: "My Account",
+    links: [
+      { label: "Sign In", to: "/login" },
+      { label: "View Cart", to: "/cart" },
+      { label: "My Wishlist", to: "#" },
+      { label: "Track My Order", to: "#" },
+    ],
+  },
+  {
+    title: "Help",
+    links: [
+      { label: "Help Center", to: "#" },
+      { label: "Report a Problem", to: "#" },
+      { label: "Suggesting Edits", to: "#" },
+      { label: "Contact Us", to: "#" },
+    ],
+  },
+];
+
+const SOCIAL_LINKS = [
+  { label: "Facebook", icon: "facebook", href: "https://facebook.com" },
+  { label: "Twitter", icon: "twitter", href: "http://twitter.com" },
+  { label: "Youtube", icon: "youtube", href: "http://youtube.com" },
+  { label: "Behance", icon: "behance", href: "http://behance.com" },
+];
+
+const SOCIAL_ICON_STYLE = { fontSize: "2rem", margin: "10px", color: "white" };
+
+function FooterMenu({ title, links, className }) {
+  return (
+    <div className={className}>
+      <div className="footer-menu">
+        <h5>{title}</h5>
+        <ul className="list-unstyled">
+          {links.map(({ label, to }) => (
+            <li key={label} className="mb-2">
+              <Link to={to}>{label}</Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function Footer() {
   return (
     <>
       <footer id="footer" className="bg-light pt-5">
         <div className="container">
           <div className="row">
-            {/* Company Info Section */}
             <div className="col-md-4 mb-4 mb-md-0">
               <div className="footer-item">
                 <div className="company-brand">
@@ -23,92 +89,13 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Footer Menus */}
-            <div className="col-md-2 mb-4 mb-md-0">
-              <div className="footer-menu">
-                <h5>About Us</h5>
-                <ul className="list-unstyled">
-                  <li className="mb-2">
-                    <Link to="">Vision</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="">Articles</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="">Careers</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="">Service Terms</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="">Donate</Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="col-md-2 mb-4 mb-md-0">
-              <div className="footer-menu">
-                <h5>Discover</h5>
-                <ul className="list-unstyled">
-                  <li className="mb-2">
-                    <Link to="/">Home</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="/">Books</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Authors</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Subjects</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Advanced Search</Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="col-md-2 mb-4 mb-md-0">
-              <div className="footer-menu">
-                <h5>My Account</h5>
-                <ul className="list-unstyled">
-                  <li className="mb-2">
-                    <Link to="/login">Sign In</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="/cart">View Cart</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">My Wishlist</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Track My Order</Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="col-md-2">
-              <div className="footer-menu">
-                <h5>Help</h5>
-                <ul className="list-unstyled">
-                  <li className="mb-2">
-                    <Link to="#">Help Center</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Report a Problem</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Suggesting Edits</Link>
-                  </li>
-                  <li className="mb-2">
-                    <Link to="#">Contact Us</Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
+            {MENUS.map((menu, index) => (
+              <FooterMenu
+                key={menu.title}
+                {...menu}
+                className={index === MENUS.length - 1 ? "col-md-2" : "col-md-2 mb-4 mb-md-0"}
+              />
+            ))}
           </div>
         </div>
       </footer>
@@ -132,74 +119,13 @@ export default function Footer() {
 
             <div className="col-md-6 text-center text-md-end">
               <ul className="list-inline mb-0">
-                <li className="list-inline-item">
-                  <a
-                    href="https://facebook.com"
-                    aria-label="Facebook"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i
-                      className="bi bi-facebook"
-                      style={{
-                        fontSize: "2rem",
-                        margin: "10px",
-                        color: "white",
-                      }}
-                    ></i>
-                  </a>
-                </li>
-                <li className="list-inline-item">
-                  <a
-                    href="http://twitter.com"
-                    aria-label="Twitter"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i
-                      className="bi bi-twitter"
-                      style={{
-                        fontSize: "2rem",
-                        margin: "10px",
-                        color: "white",
-                      }}
-                    ></i>
-                  </a>
-                </li>
-                <li className="list-inline-item">
-                  <a
-                    href="http://youtube.com"
-                    aria-label="Youtube"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i
-                      className="bi bi-youtube"
-                      style={{
-                        fontSize: "2rem",
-                        margin: "10px",
-                        color: "white",
-                      }}
-                    ></i>
-                  </a>
-                </li>
-                <li className="list-inline-item">
-                  <a
-                    href="http://behance.com"
-                    aria-label="Behance"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i
-                      className="bi bi-behance"
-                      style={{
-                        fontSize: "2rem",
-                        margin: "10px",
-                        color: "white",
-                      }}
-                    ></i>
-                  </a>
-                </li>
+                {SOCIAL_LINKS.map(({ label, icon, href }) => (
+                  <li key={label} className="list-inline-item">
+                    <a href={href} aria-label={label} target="_blank" rel="noopener noreferrer">
+                      <i className={`bi bi-${icon}`} aria-hidden="true" style={SOCIAL_ICON_STYLE}></i>
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

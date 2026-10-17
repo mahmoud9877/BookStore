@@ -1,6 +1,9 @@
 import userModel from "./user.model.js";
 import { BaseRepository } from "../../core/base-repository.js";
 
+const AUTH_PROJECTION = "userName email image role";
+const WITHOUT_SECRETS = "-password -code";
+
 export class UserRepository extends BaseRepository {
   constructor(model = userModel) {
     super(model);
@@ -8,7 +11,7 @@ export class UserRepository extends BaseRepository {
 
   /** Projection used to authenticate requests (no password). */
   findAuthUserById(id) {
-    return this.model.findById(id).select("userName email image role").lean();
+    return this.findById(id, { select: AUTH_PROJECTION });
   }
 
   findByEmail(email) {
@@ -25,10 +28,10 @@ export class UserRepository extends BaseRepository {
   }
 
   markEmailConfirmed(email) {
-    return this.model.findOneAndUpdate({ email }, { confirmEmail: true }).lean();
+    return this.updateWhere({ email }, { confirmEmail: true });
   }
 
   listWithoutSecrets() {
-    return this.model.find({}).select("-password -code").lean();
+    return this.findMany({}, { select: WITHOUT_SECRETS });
   }
 }

@@ -1,6 +1,5 @@
-import { apiClient } from "../../lib/api-client.js";
+import { apiClient, responseData } from "../../lib/api-client.js";
 
-export const login = async (credentials) =>
-  (await apiClient.post("/auth/login", credentials)).data;
+export const login = (credentials) => responseData(apiClient.post("/auth/login", credentials));
 
-export const signup = async (user) => (await apiClient.post("/auth/signup", user)).data;
+export const signup = (user) => responseData(apiClient.post("/auth/signup", user));

@@ -1,11 +1,16 @@
 import { publicBaseUrl } from "../../core/http-request.js";
 import { asyncHandler } from "../../middleware/error-handler.js";
 
+const sendConfirmationResult = (res, { redirectUrl, message }) =>
+  redirectUrl ? res.redirect(redirectUrl) : res.status(200).json({ message });
+
 export class AuthController {
   #authService;
+  #emailConfirmation;
 
-  constructor(authService) {
+  constructor(authService, emailConfirmationService) {
     this.#authService = authService;
+    this.#emailConfirmation = emailConfirmationService;
   }
 
   signup = asyncHandler(async (req, res) => {
@@ -16,12 +21,11 @@ export class AuthController {
   });
 
   confirmEmail = asyncHandler(async (req, res) => {
-    const result = await this.#authService.confirmEmail(req.dto.token);
-    return sendConfirmationResult(res, result);
+    return sendConfirmationResult(res, await this.#emailConfirmation.confirm(req.dto.token));
   });
 
   resendConfirmationEmail = asyncHandler(async (req, res) => {
-    const result = await this.#authService.resendConfirmationEmail(req.dto.token, {
+    const result = await this.#emailConfirmation.resend(req.dto.token, {
       apiBaseUrl: publicBaseUrl(req),
     });
     return sendConfirmationResult(res, result);
@@ -31,11 +35,4 @@ export class AuthController {
     const { token, role } = await this.#authService.login(req.dto);
     return res.status(200).json({ message: "Done", token, role });
   });
-
-  listUsers = asyncHandler(async (req, res) => {
-    return res.json({ message: "done", users: await this.#authService.listUsers() });
-  });
 }
-
-const sendConfirmationResult = (res, { redirectUrl, message }) =>
-  redirectUrl ? res.redirect(redirectUrl) : res.status(200).json({ message });

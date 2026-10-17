@@ -1,5 +1,5 @@
 import joi from "joi";
-import { RequestDto, ResponseDto, fields } from "../../core/dto.js";
+import { RequestDto, ResponseDto, fields, objectIdParamDto } from "../../core/dto.js";
 
 // ---------- Requests
 
@@ -11,37 +11,20 @@ const bookAttributes = {
   category: joi.string().trim().required(),
   quantity: joi.number().integer().min(1).required(),
 };
+const BOOK_ATTRIBUTE_NAMES = Object.keys(bookAttributes);
 
 /** Book attributes sent by the dashboard form (multipart; the cover arrives as req.file). */
-export class BookAttributesDto extends RequestDto {
+export class CreateBookDto extends RequestDto {
   static schema = joi.object(bookAttributes).unknown(true);
-
-  constructor({ bookTitle, author, description, price, category, quantity }) {
-    super();
-    this.bookTitle = bookTitle;
-    this.author = author;
-    this.description = description;
-    this.price = price;
-    this.category = category;
-    this.quantity = quantity;
-  }
 
   /** Plain attribute object for persistence. */
   toAttributes() {
-    const { bookTitle, author, description, price, category, quantity } = this;
-    return { bookTitle, author, description, price, category, quantity };
+    return Object.fromEntries(BOOK_ATTRIBUTE_NAMES.map((name) => [name, this[name]]));
   }
 }
 
-export class CreateBookDto extends BookAttributesDto {}
-
-export class UpdateBookDto extends BookAttributesDto {
+export class UpdateBookDto extends CreateBookDto {
   static schema = joi.object({ ...bookAttributes, id: fields.objectId() }).unknown(true);
-
-  constructor(input) {
-    super(input);
-    this.id = input.id;
-  }
 }
 
 /** `?page=&limit=`: invalid or missing values mean "no pagination" (never an error). */
@@ -68,41 +51,26 @@ export class ListBooksQueryDto extends RequestDto {
 }
 
 /** Routes addressing a book as /:bookId. */
-export class BookIdDto extends RequestDto {
-  static schema = joi.object({ bookId: fields.objectId() });
-
-  constructor({ bookId }) {
-    super();
-    this.bookId = bookId;
-  }
-}
+export class BookIdDto extends objectIdParamDto("bookId") {}
 
 /** DELETE /book/delete/:id. */
-export class DeleteBookDto extends RequestDto {
-  static schema = joi.object({ id: fields.objectId() });
-
-  constructor({ id }) {
-    super();
-    this.id = id;
-  }
-}
+export class DeleteBookDto extends objectIdParamDto("id") {}
 
 // ---------- Responses
 
 /** Public view of a book. Omits the `likes` user-id list and Mongoose internals. */
 export class BookResponseDto extends ResponseDto {
-  constructor(book) {
-    super();
-    this._id = book._id;
-    this.bookTitle = book.bookTitle;
-    this.author = book.author;
-    this.description = book.description;
-    this.image = book.image;
-    this.price = book.price;
-    this.quantity = book.quantity;
-    this.category = book.category;
-    this.totalLikes = book.totalLikes;
-    this.createdAt = book.createdAt;
-    this.updatedAt = book.updatedAt;
-  }
+  static fields = [
+    "_id",
+    "bookTitle",
+    "author",
+    "description",
+    "image",
+    "price",
+    "quantity",
+    "category",
+    "totalLikes",
+    "createdAt",
+    "updatedAt",
+  ];
 }

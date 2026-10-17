@@ -8,12 +8,14 @@ import * as authService from "../modules/auth/auth.service.js";
 import * as bookService from "../modules/books/book.service.js";
 import * as cartService from "../modules/cart/cart.service.js";
 import * as orderService from "../modules/orders/order.service.js";
+import * as categoryService from "../modules/categories/category.service.js";
 
 jest.mock("react-detect-offline", () => ({ Offline: () => null }));
 jest.mock("../modules/auth/auth.service.js");
 jest.mock("../modules/books/book.service.js");
 jest.mock("../modules/cart/cart.service.js");
 jest.mock("../modules/orders/order.service.js");
+jest.mock("../modules/categories/category.service.js");
 
 const BOOK = { _id: "b1", bookTitle: "dune", author: "frank herbert", price: 10, image: "" };
 
@@ -27,7 +29,16 @@ beforeEach(() => {
   localStorage.clear();
   bookService.listBooks.mockResolvedValue([BOOK]);
   cartService.getCartItems.mockResolvedValue([]);
+  categoryService.listCategoryOptions.mockResolvedValue(["fiction", "non-fiction"]);
 });
+
+/** Types into labelled fields, then clicks the named button. */
+function fillAndSubmit(fields, buttonName) {
+  Object.entries(fields).forEach(([label, text]) => userEvent.type(screen.getByLabelText(label), text));
+  userEvent.click(screen.getByRole("button", { name: buttonName }));
+}
+
+const VALID_LOGIN = { Email: "reader@example.com", Password: "secret1" };
 
 test("redirects anonymous visitors to the login page", async () => {
   renderAt("/");
@@ -37,10 +48,7 @@ test("redirects anonymous visitors to the login page", async () => {
 test("logging in stores the session and opens the home page", async () => {
   authService.login.mockResolvedValue({ message: "Done", token: makeToken(), role: "User" });
   renderAt("/login");
-
-  userEvent.type(screen.getByLabelText("Email"), "reader@example.com");
-  userEvent.type(screen.getByLabelText("Password"), "secret1");
-  userEvent.click(screen.getByRole("button", { name: "Login" }));
+  fillAndSubmit(VALID_LOGIN, "Login");
 
   expect(await screen.findByText("Featured Books")).toBeInTheDocument();
   expect(await screen.findByText("dune")).toBeInTheDocument();
@@ -51,25 +59,26 @@ test("logging in stores the session and opens the home page", async () => {
 test("shows the API's error message when login fails", async () => {
   authService.login.mockRejectedValue({ response: { data: { message: "Confirm Your Email" } } });
   renderAt("/login");
-
-  userEvent.type(screen.getByLabelText("Email"), "reader@example.com");
-  userEvent.type(screen.getByLabelText("Password"), "secret1");
-  userEvent.click(screen.getByRole("button", { name: "Login" }));
+  fillAndSubmit(VALID_LOGIN, "Login");
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Confirm Your Email");
 });
 
-test("expired sessions are discarded", async () => {
-  renderAt("/", { token: makeToken({ exp: Date.now() / 1000 - 60 }) });
+/** Asserts the app is on the login page with no stored session. */
+async function expectSignedOut() {
   expect(await screen.findByText("Log-In")).toBeInTheDocument();
   expect(localStorage.getItem("userToken")).toBeNull();
+}
+
+test("expired sessions are discarded", async () => {
+  renderAt("/", { token: makeToken({ exp: Date.now() / 1000 - 60 }) });
+  await expectSignedOut();
 });
 
 test("logout clears the session and returns to login", async () => {
   renderAt("/", { token: makeToken() });
   userEvent.click(await screen.findByRole("button", { name: /logout/i }));
-  expect(await screen.findByText("Log-In")).toBeInTheDocument();
-  expect(localStorage.getItem("userToken")).toBeNull();
+  await expectSignedOut();
 });
 
 test("the dashboard is only available to admins", async () => {
@@ -83,6 +92,7 @@ test("admins can open the dashboard from the header", async () => {
   userEvent.click(await screen.findByRole("link", { name: /dashboard/i }));
   expect(await screen.findByText("Book List")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add Book" })).toBeInTheDocument();
+  expect(await screen.findByRole("option", { name: "Non-fiction" })).toBeInTheDocument();
 });
 
 test("unknown routes render the error page", async () => {
@@ -128,15 +138,30 @@ test("signup sends the user to login with a notice", async () => {
   authService.signup.mockResolvedValue({ message: "Done" });
   renderAt("/signup");
 
-  userEvent.type(screen.getByLabelText("Name"), "reader");
-  userEvent.type(screen.getByLabelText("Email"), "reader@example.com");
-  userEvent.type(screen.getByLabelText("Password"), "secret1");
-  userEvent.type(screen.getByLabelText("Confirm Password"), "secret1");
-  userEvent.click(screen.getByRole("button", { name: "Sign Up" }));
+  fillAndSubmit(
+    { Name: "reader", ...VALID_LOGIN, "Confirm Password": "secret1" },
+    "Sign Up"
+  );
 
   expect(await screen.findByText(/Account created/)).toBeInTheDocument();
   expect(screen.getByText("Log-In")).toBeInTheDocument();
   expect(authService.signup).toHaveBeenCalledWith(
     expect.objectContaining({ userName: "reader", email: "reader@example.com" })
   );
+});
+
+test("editing a book pre-fills the dashboard form and sends an update", async () => {
+  const bookService = jest.requireMock("../modules/books/book.service.js");
+  bookService.updateBook.mockResolvedValue({});
+  jest.spyOn(window, "alert").mockImplementation(() => {});
+  renderAt("/dashboard", { token: makeToken({ role: "Admin" }) });
+
+  userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+  expect(await screen.findByDisplayValue("frank herbert")).toBeInTheDocument();
+  userEvent.click(screen.getByRole("button", { name: "Update Book" }));
+
+  await screen.findByRole("button", { name: "Add Book" }); // form resets after saving
+  const [bookId, formData] = bookService.updateBook.mock.calls[0];
+  expect(bookId).toBe("b1");
+  expect(formData.get("author")).toBe("frank herbert");
 });

@@ -12,6 +12,9 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/** Resolves the response body of an axios request. */
+export const responseData = async (request) => (await request).data;
+
 /** Extracts a user-facing message from an API error response. */
 export function getErrorMessage(error, fallback = "Something went wrong. Please try again.") {
   const data = error?.response?.data;

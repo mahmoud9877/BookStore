@@ -1,6 +1,6 @@
-import { BaseRepository } from "../../core/base-repository.js";
 import orderModel from "./order.model.js";
 import { ORDER_STATUSES } from "./order-statuses.js";
+import { BaseRepository } from "../../core/base-repository.js";
 
 export class OrderRepository extends BaseRepository {
   constructor(model = orderModel) {
@@ -13,7 +13,7 @@ export class OrderRepository extends BaseRepository {
 
   /** Sets the status (plus any extra fields) and resolves the updated order. */
   updateStatus(id, status, fields = {}) {
-    return this.model.findByIdAndUpdate(id, { status, ...fields }, { new: true }).lean();
+    return this.updateWhere({ _id: id }, { status, ...fields });
   }
 
   /**
@@ -21,9 +21,10 @@ export class OrderRepository extends BaseRepository {
    * awaiting payment — so callers act on each rejection exactly once.
    */
   rejectIfAwaitingPayment(id) {
-    return this.model.findOneAndUpdate(
+    return this.updateWhere(
       { _id: id, status: ORDER_STATUSES.waitPayment },
-      { status: ORDER_STATUSES.rejected }
-    ).lean();
+      { status: ORDER_STATUSES.rejected },
+      { returnOriginal: true }
+    );
   }
 }

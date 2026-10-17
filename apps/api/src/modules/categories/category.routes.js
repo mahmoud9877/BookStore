@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { CategoryIdDto, CreateCategoryDto, UpdateCategoryDto } from "./category.dto.js";
-import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 
 export function createCategoryRouter({ categoryController, authGuard }) {
   const router = Router();
-  const adminOnly = authGuard.authenticate([USER_ROLES.Admin]);
+  const adminOnly = authGuard.adminOnly();
 
   router.get("/", categoryController.listCategories);
   // Must be registered before "/:id", otherwise "options" is treated as an id.

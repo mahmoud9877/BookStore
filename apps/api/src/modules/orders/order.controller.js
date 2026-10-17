@@ -15,9 +15,9 @@ export class OrderController {
     return res.status(201).json({ message: "Order created successfully", order });
   });
 
-  /** Stripe webhook. Mounted in app.js with a raw body parser (signature verification needs it). */
-  stripeWebhook = asyncHandler(async (req, res) => {
-    const message = await this.#orderService.processStripeWebhook(
+  /** Payment webhook. Mounted in app.js with a raw body parser (signature verification needs it). */
+  paymentWebhook = asyncHandler(async (req, res) => {
+    const message = await this.#orderService.processPaymentWebhook(
       req.body,
       req.headers["stripe-signature"]
     );

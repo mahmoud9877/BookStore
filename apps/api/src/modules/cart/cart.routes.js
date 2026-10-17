@@ -6,7 +6,7 @@ export function createCartRouter({ cartController, authGuard }) {
   const router = Router();
 
   // Every cart route acts on the signed-in user's own cart.
-  router.use(authGuard.authenticate());
+  router.use(authGuard.signedIn());
 
   router.get("/", cartController.getCart);
   router.post("/add", validate(AddToCartDto), cartController.addToCart);

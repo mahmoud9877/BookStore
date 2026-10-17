@@ -34,6 +34,26 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 | Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows; takes request DTOs, returns response DTOs; throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
 | Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | **Every** database read and write for one model, including multi-step operations such as all-or-nothing stock reservation; returns plain objects | its Mongoose model |
 
+- **SOLID in practice:**
+  - *Single responsibility* — `AuthService` (register, login), `EmailConfirmationService`
+    (confirmation tokens, email, confirm/resend) and `UserService` (user administration)
+    are separate; order status rules live in `OrderPolicy` (`modules/orders/order-policy.js`).
+  - *Dependency inversion / open–closed* — `OrderService` depends on a payment **port**
+    (`modules/orders/payment-gateway.js`: `createCheckout`, `parseWebhookEvent` →
+    `PAYMENT_OUTCOMES`). `StripePaymentGateway` is one adapter; it alone knows Stripe's
+    line-item format, minor units and event types. Another provider is a new adapter
+    wired in `container.js`, with no change to the order domain.
+  - Error-status mapping is a rule table (`STATUS_RULES` in `error-handler.js`), and
+    `createErrorHandler({ isProduction })` / `createApp(container)` receive configuration
+    instead of reading globals — only `server.js` and `container.js` read `env`.
+  - Repositories keep their model private (`#model`) and build every query from
+    `BaseRepository` primitives (`findMany`, `updateWhere`, `bulkWrite`, …).
+- **No duplication:** request DTOs carry exactly their schema's keys (no hand-written
+  copies), single-id DTOs come from `objectIdParamDto(name)`, response DTOs declare
+  `fields`/`nested`, `HttpError` subclasses declare only `status`/`defaultMessage`,
+  `ensureFound()` replaces repeated not-found checks, and `authGuard.signedIn()` /
+  `adminOnly()` name the two access levels. Checked with jscpd (0 clones at the default
+  thresholds across API source, API tests and the web app).
 - **Composition root:** `src/container.js` is the only place that instantiates concrete
   classes and wires them together. `createApp(container)` mounts the routers;
   `server.js` builds the container, connects `container.database` and listens.
@@ -82,8 +102,13 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 
 ### Web (`apps/web`)
 
-- **Feature modules** (`src/modules/<feature>/`) hold pages (`*Page.jsx`), the feature's API
-  calls (`*.service.js`), hooks and validation. Pages never call axios directly.
+- **Feature modules** (`src/modules/<feature>/`) hold pages (`*Page.jsx`), their child
+  components (e.g. `BookForm`, `BookList`, `CartItemCard`, `OrderForm`), the feature's API
+  calls (`*.service.js`) and validation. Pages coordinate; components render; services
+  talk to the API. Pages never call axios directly.
+- **Shared hooks** (`src/hooks/`): `useAsyncData(load)` (loading/error/data for any request,
+  ignoring superseded responses) and `useForm(initialValues)` (controlled inputs, incl. files).
+- Category options come from `GET /category/options`, so the API is the single source.
 - **`lib/api-client.js`** is the single axios instance; it attaches
   `Authorization: <BEARER_KEY><token>` and `getErrorMessage()` turns API errors into UI text.
 - **`modules/auth/UserContext.jsx`** owns the session (decoded from the JWT in

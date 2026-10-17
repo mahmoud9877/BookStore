@@ -1,4 +1,5 @@
 import { asyncHandler } from "./error-handler.js";
+import { USER_ROLES } from "../modules/users/user.roles.js";
 import { ForbiddenError, UnauthorizedError } from "../core/http-errors.js";
 
 /**
@@ -25,6 +26,16 @@ export class AuthGuard {
       }
       return next();
     });
+  }
+
+  /** Any signed-in user. */
+  signedIn() {
+    return this.authenticate();
+  }
+
+  /** Signed-in administrators only. */
+  adminOnly() {
+    return this.authenticate([USER_ROLES.Admin]);
   }
 
   async #resolveUser(authorization) {

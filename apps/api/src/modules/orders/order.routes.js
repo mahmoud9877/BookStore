@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { CancelOrderDto, CreateOrderDto, OrderIdDto } from "./order.dto.js";
-import { USER_ROLES } from "../users/user.roles.js";
 import { validate } from "../../middleware/validate.js";
 
 // POST /order/webhook is registered in app.js because it needs the raw request body.
@@ -9,19 +8,19 @@ export function createOrderRouter({ orderController, authGuard }) {
 
   router.post(
     "/",
-    authGuard.authenticate(),
+    authGuard.signedIn(),
     validate(CreateOrderDto),
     orderController.createOrder
   );
   router.patch(
     "/:orderId/cancel",
-    authGuard.authenticate(),
+    authGuard.signedIn(),
     validate(CancelOrderDto),
     orderController.cancelOrder
   );
   router.patch(
     "/:orderId/delivered",
-    authGuard.authenticate([USER_ROLES.Admin]),
+    authGuard.adminOnly(),
     validate(OrderIdDto),
     orderController.deliverOrder
   );

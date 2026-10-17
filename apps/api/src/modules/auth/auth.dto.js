@@ -1,5 +1,5 @@
 import joi from "joi";
-import { RequestDto, ResponseDto } from "../../core/dto.js";
+import { RequestDto } from "../../core/dto.js";
 
 // ---------- Requests (rules mirror apps/web/src/modules/auth/auth.validation.js)
 
@@ -16,14 +16,8 @@ export class RegisterUserDto extends RequestDto {
     })
     .unknown(true);
 
-  // cPassword is only checked, never carried further.
-  constructor({ userName, email, password, phone }) {
-    super();
-    this.userName = userName;
-    this.email = email;
-    this.password = password;
-    this.phone = phone;
-  }
+  // Checked, but never carried further.
+  static validateOnly = ["cPassword"];
 }
 
 export class LoginDto extends RequestDto {
@@ -33,39 +27,8 @@ export class LoginDto extends RequestDto {
       password: joi.string().required(),
     })
     .unknown(true);
-
-  constructor({ email, password }) {
-    super();
-    this.email = email;
-    this.password = password;
-  }
 }
 
 export class ConfirmationTokenDto extends RequestDto {
   static schema = joi.object({ token: joi.string().required() });
-
-  constructor({ token }) {
-    super();
-    this.token = token;
-  }
-}
-
-// ---------- Responses
-
-/** Public view of a user account (never includes password or verification code). */
-export class UserResponseDto extends ResponseDto {
-  constructor(user) {
-    super();
-    this._id = user._id;
-    this.userName = user.userName;
-    this.email = user.email;
-    this.role = user.role;
-    this.phone = user.phone;
-    this.address = user.address;
-    this.image = user.image;
-    this.DOB = user.DOB;
-    this.confirmEmail = user.confirmEmail;
-    this.createdAt = user.createdAt;
-    this.updatedAt = user.updatedAt;
-  }
 }

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet";
 import React, { useState } from "react";
+import useForm from "../../hooks/useForm.js";
 import { useNavigate, Link } from "react-router-dom";
 import { signup } from "./auth.service.js";
 import { signupSchema } from "./auth.validation.js";
@@ -13,12 +14,12 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [user, setUser] = useState({ userName: "", email: "", password: "", cPassword: "" });
-
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setUser((current) => ({ ...current, [name]: value }));
-  }
+  const { values: user, handleChange } = useForm({
+    userName: "",
+    email: "",
+    password: "",
+    cPassword: "",
+  });
 
   async function handleSubmit(event) {
     event.preventDefault();

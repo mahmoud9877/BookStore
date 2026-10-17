@@ -1,5 +1,5 @@
 import joi from "joi";
-import { RequestDto, ResponseDto, fields } from "../../core/dto.js";
+import { RequestDto, ResponseDto, fields, objectIdParamDto } from "../../core/dto.js";
 
 // ---------- Requests
 
@@ -17,12 +17,9 @@ export class CreateOrderDto extends RequestDto {
     })
     .unknown(true);
 
-  constructor({ address, phone, note, paymentType }) {
-    super();
-    this.address = address;
-    this.phone = [].concat(phone); // stored as an array of numbers
-    this.note = note;
-    this.paymentType = paymentType;
+  constructor(value) {
+    super(value);
+    this.phone = [].concat(this.phone); // stored as an array of numbers
   }
 }
 
@@ -31,61 +28,37 @@ export class CancelOrderDto extends RequestDto {
     orderId: fields.objectId(),
     reason: joi.string().min(2).max(5000).required(),
   });
-
-  constructor({ orderId, reason }) {
-    super();
-    this.orderId = orderId;
-    this.reason = reason;
-  }
 }
 
-export class OrderIdDto extends RequestDto {
-  static schema = joi.object({ orderId: fields.objectId() });
-
-  constructor({ orderId }) {
-    super();
-    this.orderId = orderId;
-  }
-}
+export class OrderIdDto extends objectIdParamDto("orderId") {}
 
 // ---------- Responses
 
 export class OrderItemResponseDto extends ResponseDto {
-  constructor(item) {
-    super();
-    this.bookId = item.bookId;
-    this.bookTitle = item.bookTitle;
-    this.quantity = item.quantity;
-    this.unitPrice = item.unitPrice;
-    this.finalPrice = item.finalPrice;
-  }
+  static fields = ["bookId", "bookTitle", "quantity", "unitPrice", "finalPrice"];
 }
 
 export class OrderResponseDto extends ResponseDto {
-  constructor(order) {
-    super();
-    this._id = order._id;
-    this.userId = order.userId;
-    this.address = order.address;
-    this.phone = order.phone;
-    this.note = order.note;
-    this.books = OrderItemResponseDto.fromList(order.books);
-    this.subtotal = order.subtotal;
-    this.finalPrice = order.finalPrice;
-    this.paymentType = order.paymentType;
-    this.status = order.status;
-    this.reason = order.reason;
-    this.updatedBy = order.updatedBy;
-    this.createdAt = order.createdAt;
-    this.updatedAt = order.updatedAt;
-  }
+  static fields = [
+    "_id",
+    "userId",
+    "address",
+    "phone",
+    "note",
+    "books",
+    "subtotal",
+    "finalPrice",
+    "paymentType",
+    "status",
+    "reason",
+    "updatedBy",
+    "createdAt",
+    "updatedAt",
+  ];
+  static nested = { books: OrderItemResponseDto };
 }
 
-/** Only what a client needs to continue to Stripe Checkout. */
+/** Only what a client needs to continue to the payment provider's checkout page. */
 export class CheckoutSessionResponseDto extends ResponseDto {
-  constructor(session) {
-    super();
-    this.id = session.id;
-    this.url = session.url;
-  }
+  static fields = ["id", "url"];
 }

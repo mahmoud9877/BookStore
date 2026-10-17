@@ -1,14 +1,10 @@
 import assert from "node:assert/strict";
-import { after, before, describe, test } from "node:test";
+import { describe, test } from "node:test";
 import { PasswordHasher } from "../src/security/password-hasher.js";
-import { authenticateAs, makeUser, startServer } from "./helpers.js";
+import { authenticateAs, expectValidationError, makeUser, useTestServer } from "./helpers.js";
 
 describe("authentication and authorization", () => {
-  let server;
-  before(async () => {
-    server = await startServer();
-  });
-  after(() => server.close());
+  const server = useTestServer();
 
   test("rejects requests without the bearer key", async () => {
     const res = await server.request("POST", "/book/add");
@@ -49,8 +45,7 @@ describe("authentication and authorization", () => {
   test("lets admins through to request validation", async (t) => {
     const headers = authenticateAs(t, server.container, makeUser("Admin"));
     const res = await server.request("POST", "/book/add", { headers });
-    assert.equal(res.status, 400);
-    assert.equal(res.json.message, "validationErr");
+    expectValidationError(res);
   });
 
   test("PATCH /book/:id/unlike responds instead of hanging (auth was never invoked)", async () => {
@@ -82,18 +77,13 @@ describe("authentication and authorization", () => {
 });
 
 describe("signup and login", () => {
-  let server;
-  before(async () => {
-    server = await startServer();
-  });
-  after(() => server.close());
+  const server = useTestServer();
 
   test("signup validates the request body", async () => {
     const res = await server.request("POST", "/auth/signup", {
       body: { userName: "reader", password: "secret1" },
     });
-    assert.equal(res.status, 400);
-    assert.equal(res.json.message, "validationErr");
+    expectValidationError(res);
   });
 
   test("signup rejects mismatched password confirmation", async () => {

@@ -1,25 +1,15 @@
 import { Helmet } from "react-helmet";
+import React, { useCallback } from "react";
 import { useParams } from "react-router-dom";
-import React, { useState, useEffect } from "react";
 import { getBook } from "./book.service.js";
+import useAsyncData from "../../hooks/useAsyncData.js";
 
 export default function BookDetailsPage() {
   const { bookId } = useParams();
-  const [book, setBook] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let isCurrent = true;
-    setIsLoading(true);
-    getBook(bookId)
-      .then((result) => isCurrent && setBook(result))
-      .catch(() => isCurrent && setError("Failed to fetch book details."))
-      .finally(() => isCurrent && setIsLoading(false));
-    return () => {
-      isCurrent = false;
-    };
-  }, [bookId]);
+  const loadBook = useCallback(() => getBook(bookId), [bookId]);
+  const { data: book, isLoading, error } = useAsyncData(loadBook, {
+    errorMessage: "Failed to fetch book details.",
+  });
 
   if (isLoading) return <div className="container mt-5">Loading...</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;

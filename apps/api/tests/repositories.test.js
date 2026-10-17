@@ -48,11 +48,17 @@ describe("BookRepository.reserveStock", () => {
     { bookId: new Types.ObjectId(), quantity: 5 },
   ];
 
-  test("decrements each book only when enough copies are in stock", async () => {
-    const model = {
-      findOneAndUpdate: mock.fn((filter) => query({ _id: filter._id, price: 10 })),
+  /** Model fake whose conditional decrement resolves `result(filter, call)`. */
+  const stockModel = (result) => {
+    let call = 0;
+    return {
+      findOneAndUpdate: mock.fn((filter) => query(result(filter, call++))),
       bulkWrite: mock.fn(async () => {}),
     };
+  };
+
+  test("decrements each book only when enough copies are in stock", async () => {
+    const model = stockModel((filter) => ({ _id: filter._id, price: 10 }));
     const result = await new BookRepository(model).reserveStock(items);
 
     assert.deepEqual(
@@ -66,11 +72,7 @@ describe("BookRepository.reserveStock", () => {
   });
 
   test("is all-or-nothing: puts back what it took when a later book is short", async () => {
-    let call = 0;
-    const model = {
-      findOneAndUpdate: mock.fn((filter) => query(call++ === 0 ? { _id: filter._id } : null)),
-      bulkWrite: mock.fn(async () => {}),
-    };
+    const model = stockModel((filter, call) => (call === 0 ? { _id: filter._id } : null));
     const result = await new BookRepository(model).reserveStock(items);
 
     assert.deepEqual(result, { unavailable: items[1] });

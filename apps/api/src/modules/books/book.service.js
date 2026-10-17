@@ -1,8 +1,9 @@
 import { BookResponseDto } from "./book.dto.js";
-import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
+import { BadRequestError, ensureFound } from "../../core/http-errors.js";
 
 const IMAGE_FOLDER = "book";
 const IMAGE_REQUIRED = "Image file is required";
+const BOOK_NOT_FOUND = "Book not found";
 
 export class BookService {
   #books;
@@ -24,9 +25,7 @@ export class BookService {
   }
 
   async getBook(bookId) {
-    const book = await this.#books.findById(bookId);
-    if (!book) throw new NotFoundError("Book not found");
-    return BookResponseDto.from(book);
+    return BookResponseDto.from(ensureFound(await this.#books.findById(bookId), BOOK_NOT_FOUND));
   }
 
   /**
@@ -52,15 +51,11 @@ export class BookService {
     if (imagePath) {
       update.image = (await this.#imageStorage.upload(imagePath, IMAGE_FOLDER)).secure_url;
     }
-    const book = await this.#books.updateById(dto.id, update);
-    if (!book) throw new NotFoundError("Book not found");
-    return BookResponseDto.from(book);
+    return BookResponseDto.from(ensureFound(await this.#books.updateById(dto.id, update), BOOK_NOT_FOUND));
   }
 
   async deleteBook(bookId) {
-    if (!(await this.#books.deleteById(bookId))) {
-      throw new NotFoundError("Book not found");
-    }
+    ensureFound(await this.#books.deleteById(bookId), BOOK_NOT_FOUND);
   }
 
   async likeBook(bookId, userId) {
@@ -76,8 +71,6 @@ export class BookService {
   }
 
   async #assertCategoryExists(name) {
-    if (!(await this.#categories.findByName(name))) {
-      throw new NotFoundError("Category not found");
-    }
+    ensureFound(await this.#categories.findByName(name), "Category not found");
   }
 }
