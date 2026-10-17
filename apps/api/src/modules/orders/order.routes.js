@@ -1,9 +1,9 @@
-import { auth } from "../../middleware/auth.js";
+import { auth } from "../../middleware/authenticate.js";
 import express, { Router } from "express";
-import { endpoint } from "./order.endPoint.js";
-import { validation } from "../../middleware/validation.js";
+import { endpoint } from "./order.endpoint.js";
+import { validation } from "../../middleware/validate.js";
 import * as validators from "./order.validation.js";
-import * as orderController from "../order/controller/order.js";
+import * as orderController from "./order.controller.js";
 const router = Router();
 
 router.post(

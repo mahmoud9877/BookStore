@@ -1,11 +1,11 @@
 import cors from "cors";
-import connectDB from "../DB/connection.js";
-import bookPage from "../src/modules/Book/BookRouter.js";
-import authPage from "../src/modules/auth/auth.router.js";
-import cartPage from "../src/modules/cart/cart.router.js";
-import orderPage from "../src/modules/order/order.router.js";
-import { globalErrorHandling } from "./utils/errorHandling.js";
-import categoryPage from "../src/modules/Category/category.router.js";
+import connectDB from "./infrastructure/database.js";
+import bookPage from "./modules/books/book.routes.js";
+import authPage from "./modules/auth/auth.routes.js";
+import cartPage from "./modules/cart/cart.routes.js";
+import orderPage from "./modules/orders/order.routes.js";
+import { globalErrorHandling } from "./middleware/error-handler.js";
+import categoryPage from "./modules/categories/category.routes.js";
 
 const initApp = (app, express) => {
   connectDB();

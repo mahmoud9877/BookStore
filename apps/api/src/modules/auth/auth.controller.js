@@ -1,7 +1,7 @@
-import userModel from "../../../DB/modules/UserModel.js";
-import { asyncHandler } from "../../../src/utils/errorHandling.js";
-import { generateToken } from "../../../src/utils/GenerateAndVerifyToken.js";
-import { hash, compare } from "../../../src/utils/HashAndCompare.js";
+import userModel from "../users/user.model.js";
+import { asyncHandler } from "../../middleware/error-handler.js";
+import { generateToken } from "../../security/token.js";
+import { hash, compare } from "../../security/password.js";
 
 export const getAll = asyncHandler(async (req, res, next) => {
   const check = await userModel.find({});

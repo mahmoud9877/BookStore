@@ -1,7 +1,7 @@
-import cloudinary from "../../utils/cloudinary.js";
-import bookModel from "../../../DB/modules/bookModel.js"; // Make sure you have cloudinary configured
-import { asyncHandler } from "../../utils/errorHandling.js";
-import { categoryModel } from "../../../DB/modules/categoryModel.js"; // Assuming you're using this model for categories
+import cloudinary from "../../infrastructure/cloudinary.js";
+import bookModel from "./book.model.js"; // Make sure you have cloudinary configured
+import { asyncHandler } from "../../middleware/error-handler.js";
+import { categoryModel } from "../categories/category.model.js"; // Assuming you're using this model for categories
 
 // Get a book from the database
 export const getBook = asyncHandler(async (req, res, next) => {

@@ -1,8 +1,8 @@
-import { asyncHandler } from "../../utils/errorHandling.js";
+import { asyncHandler } from "../../middleware/error-handler.js";
 import {
   categoryModel,
   CATEGORY_OPTIONS,
-} from "../../../DB/modules/categoryModel.js";
+} from "./category.model.js";
 
 // Get all categories
 export const getCategories = asyncHandler(async (req, res) => {

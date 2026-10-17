@@ -1,8 +1,8 @@
-import { asyncHandler } from "../../../utils/errorHandling.js";
-import BookModel from "../../../../DB/modules/bookModel.js";
-import orderModel from "../../../../DB/modules/OrderModel.js";
-import payment from "../../../utils/payment.js";
-import cartModel from "../../../../DB/modules/cartModel.js";
+import { asyncHandler } from "../../middleware/error-handler.js";
+import BookModel from "../books/book.model.js";
+import orderModel from "./order.model.js";
+import payment from "../../infrastructure/stripe.js";
+import cartModel from "../cart/cart.model.js";
 import Stripe from "stripe";
 
 export const createOrder = asyncHandler(async (req, res, next) => {

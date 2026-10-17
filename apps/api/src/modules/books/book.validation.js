@@ -1,6 +1,6 @@
 import Joi from "joi";
 import { Types } from "mongoose";
-import { generalFields } from "../../middleware/validation.js";
+import { generalFields } from "../../middleware/validate.js";
 
 export const abbBook = Joi.object({
   bookTitle: Joi.string().required(), // Ensure bookId is a valid string

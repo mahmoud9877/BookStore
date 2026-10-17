@@ -1,5 +1,5 @@
 import joi from "joi";
-import { generalFields } from "../../middleware/validation.js";
+import { generalFields } from "../../middleware/validate.js";
 
 // Define the validation schema
 export const createOrder = joi

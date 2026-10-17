@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { auth } from "../../middleware/auth.js";
-import endpoint from "../cart/cart.endpoint.js";
-import * as cartController from "../cart/cart.js";
+import { auth } from "../../middleware/authenticate.js";
+import endpoint from "./cart.endpoint.js";
+import * as cartController from "./cart.controller.js";
 
 const router = Router();
 

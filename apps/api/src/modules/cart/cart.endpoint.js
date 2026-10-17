@@ -1,4 +1,4 @@
-import { roles } from "../../middleware/auth.js";
+import { roles } from "../../middleware/authenticate.js";
 const endpoint = {
   addToCart: [roles.User],
   deleteFromCart: [roles.User],

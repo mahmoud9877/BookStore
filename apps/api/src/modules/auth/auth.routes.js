@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as regPage from "./registration.js";
+import * as regPage from "./auth.controller.js";
 const router = Router();
 router.post("/signup", regPage.signup);
 router.get("/user", regPage.getAll);

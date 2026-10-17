@@ -1,10 +1,10 @@
 import { Router } from "express";
-import * as BookController from "./Book.js"; // Ensure this imports the necessary methods
-import { endpoint } from "./Book.endpoint.js";
-import { auth } from "../../middleware/auth.js";
-import { validation } from "../../middleware/validation.js";
-import * as validators from "./BookValidation.js";
-import { fileUpload, fileValidation } from "../../utils/multer.js"; // Ensure your file upload utility is imported
+import * as BookController from "./book.controller.js"; // Ensure this imports the necessary methods
+import { endpoint } from "./book.endpoint.js";
+import { auth } from "../../middleware/authenticate.js";
+import { validation } from "../../middleware/validate.js";
+import * as validators from "./book.validation.js";
+import { fileUpload, fileValidation } from "../../middleware/upload.js"; // Ensure your file upload utility is imported
 const router = Router();
 
 // GET route to fetch all books

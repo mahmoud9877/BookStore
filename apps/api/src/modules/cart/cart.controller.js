@@ -1,6 +1,6 @@
-import bookModel from "../../../DB/modules/bookModel.js";
-import cartModel from "../../../DB/modules/cartModel.js";
-import { asyncHandler } from "../../utils/errorHandling.js";
+import bookModel from "../books/book.model.js";
+import cartModel from "./cart.model.js";
+import { asyncHandler } from "../../middleware/error-handler.js";
 
 // Add to cart handler
 export const getCart = asyncHandler(async (req, res, next) => {

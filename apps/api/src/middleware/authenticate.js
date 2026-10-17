@@ -1,6 +1,6 @@
-import userModel from "../../DB/modules/UserModel.js";
-import { asyncHandler } from "../utils/errorHandling.js";
-import { verifyToken } from "../utils/GenerateAndVerifyToken.js";
+import userModel from "../modules/users/user.model.js";
+import { asyncHandler } from "./error-handler.js";
+import { verifyToken } from "../security/token.js";
 export const roles = {
   Admin: "Admin",
   User: "User",
