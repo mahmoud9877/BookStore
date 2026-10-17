@@ -1,13 +1,5 @@
 import mongoose, { model, Schema, Types } from "mongoose";
-
-export const ORDER_STATUSES = Object.freeze({
-  waitPayment: "waitPayment",
-  placed: "placed",
-  canceled: "canceled",
-  rejected: "rejected",
-  onWay: "onWay",
-  delivered: "delivered",
-});
+import { ORDER_STATUSES } from "./order-statuses.js";
 
 const orderSchema = new Schema(
   {

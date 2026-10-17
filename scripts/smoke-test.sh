@@ -82,6 +82,20 @@ expect_status 400 "cannot add more copies than are in stock"
 request POST /cart/add "{\"bookId\":\"$BOOK_ID\",\"quantity\":2}" "$USER_TOKEN"
 expect_status 201 "add to cart"
 
+request POST /cart/add "{\"bookId\":\"$BOOK_ID\",\"quantity\":1}" "$USER_TOKEN"
+expect_status 200 "adding the same book again"
+[[ "$(json "$BODY" d.cart.books[0].quantity)" == "3" ]] || fail "line quantity should be 3, got: $BODY"
+ok "the existing cart line's quantity is incremented"
+
+request DELETE "/cart/$BOOK_ID" "" "$USER_TOKEN"
+expect_status 200 "remove a book from the cart"
+[[ "$(json "$BODY" d.cart.books.length)" == "0" ]] || fail "cart should be empty after removal"
+request DELETE "/cart/$BOOK_ID" "" "$USER_TOKEN"
+expect_status 404 "removing a book that is not in the cart"
+
+request POST /cart/add "{\"bookId\":\"$BOOK_ID\",\"quantity\":2}" "$USER_TOKEN"
+expect_status 200 "re-add to the existing cart"
+
 request POST /order '{"address":"1 Nile St","phone":"01012345678","paymentType":"cash"}' "$USER_TOKEN"
 expect_status 201 "place a cash order"
 ORDER_ID="$(json "$BODY" d.order._id)"
@@ -110,6 +124,18 @@ expect_status 200 "cancel an order"
 request GET "/book/$BOOK_ID"
 [[ "$(json "$BODY" d.book.quantity)" == "3" ]] || fail "cancel should restore stock to 3, got: $BODY"
 ok "cancelling restores stock"
+
+# All-or-nothing stock reservation against the real database.
+SHORT_BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'short book',author:'tester',description:'d',image:'https://example.com/y.png',price:10,quantity:1,category:'$CATEGORY',totalLikes:0,likes:[]}).insertedId.toString())" | tail -1)"
+request POST /cart/add "{\"bookId\":\"$BOOK_ID\",\"quantity\":1}" "$USER_TOKEN"
+request POST /cart/add "{\"bookId\":\"$SHORT_BOOK_ID\",\"quantity\":1}" "$USER_TOKEN"
+mongo "db.books.updateOne({_id:ObjectId('$SHORT_BOOK_ID')},{\$set:{quantity:0}})" >/dev/null
+request POST /order '{"address":"1 Nile St","phone":"01012345678"}' "$USER_TOKEN"
+expect_status 400 "an order with an out-of-stock book is refused"
+request GET "/book/$BOOK_ID"
+[[ "$(json "$BODY" d.book.quantity)" == "3" ]] || fail "the in-stock book must be put back (stock 3), got: $BODY"
+ok "stock taken for the other book is rolled back"
+request DELETE /cart/clear "" "$USER_TOKEN"
 
 request PATCH "/book/$BOOK_ID/like" "" "$USER_TOKEN"
 expect_status 200 "like a book"
@@ -145,7 +171,7 @@ expect_status 404 "unknown routes return 404"
 mongo "const user = db.users.findOne({email:'$EMAIL'});
   db.orders.deleteMany({userId:user._id});
   db.carts.deleteMany({userId:user._id});
-  db.books.deleteOne({_id:ObjectId('$BOOK_ID')});
+  db.books.deleteMany({_id:{\$in:[ObjectId('$BOOK_ID'),ObjectId('$SHORT_BOOK_ID')]}});
   db.categories.deleteOne({name:'$CATEGORY'});
   db.users.deleteOne({_id:user._id});" >/dev/null
 

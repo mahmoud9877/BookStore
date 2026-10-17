@@ -40,6 +40,23 @@ function fake(methods) {
 }
 
 /** Asserts the promise rejects with an HttpError carrying the given status. */
+/** BookRepository fake whose reserveStock succeeds, pricing each book with `book`. */
+const reservingAll = (book, extra = {}) =>
+  fake({
+    reserveStock: async (items) => ({
+      reserved: items.map((item) => ({ book: { ...book, _id: item.bookId }, quantity: item.quantity })),
+    }),
+    releaseStock: undefined,
+    ...extra,
+  });
+
+/** The `{ bookId, quantity }` pairs a releaseStock call put back. */
+const released = (bookRepository, call = 0) =>
+  bookRepository.releaseStock.mock.calls[call].arguments[0].map(({ bookId, quantity }) => ({
+    bookId,
+    quantity,
+  }));
+
 const rejectsWithStatus = (promise, status, message) =>
   assert.rejects(promise, (error) => {
     assert.ok(error instanceof HttpError, `expected HttpError, got ${error}`);
@@ -128,20 +145,46 @@ describe("CategoryService", () => {
 });
 
 describe("CartService", () => {
-  test("adding a book already in the cart increases its quantity within stock", async () => {
+  test("adding a book already in the cart increments its quantity within stock", async () => {
     const bookId = new Types.ObjectId();
-    const cart = { books: [{ bookId, quantity: 1 }] };
-    const service = new CartService({
-      bookRepository: fake({ findById: { quantity: 3 } }),
-      cartRepository: fake({ findByUserId: cart, save: async (saved) => saved }),
+    const cartRepository = fake({
+      findByUserId: { books: [{ bookId, quantity: 1 }] },
+      incrementItemQuantity: async (userId, id, quantity) => ({ books: [{ bookId, quantity: 1 + quantity }] }),
+      addItem: undefined,
     });
+    const service = new CartService({ cartRepository, bookRepository: fake({ findById: { quantity: 3 } }) });
 
     const add = (quantity) =>
       service.addItem("u", parse(AddToCartDto, { bookId: bookId.toString(), quantity }));
-    const { created } = await add(2);
+    const { cart, created } = await add(2);
     assert.equal(created, false);
     assert.equal(cart.books[0].quantity, 3);
-    await rejectsWithStatus(add(1), 400, /exceeds/);
+    assert.deepEqual(cartRepository.incrementItemQuantity.mock.calls[0].arguments, ["u", bookId.toString(), 2]);
+    assert.equal(cartRepository.addItem.mock.callCount(), 0);
+
+    await rejectsWithStatus(add(3), 400, /exceeds/);
+    assert.equal(cartRepository.incrementItemQuantity.mock.callCount(), 1, "no write when over stock");
+  });
+
+  test("adding a new book to an existing cart appends a line item", async () => {
+    const bookId = new Types.ObjectId().toString();
+    const cartRepository = fake({
+      findByUserId: { books: [] },
+      addItem: async (userId, item) => ({ books: [item] }),
+    });
+    const service = new CartService({
+      cartRepository,
+      bookRepository: fake({ findById: { quantity: 5, price: 10, bookTitle: "dune", image: "i" } }),
+    });
+    const { cart } = await service.addItem("u", parse(AddToCartDto, { bookId, quantity: 2 }));
+    assert.deepEqual(cartRepository.addItem.mock.calls[0].arguments[1], {
+      bookId,
+      bookTitle: "dune",
+      price: 10,
+      quantity: 2,
+      image: "i",
+    });
+    assert.equal(cart.books.length, 1);
   });
 
   test("the first item creates the cart", async () => {
@@ -161,12 +204,18 @@ describe("CartService", () => {
     assert.equal(cart.books.length, 1);
   });
 
-  test("removeItem reports a book that is not in the cart", async () => {
-    const service = new CartService({
-      cartRepository: fake({ findByUserId: { books: [] } }),
+  test("removeItem tells a missing cart apart from a book that is not in it", async () => {
+    const withCart = new CartService({
+      cartRepository: fake({ removeItem: null, findByUserId: { books: [] } }),
       bookRepository: fake({}),
     });
-    await rejectsWithStatus(service.removeItem("u", "b"), 404, /not found in cart/);
+    await rejectsWithStatus(withCart.removeItem("u", "b"), 404, /not found in cart/);
+
+    const withoutCart = new CartService({
+      cartRepository: fake({ removeItem: null, findByUserId: null }),
+      bookRepository: fake({}),
+    });
+    await rejectsWithStatus(withoutCart.removeItem("u", "b"), 404, /^Cart not found$/);
   });
 });
 
@@ -176,7 +225,7 @@ describe("OrderService", () => {
     const deps = {
       orderRepository: fake({ create: async (doc) => ({ _id: "order-1", ...doc }), updateStatus: {} }),
       cartRepository: fake({ findByUserId: { books: [] }, clearByUserId: {} }),
-      bookRepository: fake({ decrementStock: null, incrementStock: {} }),
+      bookRepository: reservingAll({ price: 1 }),
       paymentGateway: { isConfigured: true, ...fake({ createCheckoutSession: { url: "https://pay" } }) },
       ...overrides,
     };
@@ -186,7 +235,17 @@ describe("OrderService", () => {
   test("placeOrder refuses an empty cart without touching stock", async () => {
     const { service, bookRepository } = makeService();
     await rejectsWithStatus(service.placeOrder(user, {}), 400, /Empty Cart/);
-    assert.equal(bookRepository.decrementStock.mock.callCount(), 0);
+    assert.equal(bookRepository.reserveStock.mock.callCount(), 0);
+  });
+
+  test("placeOrder reports the item the repository could not reserve", async () => {
+    const missing = { bookId: new Types.ObjectId(), bookTitle: "dune", quantity: 9 };
+    const { service, orderRepository } = makeService({
+      cartRepository: fake({ findByUserId: { books: [missing] } }),
+      bookRepository: fake({ reserveStock: { unavailable: missing } }),
+    });
+    await rejectsWithStatus(service.placeOrder(user, {}), 400, /out of stock: dune/);
+    assert.equal(orderRepository.create.mock.callCount(), 0);
   });
 
   test("card orders fail fast when payments are not configured", async () => {
@@ -199,7 +258,7 @@ describe("OrderService", () => {
     const bookId = new Types.ObjectId();
     const { service, paymentGateway } = makeService({
       cartRepository: fake({ findByUserId: { books: [{ bookId, quantity: 2 }] }, clearByUserId: {} }),
-      bookRepository: fake({ decrementStock: { _id: bookId, bookTitle: "dune", price: 12.5 } }),
+      bookRepository: reservingAll({ bookTitle: "dune", price: 12.5 }),
     });
 
     const { order, session } = await service.placeOrder(user, { paymentType: "card" });
@@ -215,7 +274,7 @@ describe("OrderService", () => {
     const bookId = new Types.ObjectId();
     const { service, orderRepository, bookRepository, cartRepository } = makeService({
       cartRepository: fake({ findByUserId: { books: [{ bookId, quantity: 1 }] }, clearByUserId: {} }),
-      bookRepository: fake({ decrementStock: { _id: bookId, price: 5 }, incrementStock: {} }),
+      bookRepository: reservingAll({ price: 5 }),
       paymentGateway: {
         isConfigured: true,
         ...fake({ createCheckoutSession: async () => { throw new Error("stripe down"); } }),
@@ -225,7 +284,7 @@ describe("OrderService", () => {
 
     await rejectsWithStatus(service.placeOrder(user, { paymentType: "card" }), 502);
     assert.deepEqual(orderRepository.updateStatus.mock.calls[0].arguments, ["order-1", "rejected"]);
-    assert.deepEqual(bookRepository.incrementStock.mock.calls[0].arguments, [bookId, 1]);
+    assert.deepEqual(released(bookRepository), [{ bookId, quantity: 1 }]);
     assert.equal(cartRepository.clearByUserId.mock.callCount(), 0);
     console.error.mock.restore();
   });
@@ -235,11 +294,11 @@ describe("OrderService", () => {
     const { service, bookRepository, cartRepository } = makeService({
       orderRepository: fake({ create: async () => { throw new Error("write failed"); } }),
       cartRepository: fake({ findByUserId: { books: [{ bookId, quantity: 2 }] }, clearByUserId: {} }),
-      bookRepository: fake({ decrementStock: { _id: bookId, price: 5 }, incrementStock: {} }),
+      bookRepository: reservingAll({ price: 5 }),
     });
 
     await assert.rejects(service.placeOrder(user, {}), /write failed/);
-    assert.deepEqual(bookRepository.incrementStock.mock.calls[0].arguments, [bookId, 2]);
+    assert.deepEqual(released(bookRepository), [{ bookId, quantity: 2 }]);
     assert.equal(cartRepository.clearByUserId.mock.callCount(), 0, "cart is kept when the order fails");
   });
 
@@ -261,7 +320,7 @@ describe("OrderService", () => {
       "canceled",
       { updatedBy: user._id, reason: "changed my mind" },
     ]);
-    assert.deepEqual(bookRepository.incrementStock.mock.calls[0].arguments, [bookId, 1]);
+    assert.deepEqual(released(bookRepository), [{ bookId, quantity: 1 }]);
   });
 
   test("deliverOrder refuses orders that are not deliverable", async () => {
@@ -311,7 +370,7 @@ describe("OrderService", () => {
     });
     const outcome = await service.processStripeWebhook("raw", "sig");
     assert.equal(outcome, "rejected link");
-    assert.equal(bookRepository.incrementStock.mock.callCount(), 0);
+    assert.equal(bookRepository.releaseStock.mock.callCount(), 0);
   });
 });
 

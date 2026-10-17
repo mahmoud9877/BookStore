@@ -1,5 +1,6 @@
 import { BaseRepository } from "../../core/base-repository.js";
-import orderModel, { ORDER_STATUSES } from "./order.model.js";
+import orderModel from "./order.model.js";
+import { ORDER_STATUSES } from "./order-statuses.js";
 
 export class OrderRepository extends BaseRepository {
   constructor(model = orderModel) {
@@ -12,7 +13,7 @@ export class OrderRepository extends BaseRepository {
 
   /** Sets the status (plus any extra fields) and resolves the updated order. */
   updateStatus(id, status, fields = {}) {
-    return this.model.findByIdAndUpdate(id, { status, ...fields }, { new: true });
+    return this.model.findByIdAndUpdate(id, { status, ...fields }, { new: true }).lean();
   }
 
   /**
@@ -23,6 +24,6 @@ export class OrderRepository extends BaseRepository {
     return this.model.findOneAndUpdate(
       { _id: id, status: ORDER_STATUSES.waitPayment },
       { status: ORDER_STATUSES.rejected }
-    );
+    ).lean();
   }
 }

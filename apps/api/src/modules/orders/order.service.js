@@ -1,4 +1,4 @@
-import { ORDER_STATUSES } from "./order.model.js";
+import { ORDER_STATUSES } from "./order-statuses.js";
 import { CheckoutSessionResponseDto, OrderResponseDto } from "./order.dto.js";
 import { BadGatewayError, BadRequestError, ServiceUnavailableError } from "../../core/http-errors.js";
 
@@ -57,7 +57,7 @@ export class OrderService {
         status: paymentType === "card" ? ORDER_STATUSES.waitPayment : ORDER_STATUSES.placed,
       });
     } catch (error) {
-      await this.#releaseStock(items);
+      await this.#books.releaseStock(items);
       throw error;
     }
 
@@ -68,7 +68,7 @@ export class OrderService {
       } catch (error) {
         console.error("Stripe session creation failed:", error.message);
         await this.#orders.updateStatus(order._id, ORDER_STATUSES.rejected);
-        await this.#releaseStock(items);
+        await this.#books.releaseStock(items);
         throw new BadGatewayError("Stripe session creation failed");
       }
     }
@@ -99,7 +99,7 @@ export class OrderService {
     }
     if (CHECKOUT_FAILURE_EVENTS.includes(event.type)) {
       const order = await this.#orders.rejectIfAwaitingPayment(orderId);
-      if (order) await this.#releaseStock(order.books);
+      if (order) await this.#books.releaseStock(order.books);
       return "rejected link";
     }
     return "Ignored";
@@ -124,7 +124,7 @@ export class OrderService {
       updatedBy: userId,
       reason,
     });
-    await this.#releaseStock(order.books);
+    await this.#books.releaseStock(order.books);
     return OrderResponseDto.from(canceled);
   }
 
@@ -140,33 +140,20 @@ export class OrderService {
     return OrderResponseDto.from(delivered);
   }
 
-  /**
-   * Atomically reserves stock for every cart item and returns the priced order
-   * lines. If any item is unavailable, already-reserved items are released.
-   */
+  /** Reserves stock for every cart item and returns the priced order lines. */
   async #reserveStock(cartItems) {
-    const reserved = [];
-    for (const item of cartItems) {
-      const book = await this.#books.decrementStock(item.bookId, item.quantity);
-      if (!book) {
-        await this.#releaseStock(reserved);
-        throw new BadRequestError(`Book unavailable or out of stock: ${item.bookTitle ?? item.bookId}`);
-      }
-      reserved.push({
-        bookId: book._id,
-        bookTitle: book.bookTitle,
-        quantity: item.quantity,
-        unitPrice: book.price,
-        finalPrice: book.price * item.quantity,
-      });
+    const result = await this.#books.reserveStock(cartItems);
+    if (result.unavailable) {
+      const { bookTitle, bookId } = result.unavailable;
+      throw new BadRequestError(`Book unavailable or out of stock: ${bookTitle ?? bookId}`);
     }
-    return reserved;
-  }
-
-  #releaseStock(items) {
-    return Promise.all(
-      items.map(({ bookId, quantity }) => this.#books.incrementStock(bookId, quantity))
-    );
+    return result.reserved.map(({ book, quantity }) => ({
+      bookId: book._id,
+      bookTitle: book.bookTitle,
+      quantity,
+      unitPrice: book.price,
+      finalPrice: book.price * quantity,
+    }));
   }
 
   #startCheckout(order, items, customerEmail) {

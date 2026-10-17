@@ -8,7 +8,7 @@ export class UserRepository extends BaseRepository {
 
   /** Projection used to authenticate requests (no password). */
   findAuthUserById(id) {
-    return this.model.findById(id).select("userName email image role");
+    return this.model.findById(id).select("userName email image role").lean();
   }
 
   findByEmail(email) {
@@ -25,10 +25,10 @@ export class UserRepository extends BaseRepository {
   }
 
   markEmailConfirmed(email) {
-    return this.model.findOneAndUpdate({ email }, { confirmEmail: true });
+    return this.model.findOneAndUpdate({ email }, { confirmEmail: true }).lean();
   }
 
   listWithoutSecrets() {
-    return this.model.find({}).select("-password -code");
+    return this.model.find({}).select("-password -code").lean();
   }
 }

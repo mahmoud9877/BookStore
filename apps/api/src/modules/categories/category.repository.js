@@ -7,7 +7,7 @@ export class CategoryRepository extends BaseRepository {
   }
 
   list() {
-    return this.model.find({});
+    return this.model.find({}).lean();
   }
 
   findByName(name) {

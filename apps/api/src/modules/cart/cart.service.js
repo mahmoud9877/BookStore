@@ -41,24 +41,20 @@ export class CartService {
     }
 
     const existingItem = cart.books.find(isSameBook(bookId));
-    if (existingItem) {
-      if (existingItem.quantity + quantity > book.quantity) {
-        throw new BadRequestError("Updated quantity exceeds available stock");
-      }
-      existingItem.quantity += quantity;
-    } else {
-      cart.books.push(item);
+    if (existingItem && existingItem.quantity + quantity > book.quantity) {
+      throw new BadRequestError("Updated quantity exceeds available stock");
     }
-
-    return { cart: CartResponseDto.from(await this.#carts.save(cart)), created: false };
+    const updated = existingItem
+      ? await this.#carts.incrementItemQuantity(userId, bookId, quantity)
+      : await this.#carts.addItem(userId, item);
+    return { cart: CartResponseDto.from(updated), created: false };
   }
 
   async removeItem(userId, bookId) {
-    const cart = await this.#findCart(userId);
-    const index = cart.books.findIndex(isSameBook(bookId));
-    if (index === -1) throw new NotFoundError("Book not found in cart");
-    cart.books.splice(index, 1);
-    return CartResponseDto.from(await this.#carts.save(cart));
+    const cart = await this.#carts.removeItem(userId, bookId);
+    if (cart) return CartResponseDto.from(cart);
+    await this.#findCart(userId); // throws "Cart not found" when there is no cart at all
+    throw new NotFoundError("Book not found in cart");
   }
 
   async clearCart(userId) {

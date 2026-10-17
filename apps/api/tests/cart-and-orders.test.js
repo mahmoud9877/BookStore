@@ -61,10 +61,11 @@ describe("orders", () => {
     const headers = authenticateAs(t, server.container, user);
     const first = item(2);
     t.mock.method(server.container.cartRepository, "findByUserId", async () => cartWith(first, item(1)));
-    const reserve = t.mock.method(server.container.bookRepository, "decrementStock", async (bookId) => ({
-      _id: bookId,
-      bookTitle: "a book",
-      price: 50,
+    const reserve = t.mock.method(server.container.bookRepository, "reserveStock", async (items) => ({
+      reserved: items.map(({ bookId, quantity }) => ({
+        book: { _id: bookId, bookTitle: "a book", price: 50 },
+        quantity,
+      })),
     }));
     let createdOrder;
     t.mock.method(server.container.orderRepository, "create", async (doc) => (createdOrder = doc));
@@ -79,20 +80,18 @@ describe("orders", () => {
     assert.equal(res.json.message, "Order created successfully");
     assert.equal(createdOrder.subtotal, 150);
     assert.equal(createdOrder.status, "placed");
-    assert.deepEqual(reserve.mock.calls[0].arguments, [first.bookId, 2]);
+    const [requested] = reserve.mock.calls[0].arguments;
+    assert.deepEqual([requested[0].bookId, requested[0].quantity], [first.bookId, 2]);
     assert.equal(clearCart.mock.callCount(), 1);
   });
 
-  test("an out-of-stock item fails the order and releases already reserved stock", async (t) => {
+  test("an out-of-stock item fails the order before anything is written", async (t) => {
     const headers = authenticateAs(t, server.container, makeUser());
-    const first = item(2);
-    t.mock.method(server.container.cartRepository, "findByUserId", async () => cartWith(first, item(5)));
-    let call = 0;
-    t.mock.method(server.container.bookRepository, "decrementStock", async (bookId) =>
-      call++ === 0 ? { _id: bookId, price: 10 } : null
-    );
-    const release = t.mock.method(server.container.bookRepository, "incrementStock", async () => ({}));
+    const unavailable = item(5);
+    t.mock.method(server.container.cartRepository, "findByUserId", async () => cartWith(item(2), unavailable));
+    t.mock.method(server.container.bookRepository, "reserveStock", async () => ({ unavailable }));
     const create = t.mock.method(server.container.orderRepository, "create", async () => ({}));
+    const clearCart = t.mock.method(server.container.cartRepository, "clearByUserId", async () => ({}));
 
     const res = await server.request("POST", "/order", {
       headers,
@@ -102,7 +101,7 @@ describe("orders", () => {
     assert.equal(res.status, 400);
     assert.match(res.json.message, /out of stock/);
     assert.equal(create.mock.callCount(), 0);
-    assert.deepEqual(release.mock.calls.map((c) => c.arguments), [[first.bookId, 2]]);
+    assert.equal(clearCart.mock.callCount(), 0);
   });
 
   test("PATCH /order/:id/delivered marks the order delivered (was set to canceled)", async (t) => {
@@ -171,7 +170,7 @@ describe("stripe webhook", () => {
     const reject = t.mock.method(server.container.orderRepository, "rejectIfAwaitingPayment", async () => ({
       books: [{ bookId, quantity: 3 }],
     }));
-    const release = t.mock.method(server.container.bookRepository, "incrementStock", async () => ({}));
+    const release = t.mock.method(server.container.bookRepository, "releaseStock", async () => {});
 
     const res = await postEvent({
       type: "checkout.session.expired",
@@ -180,7 +179,7 @@ describe("stripe webhook", () => {
 
     assert.equal(res.status, 200);
     assert.deepEqual(reject.mock.calls[0].arguments, [orderId]);
-    assert.deepEqual(release.mock.calls[0].arguments, [bookId, 3]);
+    assert.deepEqual(release.mock.calls[0].arguments, [[{ bookId, quantity: 3 }]]);
   });
 
   test("ignores events that carry no order id", async (t) => {

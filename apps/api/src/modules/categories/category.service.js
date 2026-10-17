@@ -1,4 +1,4 @@
-import { CATEGORY_OPTIONS } from "./category.model.js";
+import { CATEGORY_OPTIONS } from "./category-options.js";
 import { CategoryResponseDto } from "./category.dto.js";
 import { BadRequestError, NotFoundError } from "../../core/http-errors.js";
 

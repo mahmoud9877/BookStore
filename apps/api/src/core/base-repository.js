@@ -1,6 +1,10 @@
 /**
- * Generic data access for one Mongoose model. Subclasses add queries specific
- * to their entity; nothing outside a repository should touch a model directly.
+ * Generic data access for one Mongoose model. Subclasses add the queries and
+ * atomic updates specific to their entity.
+ *
+ * Every method resolves plain objects (lean reads, `toObject()` after create),
+ * never Mongoose documents, so code outside repositories cannot save, mutate or
+ * otherwise reach the database.
  */
 export class BaseRepository {
   constructor(model) {
@@ -8,26 +12,22 @@ export class BaseRepository {
   }
 
   findById(id) {
-    return this.model.findById(id);
+    return this.model.findById(id).lean();
   }
 
   findOne(filter) {
-    return this.model.findOne(filter);
+    return this.model.findOne(filter).lean();
   }
 
-  create(data) {
-    return this.model.create(data);
+  async create(data) {
+    return (await this.model.create(data)).toObject();
   }
 
   updateById(id, update) {
-    return this.model.findByIdAndUpdate(id, update, { new: true, runValidators: true });
+    return this.model.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean();
   }
 
   deleteById(id) {
-    return this.model.findByIdAndDelete(id);
-  }
-
-  save(document) {
-    return document.save();
+    return this.model.findByIdAndDelete(id).lean();
   }
 }

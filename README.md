@@ -127,7 +127,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 73 tests) + web (Jest/RTL, 24 tests)
+npm test                         # API (node:test, 83 tests) + web (Jest/RTL, 24 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 

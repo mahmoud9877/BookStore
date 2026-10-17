@@ -32,7 +32,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 | DTOs | `<entity>.dto.js` | Request DTOs: Joi schema + typed, whitelisted input. Response DTOs: the fields that leave the API | `core/dto.js` |
 | Controller | `<entity>.controller.js` (`class XController`) | Pass `req.dto` to one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
 | Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows; takes request DTOs, returns response DTOs; throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
-| Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | Every database query for one model | its Mongoose model |
+| Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | **Every** database read and write for one model, including multi-step operations such as all-or-nothing stock reservation; returns plain objects | its Mongoose model |
 
 - **Composition root:** `src/container.js` is the only place that instantiates concrete
   classes and wires them together. `createApp(container)` mounts the routers;
@@ -50,6 +50,16 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
     whitelist the fields that leave the API. Services return them, never Mongoose documents.
   - The Stripe webhook is the one handler that reads `req.body` directly: the signature
     covers the raw bytes.
+- **Database access lives only in repositories.** Repositories resolve plain objects
+  (`.lean()` reads, `toObject()` after create), so services and controllers receive data
+  they cannot save or mutate in the database. There is no generic `save()`; writes are
+  intention-revealing, atomic operations — e.g. `CartRepository.addItem` (`$push`),
+  `incrementItemQuantity` (positional `$inc`), `removeItem` (`$pull`),
+  `BookRepository.reserveStock` (conditional `$inc` per item, rolled back if any book is
+  short) and `releaseStock` (one `bulkWrite`). Services decide *what* should happen and
+  coordinate across repositories (e.g. release reserved stock if creating the order
+  fails); repositories decide *how* it is done in MongoDB. Shared constants live in
+  `order-statuses.js` and `category-options.js`, so services never import model files.
 - **Thin controllers:** a controller method extracts input from `req`, awaits exactly one
   service call and maps the result to a response. The only branches left choose the
   response form from facts the service reports (redirect vs JSON after email confirmation,
