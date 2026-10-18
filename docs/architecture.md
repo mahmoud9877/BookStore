@@ -115,8 +115,8 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   instead of `window.confirm`), `Modal`, `FormField`/`PasswordField` (labels, inline errors,
   `aria-describedby`), `StatePanel`/`ErrorState` (empty/error states with actions),
   `BookCover` (placeholder for missing/broken images), `Spinner`.
-- **Cart state** (`cart.store.js`) is shared by the header badge, add-to-cart buttons and
-  the cart page. Prices are formatted in `lib/format.js` in the currency the
+- **Cart data** (`cart.queries.js`) is shared by the header badge, add-to-cart buttons and
+  the cart page through the query cache. Prices are formatted in `lib/format.js` in the currency the
   API charges (`REACT_APP_CURRENCY`, default `EGP`); stored-lowercase titles and authors are
   displayed in title/name case.
 - **UX conventions:** browsing is public (buying and admin need an account); catalogue
@@ -124,27 +124,36 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   destructive actions ask for confirmation; results are reported with toasts; forms
   validate inline with human-readable messages. Verified with axe-core (WCAG 2.1 AA + best
   practices: 0 violations on every page and interactive state) at 1280px and 390px.
-- **Shared hooks** (`src/hooks/`): `useAsyncData(load)` (loading/error/data for any request,
-  ignoring superseded responses) and `useForm(initialValues)` (controlled inputs, incl. files).
+- **Shared hooks** (`src/hooks/`): `useForm(initialValues, options)` — controlled inputs
+  (incl. files) plus the validate → inline errors → submit lifecycle.
 - Category options come from `GET /category/options`, so the API is the single source.
 - **`lib/api-client.js`** is the single axios instance; it attaches
   `Authorization: <BEARER_KEY><token>` and `getErrorMessage()` turns API errors into UI text.
-- **State management — Zustand.** Global client state lives in small stores next to the
-  feature that owns it; there are no React context providers:
+- **State management** is split by where the truth lives:
+  - **Server state → TanStack Query** (`lib/query-client.js`, `modules/*/*.queries.js`).
+    Books, a book's details, category options and the cart are cached queries; every
+    write is a mutation that updates or invalidates the cache.
 
-  | Store | Holds | Notes |
-  | --- | --- | --- |
-  | `modules/auth/auth.store.js` | the signed-in user (decoded JWT) | mirrors `localStorage["userToken"]`; expired/malformed tokens are discarded; a `storage` listener keeps every tab in sync |
-  | `modules/cart/cart.store.js` | cart items + load status | `useCartSync()` (in `App`) loads it on sign-in and resets it on sign-out; stale loads are ignored |
-  | `components/ui/toast.store.js` | visible toasts | `toast.success/error/info()` callable from anywhere; rendered by `<Toaster />` |
-  | `components/ui/confirm.store.js` | the pending confirmation | `await confirm({...})` resolves true/false; rendered by `<ConfirmDialog />` |
+    | Hook | Key | Behaviour |
+    | --- | --- | --- |
+    | `useBooksQuery`, `useBookQuery(id)` | `["books", "list"]`, `["books", "detail", id]` | details show the catalogue's cached copy as placeholder data |
+    | `useSaveBook`, `useDeleteBook` | — | invalidate `["books"]` |
+    | `useCategoryOptions` | `["categories", "options"]` | `staleTime: Infinity` |
+    | `useCartQuery(select)`, `useCartCount` | `["cart", userId]` | per user; disabled when signed out; `select` derives count/subtotal |
+    | `useAddCartItem`, `useRemoveCartItem`, `useClearCart` | — | remove/clear are optimistic with rollback |
+    | `usePlaceOrder` | — | empties the cached cart, invalidates `["books"]` (stock changed) |
 
-  Components subscribe through **selectors** (`selectUser`, `selectIsAdmin`,
-  `selectCartCount`, `selectCartSubtotal`, …) so they re-render only when their slice
-  changes; `useShallow` is used where a component reads several fields. Data that belongs
-  to one page (book lists, a book's details) stays in that page's `useAsyncData` hook
-  rather than in a global store. Tests reset stores with `test-utils/reset-stores.js`
-  from inside each test file (not `setupTests.js`, which runs before `jest.mock`).
+    Defaults: data is fresh for 30s; failed reads retry once, never on 4xx. Services are
+    always called through wrappers so they never receive React Query's context argument.
+    `useForgetCartOnSignOut` drops the previous user's cart from the cache (also when
+    signing out in another tab). Devtools load only in development.
+  - **Client state → Zustand**: `auth.store.js` (the session, mirrored from the stored
+    JWT and synced across tabs), `toast.store.js` (`toast.success()` + `<Toaster />`) and
+    `confirm.store.js` (`await confirm()` + `<ConfirmDialog />`). Components subscribe via
+    selectors (`selectUser`, `useCurrentUser`) so they re-render only for their slice.
+
+  Tests give every render a fresh retry-less `QueryClient` and reset Zustand stores from
+  inside each test file (not `setupTests.js`, which runs before `jest.mock`).
 - `ProtectedRoute` guards signed-in routes and accepts a `role` (the dashboard requires `Admin`).
 - **Routing** is defined once in `app/routes.jsx`; `App` creates a hash router (deep links
   work on GitHub Pages and nginx). Tests inject a memory router.

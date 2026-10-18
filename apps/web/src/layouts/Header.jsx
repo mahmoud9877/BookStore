@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
 import { initials } from "../lib/format.js";
-import { selectCartCount, useCartStore } from "../modules/cart/cart.store.js";
+import { useCartCount } from "../modules/cart/cart.queries.js";
 import { useCurrentUser } from "../modules/auth/auth.store.js";
 import useSignOut from "../modules/auth/useSignOut.js";
 
@@ -75,7 +75,7 @@ function UserMenu({ user, isAdmin, onLogout }) {
 
 export default function Header() {
   const { user, isAdmin } = useCurrentUser();
-  const count = useCartStore(selectCartCount);
+  const count = useCartCount();
   const signOut = useSignOut();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);

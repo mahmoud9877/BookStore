@@ -1,28 +1,29 @@
 import React, { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import useBooks from "./useBooks.js";
 import BookForm from "./BookForm.jsx";
 import BookList from "./BookList.jsx";
 import { filterBooks } from "./catalogue.js";
 import Modal from "../../components/ui/Modal.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
-import useAsyncData from "../../hooks/useAsyncData.js";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { formatTitle, pluralize } from "../../lib/format.js";
 import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
-import { createBook, deleteBook, updateBook } from "./book.service.js";
-import { listCategoryOptions } from "../categories/category.service.js";
+import { useBooksQuery, useDeleteBook, useSaveBook } from "./book.queries.js";
+import { useCategoryOptions } from "../categories/category.queries.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 
 const NEW_BOOK = Symbol("new book");
+const NO_BOOKS = [];
 
 /** Admin page: add, edit and delete books. */
 export default function BooksDashboardPage() {
-  const { books, isLoading, error, reload } = useBooks();
-  const { data: categories } = useAsyncData(listCategoryOptions, { initialData: [] });
+  const { data: books = NO_BOOKS, isLoading, error, refetch } = useBooksQuery();
+  const categories = useCategoryOptions();
+  const saveBook = useSaveBook();
+  const removeBook = useDeleteBook();
+  const isSaving = saveBook.isPending;
   const [editing, setEditing] = useState(null); // NEW_BOOK, a book, or null when closed
-  const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
 
   const visibleBooks = useMemo(() => filterBooks(books, { query }), [books, query]);
@@ -30,21 +31,13 @@ export default function BooksDashboardPage() {
   const closeEditor = () => !isSaving && setEditing(null);
 
   async function handleSave(formData) {
-    setIsSaving(true);
     try {
-      if (editedBook) {
-        await updateBook(editedBook._id, formData);
-        toast.success(`Saved changes to “${formData.get("bookTitle")}”.`);
-      } else {
-        await createBook(formData);
-        toast.success(`Added “${formData.get("bookTitle")}” to the catalogue.`);
-      }
+      await saveBook.mutateAsync({ bookId: editedBook?._id, formData });
+      const title = formData.get("bookTitle");
+      toast.success(editedBook ? `Saved changes to “${title}”.` : `Added “${title}” to the catalogue.`);
       setEditing(null);
-      await reload();
     } catch (err) {
       toast.error(getErrorMessage(err, "Couldn't save this book. Please try again."));
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -57,9 +50,8 @@ export default function BooksDashboardPage() {
     });
     if (!confirmed) return;
     try {
-      await deleteBook(book._id);
+      await removeBook.mutateAsync(book._id);
       toast.success(`Deleted “${title}”.`);
-      await reload();
     } catch (err) {
       toast.error(getErrorMessage(err, "Couldn't delete this book."));
     }
@@ -99,7 +91,7 @@ export default function BooksDashboardPage() {
             </p>
           ) : error ? (
             <div className="p-3">
-              <ErrorState message={error} onRetry={reload} />
+              <ErrorState message={getErrorMessage(error, "Failed to fetch books.")} onRetry={refetch} />
             </div>
           ) : visibleBooks.length === 0 ? (
             <div className="p-3">

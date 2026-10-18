@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import { useAuthStore } from "../modules/auth/auth.store.js";
 import { makeToken } from "../test-utils/make-token.js";
 import { resetStores } from "../test-utils/reset-stores.js";
+import { createQueryClient } from "../lib/query-client.js";
 import * as authService from "../modules/auth/auth.service.js";
 import * as bookService from "../modules/books/book.service.js";
 import * as cartService from "../modules/cart/cart.service.js";
@@ -30,7 +31,9 @@ function renderAt(path, { token } = {}) {
   if (token) localStorage.setItem("userToken", token);
   useAuthStore.getState().syncFromStorage(); // the store read localStorage when the module loaded
   const createRouter = (routes) => createMemoryRouter(routes, { initialEntries: [path] });
-  return render(<App createRouter={createRouter} />);
+  // A fresh cache per test, without retries, so tests are isolated and fail fast.
+  const queryClient = createQueryClient({ queries: { retry: false } });
+  return render(<App createRouter={createRouter} queryClient={queryClient} />);
 }
 
 /** Types into labelled fields, then clicks the named button. */
@@ -232,6 +235,8 @@ describe("cart and checkout", () => {
 
   test("emptying the cart asks for confirmation first", async () => {
     cartService.getCartItems.mockResolvedValue([CART_ITEM]);
+    // Like the real API: once cleared, the cart reads back empty.
+    cartService.clearCart.mockImplementation(async () => cartService.getCartItems.mockResolvedValue([]));
     renderAt("/cart", { token: makeToken() });
 
     userEvent.click(await screen.findByRole("button", { name: "Empty cart" }));

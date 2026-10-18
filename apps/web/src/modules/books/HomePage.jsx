@@ -1,20 +1,22 @@
 import React, { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { useSearchParams } from "react-router-dom";
-import useBooks from "./useBooks.js";
 import useAddToCart from "./useAddToCart.js";
 import { pluralize } from "../../lib/format.js";
 import BookCard, { BookCardSkeleton } from "./BookCard.jsx";
-import useAsyncData from "../../hooks/useAsyncData.js";
+import { useBooksQuery } from "./book.queries.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 import { SORT_OPTIONS, filterBooks } from "./catalogue.js";
-import { listCategoryOptions } from "../categories/category.service.js";
+import { useCategoryOptions } from "../categories/category.queries.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 
 const GRID = "row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 g-md-4";
+const NO_BOOKS = [];
+const BOOKS_ERROR = "Failed to fetch books. Please try again later.";
 
 export default function HomePage() {
-  const { books, isLoading, error, reload } = useBooks();
-  const { data: categories } = useAsyncData(listCategoryOptions, { initialData: [] });
+  const { data: books = NO_BOOKS, isLoading, error, refetch } = useBooksQuery();
+  const categories = useCategoryOptions();
   const { addToCart, pendingId } = useAddToCart();
 
   // Filters live in the URL, so results can be shared and survive back/forward.
@@ -104,7 +106,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : error ? (
-          <ErrorState message={error} onRetry={reload} />
+          <ErrorState message={getErrorMessage(error, BOOKS_ERROR)} onRetry={refetch} />
         ) : visibleBooks.length === 0 ? (
           isFiltered ? (
             <StatePanel

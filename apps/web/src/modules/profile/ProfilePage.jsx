@@ -2,7 +2,7 @@ import React from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import useSignOut from "../auth/useSignOut.js";
-import { selectCartCount, useCartStore } from "../cart/cart.store.js";
+import { useCartCount } from "../cart/cart.queries.js";
 import { initials, pluralize } from "../../lib/format.js";
 import { useCurrentUser } from "../auth/auth.store.js";
 
@@ -21,7 +21,7 @@ function ProfileLink({ to, icon, title, detail }) {
 
 export default function ProfilePage() {
   const { user, isAdmin } = useCurrentUser();
-  const count = useCartStore(selectCartCount);
+  const count = useCartCount();
   const signOut = useSignOut();
 
   return (

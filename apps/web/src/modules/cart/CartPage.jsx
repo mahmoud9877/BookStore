@@ -1,16 +1,10 @@
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import React, { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
-import {
-  selectCartCount,
-  selectCartIsLoading,
-  selectCartSubtotal,
-  useCartStore,
-} from "./cart.store.js";
+import { usePlaceOrder } from "../orders/order.queries.js";
+import { countItems, subtotalOf, useCartQuery, useClearCart, useRemoveCartItem } from "./cart.queries.js";
 import OrderForm from "./OrderForm.jsx";
 import CartLineItem from "./CartLineItem.jsx";
-import { createOrder } from "../orders/order.service.js";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
@@ -34,64 +28,50 @@ function OrderPlaced({ order }) {
   );
 }
 
+const NO_ITEMS = [];
+
 export default function CartPage() {
-  const cart = useCartStore(
-    useShallow((state) => ({
-      items: state.items,
-      error: state.error,
-      count: selectCartCount(state),
-      subtotal: selectCartSubtotal(state),
-      isLoading: selectCartIsLoading(state),
-      reload: state.load,
-      remove: state.remove,
-      clear: state.clear,
-      markEmpty: state.markEmpty,
-    }))
-  );
+  const { data: items = NO_ITEMS, isLoading, error, refetch } = useCartQuery();
+  const removeItem = useRemoveCartItem();
+  const clearCart = useClearCart();
+  const placeOrder = usePlaceOrder();
+  const count = countItems(items);
+  const subtotal = subtotalOf(items);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [removingId, setRemovingId] = useState(null);
   const [placedOrder, setPlacedOrder] = useState(null);
 
   async function handlePlaceOrder(details) {
-    setIsPlacingOrder(true);
     try {
-      const { url, order } = await createOrder(details);
+      const { url, order } = await placeOrder.mutateAsync(details);
       if (url) {
         toast.info("Redirecting to secure payment…");
         window.location.href = url; // continue to the payment provider
         return;
       }
-      cart.markEmpty();
       setPlacedOrder(order);
     } catch (err) {
       toast.error(getErrorMessage(err, "We couldn't place your order. Please try again."));
-    } finally {
-      setIsPlacingOrder(false);
     }
   }
 
   async function handleRemove(item) {
-    setRemovingId(item.bookId);
     try {
-      await cart.remove(item.bookId);
+      await removeItem.mutateAsync(item.bookId);
       toast.success(`Removed “${formatTitle(item.bookTitle)}” from your cart.`);
     } catch (err) {
       toast.error(getErrorMessage(err, "Couldn't remove this book."));
-    } finally {
-      setRemovingId(null);
     }
   }
 
   async function handleClear() {
     const confirmed = await confirm({
       title: "Empty your cart?",
-      message: `This removes all ${pluralize(cart.count, "book")} from your cart.`,
+      message: `This removes all ${pluralize(count, "book")} from your cart.`,
       confirmLabel: "Empty cart",
     });
     if (!confirmed) return;
     try {
-      await cart.clear();
+      await clearCart.mutateAsync();
       toast.success("Your cart is empty.");
     } catch (err) {
       toast.error(getErrorMessage(err, "Couldn't empty your cart."));
@@ -109,13 +89,13 @@ export default function CartPage() {
 
       {placedOrder ? (
         <OrderPlaced order={placedOrder} />
-      ) : cart.isLoading ? (
+      ) : isLoading ? (
         <p className="text-muted" aria-busy="true">
           Loading your cart…
         </p>
-      ) : cart.error ? (
-        <ErrorState message={cart.error} onRetry={cart.reload} />
-      ) : cart.items.length === 0 ? (
+      ) : error ? (
+        <ErrorState message={getErrorMessage(error, "We couldn't load your cart.")} onRetry={refetch} />
+      ) : items.length === 0 ? (
         <StatePanel
           icon="bag"
           title="Your cart is empty"
@@ -132,12 +112,12 @@ export default function CartPage() {
             <div className="card">
               <div className="card-body px-4">
                 <ul className="list-unstyled mb-0">
-                  {cart.items.map((item) => (
+                  {items.map((item) => (
                     <CartLineItem
                       key={item.bookId}
                       item={item}
                       onRemove={handleRemove}
-                      isRemoving={removingId === item.bookId}
+                      isRemoving={removeItem.isPending && removeItem.variables === item.bookId}
                     />
                   ))}
                 </ul>
@@ -153,8 +133,8 @@ export default function CartPage() {
               <div className="card-body p-4">
                 {isCheckingOut ? (
                   <OrderForm
-                    total={cart.subtotal}
-                    isSubmitting={isPlacingOrder}
+                    total={subtotal}
+                    isSubmitting={placeOrder.isPending}
                     onSubmit={handlePlaceOrder}
                     onCancel={() => setIsCheckingOut(false)}
                   />
@@ -162,8 +142,8 @@ export default function CartPage() {
                   <>
                     <h2 className="h5 mb-3">Order summary</h2>
                     <div className="summary-row">
-                      <span className="text-muted">Items ({cart.count})</span>
-                      <span>{formatPrice(cart.subtotal)}</span>
+                      <span className="text-muted">Items ({count})</span>
+                      <span>{formatPrice(subtotal)}</span>
                     </div>
                     <div className="summary-row">
                       <span className="text-muted">Delivery</span>
@@ -171,7 +151,7 @@ export default function CartPage() {
                     </div>
                     <div className="summary-row summary-total">
                       <span>Total</span>
-                      <span>{formatPrice(cart.subtotal)}</span>
+                      <span>{formatPrice(subtotal)}</span>
                     </div>
                     <button
                       type="button"

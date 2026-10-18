@@ -1,11 +1,11 @@
 import { Helmet } from "react-helmet";
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import StockNote, { LOW_STOCK_THRESHOLD } from "./StockNote.jsx";
-import { getBook } from "./book.service.js";
 import useAddToCart from "./useAddToCart.js";
 import Spinner from "../../components/ui/Spinner.jsx";
-import useAsyncData from "../../hooks/useAsyncData.js";
+import { useBookQuery } from "./book.queries.js";
+import { getErrorMessage } from "../../lib/api-client.js";
 import BookCover from "../../components/ui/BookCover.jsx";
 import { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
@@ -42,10 +42,7 @@ function DetailsSkeleton() {
 
 export default function BookDetailsPage() {
   const { bookId } = useParams();
-  const loadBook = useCallback(() => getBook(bookId), [bookId]);
-  const { data: book, isLoading, error, reload } = useAsyncData(loadBook, {
-    errorMessage: "We couldn't load this book.",
-  });
+  const { data: book, isLoading, error, refetch } = useBookQuery(bookId);
   const { addToCart, pendingId } = useAddToCart();
   const [quantity, setQuantity] = useState(1);
 
@@ -79,7 +76,10 @@ export default function BookDetailsPage() {
       {isLoading ? (
         <DetailsSkeleton />
       ) : error || !book ? (
-        <ErrorState message={error || "This book could not be found."} onRetry={error ? reload : undefined} />
+        <ErrorState
+          message={error ? getErrorMessage(error, "We couldn't load this book.") : "This book could not be found."}
+          onRetry={error ? refetch : undefined}
+        />
       ) : (
         <div className="row g-4 g-lg-5">
           <div className="col-md-5 col-lg-4">

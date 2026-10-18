@@ -6,7 +6,7 @@ An online bookstore: customers browse books, manage a cart and place cash or car
 | App | Path | Stack |
 | --- | --- | --- |
 | API | [`apps/api`](apps/api) | Node.js 20, Express 4, MongoDB (Mongoose 6), JWT, Joi, Cloudinary, Stripe, Nodemailer |
-| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), Zustand, Bootstrap 5, Axios |
+| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), TanStack Query (server state), Zustand (client state), Bootstrap 5, Axios |
 
 Further reading: [architecture & conventions](docs/architecture.md) ·
 [API reference](docs/api.md) · [Postman collection](docs/bookstore-api.postman_collection.json) (outdated paths — see the API reference).
@@ -39,7 +39,7 @@ Further reading: [architecture & conventions](docs/architecture.md) ·
 │       │   ├── modules/      auth, books, cart, orders, profile (pages + services)
 │       │   ├── layouts/      RootLayout, Header, Footer
 │       │   ├── components/   ui/ kit (toasts, dialogs, form fields, states), ErrorPage
-│       │   ├── hooks/        useAsyncData, useForm
+│       │   ├── hooks/        useForm
 │       │   ├── styles/       theme.css — design tokens + Bootstrap mapping
 │       ├── nginx.conf        production web server + /api reverse proxy
 │       └── Dockerfile
@@ -135,7 +135,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 56 tests)
+npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 60 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 
