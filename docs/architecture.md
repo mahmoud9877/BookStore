@@ -110,13 +110,13 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   shared with the confirmation email; warm paper background; serif headings) mapped onto
   Bootstrap's CSS variables, so stock Bootstrap components are on-brand. No other global
   stylesheets; no Bootstrap JavaScript (menus, modals and collapse are React state).
-- **UI kit** (`src/components/ui/`): `ToastProvider`/`useToast` (non-blocking, aria-live
-  notifications instead of `alert()`), `ConfirmProvider`/`useConfirm` (accessible dialog
+- **UI kit** (`src/components/ui/`): `toast` + `<Toaster />` (non-blocking, aria-live
+  notifications instead of `alert()`), `confirm` + `<ConfirmDialog />` (accessible dialog
   instead of `window.confirm`), `Modal`, `FormField`/`PasswordField` (labels, inline errors,
   `aria-describedby`), `StatePanel`/`ErrorState` (empty/error states with actions),
   `BookCover` (placeholder for missing/broken images), `Spinner`.
-- **Cart state** (`modules/cart/CartContext.jsx`) is shared by the header badge, add-to-cart
-  buttons and the cart page. Prices are formatted in `lib/format.js` in the currency the
+- **Cart state** (`cart.store.js`) is shared by the header badge, add-to-cart buttons and
+  the cart page. Prices are formatted in `lib/format.js` in the currency the
   API charges (`REACT_APP_CURRENCY`, default `EGP`); stored-lowercase titles and authors are
   displayed in title/name case.
 - **UX conventions:** browsing is public (buying and admin need an account); catalogue
@@ -129,9 +129,23 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 - Category options come from `GET /category/options`, so the API is the single source.
 - **`lib/api-client.js`** is the single axios instance; it attaches
   `Authorization: <BEARER_KEY><token>` and `getErrorMessage()` turns API errors into UI text.
-- **`modules/auth/UserContext.jsx`** owns the session (decoded from the JWT in
-  `localStorage["userToken"]`; expired/malformed tokens are discarded). `ProtectedRoute`
-  guards signed-in routes and accepts a `role` (the dashboard requires `Admin`).
+- **State management — Zustand.** Global client state lives in small stores next to the
+  feature that owns it; there are no React context providers:
+
+  | Store | Holds | Notes |
+  | --- | --- | --- |
+  | `modules/auth/auth.store.js` | the signed-in user (decoded JWT) | mirrors `localStorage["userToken"]`; expired/malformed tokens are discarded; a `storage` listener keeps every tab in sync |
+  | `modules/cart/cart.store.js` | cart items + load status | `useCartSync()` (in `App`) loads it on sign-in and resets it on sign-out; stale loads are ignored |
+  | `components/ui/toast.store.js` | visible toasts | `toast.success/error/info()` callable from anywhere; rendered by `<Toaster />` |
+  | `components/ui/confirm.store.js` | the pending confirmation | `await confirm({...})` resolves true/false; rendered by `<ConfirmDialog />` |
+
+  Components subscribe through **selectors** (`selectUser`, `selectIsAdmin`,
+  `selectCartCount`, `selectCartSubtotal`, …) so they re-render only when their slice
+  changes; `useShallow` is used where a component reads several fields. Data that belongs
+  to one page (book lists, a book's details) stays in that page's `useAsyncData` hook
+  rather than in a global store. Tests reset stores with `test-utils/reset-stores.js`
+  from inside each test file (not `setupTests.js`, which runs before `jest.mock`).
+- `ProtectedRoute` guards signed-in routes and accepts a `role` (the dashboard requires `Admin`).
 - **Routing** is defined once in `app/routes.jsx`; `App` creates a hash router (deep links
   work on GitHub Pages and nginx). Tests inject a memory router.
 - **Config** is build-time (`REACT_APP_API_URL`, `REACT_APP_BEARER_KEY`) with the previously
@@ -194,7 +208,7 @@ depend on them.
 | `Components/Rootlayout/` | `layouts/RootLayout.jsx` |
 | `Components/Dashboard/Dashboard.jsx` (`BooksManager`) | `modules/books/BooksDashboardPage.jsx` |
 | `Components/ErrorElement`, `Components/Offline` | `components/ErrorPage.jsx`, `components/OfflineWarning.jsx` |
-| `Context/UserContext.jsx`, `Utils/Validation.js` | `modules/auth/UserContext.jsx`, `modules/auth/auth.validation.js` |
+| `Context/UserContext.jsx`, `Utils/Validation.js` | `modules/auth/auth.store.js` (Zustand), `modules/auth/auth.validation.js` |
 | `Hooks/useRoute.js` | `modules/books/useBooks.js` |
 | `css/normalize.module.css` | `styles/normalize.css` (no class selectors, so identical output) |
 | `images/` | `assets/images/` |

@@ -1,13 +1,19 @@
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import React, { useState } from "react";
-import { useCart } from "./CartContext.jsx";
+import { useShallow } from "zustand/react/shallow";
+import {
+  selectCartCount,
+  selectCartIsLoading,
+  selectCartSubtotal,
+  useCartStore,
+} from "./cart.store.js";
 import OrderForm from "./OrderForm.jsx";
 import CartLineItem from "./CartLineItem.jsx";
 import { createOrder } from "../orders/order.service.js";
 import { getErrorMessage } from "../../lib/api-client.js";
-import { useToast } from "../../components/ui/ToastProvider.jsx";
-import { useConfirm } from "../../components/ui/ConfirmProvider.jsx";
+import { toast } from "../../components/ui/toast.store.js";
+import { confirm } from "../../components/ui/confirm.store.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { formatPrice, formatTitle, pluralize } from "../../lib/format.js";
 
@@ -29,9 +35,19 @@ function OrderPlaced({ order }) {
 }
 
 export default function CartPage() {
-  const cart = useCart();
-  const toast = useToast();
-  const confirm = useConfirm();
+  const cart = useCartStore(
+    useShallow((state) => ({
+      items: state.items,
+      error: state.error,
+      count: selectCartCount(state),
+      subtotal: selectCartSubtotal(state),
+      isLoading: selectCartIsLoading(state),
+      reload: state.load,
+      remove: state.remove,
+      clear: state.clear,
+      markEmpty: state.markEmpty,
+    }))
+  );
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [removingId, setRemovingId] = useState(null);

@@ -1,7 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 
 // Existing sessions are stored under this key; do not rename it.
-const TOKEN_STORAGE_KEY = "userToken";
+export const TOKEN_STORAGE_KEY = "userToken";
 
 export const getAuthToken = () => localStorage.getItem(TOKEN_STORAGE_KEY);
 export const setAuthToken = (token) => localStorage.setItem(TOKEN_STORAGE_KEY, token);

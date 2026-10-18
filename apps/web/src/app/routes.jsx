@@ -5,7 +5,7 @@ import CartPage from "../modules/cart/CartPage.jsx";
 import HomePage from "../modules/books/HomePage.jsx";
 import LoginPage from "../modules/auth/LoginPage.jsx";
 import SignupPage from "../modules/auth/SignupPage.jsx";
-import { USER_ROLES } from "../modules/auth/UserContext.jsx";
+import { USER_ROLES } from "../modules/auth/auth.store.js";
 import ProfilePage from "../modules/profile/ProfilePage.jsx";
 import ProtectedRoute from "../modules/auth/ProtectedRoute.jsx";
 import BookDetailsPage from "../modules/books/BookDetailsPage.jsx";

@@ -2,9 +2,9 @@ import React from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import useSignOut from "../auth/useSignOut.js";
-import { useCart } from "../cart/CartContext.jsx";
+import { selectCartCount, useCartStore } from "../cart/cart.store.js";
 import { initials, pluralize } from "../../lib/format.js";
-import { USER_ROLES, useUser } from "../auth/UserContext.jsx";
+import { useCurrentUser } from "../auth/auth.store.js";
 
 function ProfileLink({ to, icon, title, detail }) {
   return (
@@ -20,10 +20,9 @@ function ProfileLink({ to, icon, title, detail }) {
 }
 
 export default function ProfilePage() {
-  const { userData } = useUser();
-  const { count } = useCart();
+  const { user, isAdmin } = useCurrentUser();
+  const count = useCartStore(selectCartCount);
   const signOut = useSignOut();
-  const isAdmin = userData.role === USER_ROLES.Admin;
 
   return (
     <div className="container" style={{ maxWidth: 640 }}>
@@ -37,10 +36,10 @@ export default function ProfilePage() {
       <div className="card mb-3">
         <div className="card-body d-flex align-items-center gap-3 p-4">
           <span className="avatar avatar-lg" aria-hidden="true">
-            {initials(userData.userName)}
+            {initials(user.userName)}
           </span>
           <div>
-            <h2 className="h4 mb-1">{userData.userName}</h2>
+            <h2 className="h4 mb-1">{user.userName}</h2>
             <span className="badge badge-soft">{isAdmin ? "Administrator" : "Customer"}</span>
           </div>
         </div>

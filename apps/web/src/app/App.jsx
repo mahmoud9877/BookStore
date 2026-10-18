@@ -1,24 +1,21 @@
 import React, { useState } from "react";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { routes } from "./routes.jsx";
-import { CartProvider } from "../modules/cart/CartContext.jsx";
-import { UserProvider } from "../modules/auth/UserContext.jsx";
-import { ToastProvider } from "../components/ui/ToastProvider.jsx";
-import { ConfirmProvider } from "../components/ui/ConfirmProvider.jsx";
+import Toaster from "../components/ui/Toaster.jsx";
+import useCartSync from "../modules/cart/useCartSync.js";
+import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
 
+// Global state lives in Zustand stores (auth, cart, toasts, confirm); no providers needed.
 // Hash routing keeps deep links working on static hosts (GitHub Pages, nginx).
 export default function App({ createRouter = createHashRouter }) {
   const [router] = useState(() => createRouter(routes));
+  useCartSync();
 
   return (
-    <UserProvider>
-      <CartProvider>
-        <ToastProvider>
-          <ConfirmProvider>
-            <RouterProvider router={router} />
-          </ConfirmProvider>
-        </ToastProvider>
-      </CartProvider>
-    </UserProvider>
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+      <ConfirmDialog />
+    </>
   );
 }

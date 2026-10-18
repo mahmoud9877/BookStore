@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthCard from "./AuthCard.jsx";
 import { login } from "./auth.service.js";
-import { useUser } from "./UserContext.jsx";
+import { useAuthStore } from "./auth.store.js";
 import { loginSchema } from "./auth.validation.js";
 import useForm from "../../hooks/useForm.js";
 import Spinner from "../../components/ui/Spinner.jsx";
@@ -24,7 +24,7 @@ const toFriendlyError = (err) => {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login: startSession } = useUser();
+  const startSession = useAuthStore((state) => state.signIn);
   const { field, formError, isSubmitting, handleSubmit } = useForm(
     { email: "", password: "" },
     { schema: loginSchema, errorMessage: toFriendlyError }

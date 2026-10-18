@@ -6,7 +6,7 @@ An online bookstore: customers browse books, manage a cart and place cash or car
 | App | Path | Stack |
 | --- | --- | --- |
 | API | [`apps/api`](apps/api) | Node.js 20, Express 4, MongoDB (Mongoose 6), JWT, Joi, Cloudinary, Stripe, Nodemailer |
-| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), Bootstrap 5, Axios |
+| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), Zustand, Bootstrap 5, Axios |
 
 Further reading: [architecture & conventions](docs/architecture.md) ·
 [API reference](docs/api.md) · [Postman collection](docs/bookstore-api.postman_collection.json) (outdated paths — see the API reference).
@@ -135,7 +135,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 44 tests)
+npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 56 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
 import { initials } from "../lib/format.js";
-import { useCart } from "../modules/cart/CartContext.jsx";
-import { USER_ROLES, useUser } from "../modules/auth/UserContext.jsx";
+import { selectCartCount, useCartStore } from "../modules/cart/cart.store.js";
+import { useCurrentUser } from "../modules/auth/auth.store.js";
 import useSignOut from "../modules/auth/useSignOut.js";
 
 /** Closes a popup on outside click or Escape. */
@@ -21,7 +21,7 @@ function useDismiss(ref, isOpen, close) {
   }, [ref, isOpen, close]);
 }
 
-function UserMenu({ user, onLogout }) {
+function UserMenu({ user, isAdmin, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
   const close = () => setIsOpen(false);
@@ -55,7 +55,7 @@ function UserMenu({ user, onLogout }) {
               <i className="bi bi-person me-2" aria-hidden="true"></i>Profile
             </Link>
           </li>
-          {user.role === USER_ROLES.Admin && (
+          {isAdmin && (
             <li>
               <Link className="dropdown-item" to="/dashboard" onClick={close}>
                 <i className="bi bi-speedometer2 me-2" aria-hidden="true"></i>Manage catalogue
@@ -74,8 +74,8 @@ function UserMenu({ user, onLogout }) {
 }
 
 export default function Header() {
-  const { userData } = useUser();
-  const { count } = useCart();
+  const { user, isAdmin } = useCurrentUser();
+  const count = useCartStore(selectCartCount);
   const signOut = useSignOut();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -104,8 +104,8 @@ export default function Header() {
                 </span>
               )}
             </NavLink>
-            {userData ? (
-              <UserMenu user={userData} onLogout={signOut} />
+            {user ? (
+              <UserMenu user={user} isAdmin={isAdmin} onLogout={signOut} />
             ) : (
               <Link to="/login" className="btn btn-primary btn-sm ms-1 d-none d-md-inline-block">
                 Sign in
@@ -130,14 +130,14 @@ export default function Header() {
                   Browse books
                 </NavLink>
               </li>
-              {userData?.role === USER_ROLES.Admin && (
+              {isAdmin && (
                 <li className="nav-item">
                   <NavLink to="/dashboard" className="nav-link">
                     Manage catalogue
                   </NavLink>
                 </li>
               )}
-              {!userData && (
+              {!user && (
                 <>
                   <li className="nav-item d-md-none">
                     <NavLink to="/login" className="nav-link">

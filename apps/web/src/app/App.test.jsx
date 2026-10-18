@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router-dom";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App.jsx";
+import { useAuthStore } from "../modules/auth/auth.store.js";
 import { makeToken } from "../test-utils/make-token.js";
+import { resetStores } from "../test-utils/reset-stores.js";
 import * as authService from "../modules/auth/auth.service.js";
 import * as bookService from "../modules/books/book.service.js";
 import * as cartService from "../modules/cart/cart.service.js";
@@ -26,6 +28,7 @@ const CART_ITEM = { bookId: "b1", bookTitle: "dune", price: 320, quantity: 2, im
 
 function renderAt(path, { token } = {}) {
   if (token) localStorage.setItem("userToken", token);
+  useAuthStore.getState().syncFromStorage(); // the store read localStorage when the module loaded
   const createRouter = (routes) => createMemoryRouter(routes, { initialEntries: [path] });
   return render(<App createRouter={createRouter} />);
 }
@@ -41,6 +44,7 @@ const signInHeading = () => screen.findByRole("heading", { name: "Sign in" });
 
 beforeEach(() => {
   localStorage.clear();
+  resetStores();
   bookService.listBooks.mockResolvedValue(BOOKS);
   bookService.getBook.mockResolvedValue(BOOKS[0]);
   cartService.getCartItems.mockResolvedValue([]);
@@ -272,7 +276,7 @@ describe("catalogue administration", () => {
     const [bookId, formData] = bookService.updateBook.mock.calls[0];
     expect(bookId).toBe("b1");
     expect(formData.get("author")).toBe("Frank Herbert");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   test("adding a book requires a cover and valid fields", async () => {

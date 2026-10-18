@@ -9,8 +9,8 @@ import Spinner from "../../components/ui/Spinner.jsx";
 import useAsyncData from "../../hooks/useAsyncData.js";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { formatTitle, pluralize } from "../../lib/format.js";
-import { useToast } from "../../components/ui/ToastProvider.jsx";
-import { useConfirm } from "../../components/ui/ConfirmProvider.jsx";
+import { toast } from "../../components/ui/toast.store.js";
+import { confirm } from "../../components/ui/confirm.store.js";
 import { createBook, deleteBook, updateBook } from "./book.service.js";
 import { listCategoryOptions } from "../categories/category.service.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
@@ -21,8 +21,6 @@ const NEW_BOOK = Symbol("new book");
 export default function BooksDashboardPage() {
   const { books, isLoading, error, reload } = useBooks();
   const { data: categories } = useAsyncData(listCategoryOptions, { initialData: [] });
-  const toast = useToast();
-  const confirm = useConfirm();
   const [editing, setEditing] = useState(null); // NEW_BOOK, a book, or null when closed
   const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
