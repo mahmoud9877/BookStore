@@ -6,3 +6,7 @@ export const API_BASE_URL = (
 
 // Must match the API's BEARER_KEY. It is a header prefix, not a secret.
 export const BEARER_KEY = process.env.REACT_APP_BEARER_KEY || "Hamada__";
+
+// Prices are stored without a currency; checkout charges this currency (see the API's
+// StripePaymentGateway), so the UI must display the same one.
+export const CURRENCY = process.env.REACT_APP_CURRENCY || "EGP";

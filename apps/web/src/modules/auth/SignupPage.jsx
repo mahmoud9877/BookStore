@@ -1,127 +1,51 @@
-import { Helmet } from "react-helmet";
-import React, { useState } from "react";
-import useForm from "../../hooks/useForm.js";
+import React from "react";
 import { useNavigate, Link } from "react-router-dom";
+import AuthCard from "./AuthCard.jsx";
 import { signup } from "./auth.service.js";
+import useForm from "../../hooks/useForm.js";
 import { signupSchema } from "./auth.validation.js";
+import Spinner from "../../components/ui/Spinner.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
-import "./SignupPage.css";
+import FormField, { PasswordField } from "../../components/ui/FormField.jsx";
 
 const SIGNUP_SUCCESS_NOTICE =
-  "Account created. If email confirmation is required, confirm your email before logging in.";
+  "Your account is ready. If we sent you a confirmation email, confirm your address before signing in.";
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const { values: user, handleChange } = useForm({
-    userName: "",
-    email: "",
-    password: "",
-    cPassword: "",
-  });
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError("");
-
-    const validation = signupSchema.validate(user, { abortEarly: false });
-    if (validation.error) {
-      setError(validation.error.details.map((detail) => detail.message).join(", "));
-      return;
+  const { values, field, formError, isSubmitting, handleSubmit } = useForm(
+    { userName: "", email: "", password: "", cPassword: "" },
+    {
+      schema: signupSchema,
+      errorMessage: (err) => getErrorMessage(err, "We couldn't create your account. Please try again."),
     }
+  );
 
-    setIsLoading(true);
-    try {
-      await signup(user);
-      navigate("/login", { state: { notice: SIGNUP_SUCCESS_NOTICE } });
-    } catch (err) {
-      setError(getErrorMessage(err, "An error occurred during signup. Please try again."));
-      setIsLoading(false);
-    }
+  async function createAccount() {
+    await signup(values); // the API checks cPassword too, so send the form as typed
+    navigate("/login", { state: { notice: SIGNUP_SUCCESS_NOTICE } });
   }
 
   return (
-    <div>
-      <Helmet>
-        <title>Signup</title>
-      </Helmet>
-      {error && <div className="alert alert-danger my-2" role="alert">{error}</div>}
-
-      <div className="d-flex justify-content-center py-1">
-        <form className="form" method="post" onSubmit={handleSubmit} noValidate>
-          <h3 className="title d-flex justify-content-center">Sign-Up</h3>
-          <div className="mb-2">
-            <label htmlFor="userName" className="h6 pt-3">Name</label>
-            <input
-              id="userName"
-              type="text"
-              className="form-control pt-2"
-              placeholder="Your Name"
-              name="userName"
-              autoComplete="name"
-              onChange={handleChange}
-            />
-          </div>
-          <div className="mb-2">
-            <label htmlFor="email" className="h6">Email</label>
-            <input
-              id="email"
-              placeholder="Your Email"
-              className="form-control"
-              type="email"
-              name="email"
-              autoComplete="email"
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label htmlFor="password" className="h6">Password</label>
-            <input
-              id="password"
-              placeholder="Password"
-              className="form-control"
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label htmlFor="cPassword" className="h6">Confirm Password</label>
-            <input
-              id="cPassword"
-              placeholder="Confirm Password"
-              className="form-control"
-              type="password"
-              name="cPassword"
-              autoComplete="new-password"
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="button d-flex justify-content-center">
-            <button
-              className="btn btn-outline-secondary py-2 w-50 bg-black"
-              type="submit"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="spinner-border text-light" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              ) : (
-                "Sign Up"
-              )}
-            </button>
-          </div>
-          <p className="pt-4">
-            Already have an account? <Link to="/login">Log-In</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+    <AuthCard
+      title="Create your account"
+      subtitle="Save books to your cart and check out in minutes."
+      error={formError}
+      footer={
+        <>
+          Already have an account? <Link to="/login">Sign in</Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(createAccount)} noValidate>
+        <FormField label="Name" autoComplete="name" autoFocus {...field("userName")} />
+        <FormField label="Email" type="email" autoComplete="email" {...field("email")} />
+        <PasswordField label="Password" autoComplete="new-password" hint="At least 6 characters." {...field("password")} />
+        <PasswordField label="Confirm password" autoComplete="new-password" {...field("cPassword")} />
+        <button className="btn btn-primary w-100 py-2" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <Spinner label="Creating account" /> : "Create account"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

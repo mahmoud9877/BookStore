@@ -1,67 +1,160 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
-import { USER_ROLES } from "../modules/auth/UserContext.jsx";
+import { initials } from "../lib/format.js";
+import { useCart } from "../modules/cart/CartContext.jsx";
+import { USER_ROLES, useUser } from "../modules/auth/UserContext.jsx";
+import useSignOut from "../modules/auth/useSignOut.js";
 
-export default function Header({ userData, onLogout }) {
+/** Closes a popup on outside click or Escape. */
+function useDismiss(ref, isOpen, close) {
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onPointer = (event) => !ref.current?.contains(event.target) && close();
+    const onKey = (event) => event.key === "Escape" && close();
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ref, isOpen, close]);
+}
+
+function UserMenu({ user, onLogout }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+  const close = () => setIsOpen(false);
+  useDismiss(menuRef, isOpen, close);
+
   return (
-    <header id="header-wrap" className="bg-light py-3 border-bottom vh-20">
-      <div className="top-content">
-        <div className="container-fluid">
-          <div className="row justify-content-between align-items-center">
-            {/* Left Column - Logo */}
-            <div className="col-12 col-md-6 d-flex align-items-center justify-content-center justify-content-md-start">
-              <div className="container-fluid">
-                <div className="row align-items-center">
-                  <div className="col-6 col-md-2">
-                    <div className="main-logo">
-                      <Link to="/">
-                        <img src={Logo} alt="BookSaw home" className="img-fluid" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="dropdown" ref={menuRef}>
+      <button
+        type="button"
+        className="btn btn-ghost d-flex align-items-center gap-2"
+        aria-expanded={isOpen}
+        aria-label={`Account menu for ${user.userName}`}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span className="avatar" aria-hidden="true">
+          {initials(user.userName)}
+        </span>
+        <span className="d-none d-lg-inline">{user.userName}</span>
+        <i className="bi bi-chevron-down small" aria-hidden="true"></i>
+      </button>
+      {isOpen && (
+        <ul className="dropdown-menu dropdown-menu-end show p-2">
+          <li className="px-2 py-1 small text-muted">
+            Signed in as <strong className="text-body">{user.userName}</strong>
+          </li>
+          <li>
+            <hr className="dropdown-divider" />
+          </li>
+          <li>
+            <Link className="dropdown-item" to="/profile" onClick={close}>
+              <i className="bi bi-person me-2" aria-hidden="true"></i>Profile
+            </Link>
+          </li>
+          {user.role === USER_ROLES.Admin && (
+            <li>
+              <Link className="dropdown-item" to="/dashboard" onClick={close}>
+                <i className="bi bi-speedometer2 me-2" aria-hidden="true"></i>Manage catalogue
+              </Link>
+            </li>
+          )}
+          <li>
+            <button type="button" className="dropdown-item" onClick={onLogout}>
+              <i className="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sign out
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
 
-            {/* Right Column - User Account, Cart, and Logout */}
-            <div className="col-12 col-md-6 d-flex justify-content-center justify-content-md-end align-items-center mt-3 mt-md-0">
-              <div className="right-element d-flex align-items-center">
-                {userData ? (
-                  <>
-                    <Link to="/profile" className="user-account me-3">
-                      <i className="bi bi-person-circle fs-5" aria-hidden="true"></i>
-                      <span className="ms-2">{userData.userName}</span>
-                    </Link>
+export default function Header() {
+  const { userData } = useUser();
+  const { count } = useCart();
+  const signOut = useSignOut();
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-                    {userData.role === USER_ROLES.Admin && (
-                      <Link to="/dashboard" className="me-3">
-                        <i className="bi bi-speedometer2 fs-5" aria-hidden="true"></i>
-                        <span className="ms-2">Dashboard</span>
-                      </Link>
-                    )}
+  // Close the mobile menu after navigating.
+  useEffect(() => setIsMenuOpen(false), [location.pathname]);
 
-                    <Link to="/cart" className="cart me-3">
-                      <i className="bi bi-cart fs-5" aria-hidden="true"></i>
-                      <span className="ms-2">Cart</span>
-                    </Link>
+  return (
+    <header className="site-header">
+      <nav className="navbar navbar-expand-md" aria-label="Main">
+        <div className="container">
+          <Link to="/" className="navbar-brand d-flex align-items-center">
+            <img src={Logo} alt="BookSaw" className="brand-logo" />
+          </Link>
 
-                    <button type="button" onClick={onLogout} className="btn btn-link text-dark">
-                      <i className="bi bi-box-arrow-right fs-5" aria-hidden="true"></i>
-                      <span className="ms-1">Logout</span>
-                    </button>
-                  </>
-                ) : (
-                  <Link to="/signup" className="user-account">
-                    <i className="bi bi-person-circle fs-5" aria-hidden="true"></i>
-                    <span className="ms-2">Signup</span>
-                  </Link>
-                )}
-              </div>
-            </div>
+          <div className="d-flex align-items-center gap-1 ms-auto order-md-last">
+            <NavLink
+              to="/cart"
+              className="nav-link cart-link px-2"
+              aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+            >
+              <i className="bi bi-bag fs-5" aria-hidden="true"></i>
+              {count > 0 && (
+                <span className="cart-count" aria-hidden="true">
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
+            </NavLink>
+            {userData ? (
+              <UserMenu user={userData} onLogout={signOut} />
+            ) : (
+              <Link to="/login" className="btn btn-primary btn-sm ms-1 d-none d-md-inline-block">
+                Sign in
+              </Link>
+            )}
+            <button
+              className="navbar-toggler border-0 ms-1"
+              type="button"
+              aria-controls="main-nav"
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle navigation"
+              onClick={() => setIsMenuOpen((open) => !open)}
+            >
+              <i className={`bi bi-${isMenuOpen ? "x-lg" : "list"} fs-4`} aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <div id="main-nav" className={`collapse navbar-collapse ${isMenuOpen ? "show" : ""}`}>
+            <ul className="navbar-nav me-auto ms-md-3 gap-md-1 py-2 py-md-0">
+              <li className="nav-item">
+                <NavLink to="/" end className="nav-link">
+                  Browse books
+                </NavLink>
+              </li>
+              {userData?.role === USER_ROLES.Admin && (
+                <li className="nav-item">
+                  <NavLink to="/dashboard" className="nav-link">
+                    Manage catalogue
+                  </NavLink>
+                </li>
+              )}
+              {!userData && (
+                <>
+                  <li className="nav-item d-md-none">
+                    <NavLink to="/login" className="nav-link">
+                      Sign in
+                    </NavLink>
+                  </li>
+                  <li className="nav-item d-md-none">
+                    <NavLink to="/signup" className="nav-link">
+                      Create account
+                    </NavLink>
+                  </li>
+                </>
+              )}
+            </ul>
           </div>
         </div>
-      </div>
+      </nav>
     </header>
   );
 }

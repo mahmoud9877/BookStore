@@ -19,13 +19,15 @@ export const routes = [
     element: <RootLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: signedIn(<HomePage />) },
-      { path: "book/:bookId", element: signedIn(<BookDetailsPage />) },
+      // Browsing is public; buying and administration require an account.
+      { index: true, element: <HomePage /> },
+      { path: "book/:bookId", element: <BookDetailsPage /> },
       { path: "cart", element: signedIn(<CartPage />) },
       { path: "profile", element: signedIn(<ProfilePage />) },
       { path: "dashboard", element: signedIn(<BooksDashboardPage />, USER_ROLES.Admin) },
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
+      { path: "*", element: <ErrorPage notFound /> },
     ],
   },
 ];

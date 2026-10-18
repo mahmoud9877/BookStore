@@ -1,21 +1,29 @@
 import React from "react";
 import { Link, isRouteErrorResponse, useRouteError } from "react-router-dom";
+import StatePanel from "./ui/StatePanel.jsx";
 
-export default function ErrorPage() {
+/** Route error boundary, also rendered (with `notFound`) for unknown URLs inside the layout. */
+export default function ErrorPage({ notFound = false }) {
   const error = useRouteError();
-  const isNotFound = isRouteErrorResponse(error) && error.status === 404;
+  const isNotFound = notFound || (isRouteErrorResponse(error) && error.status === 404);
 
   return (
-    <div className="error-container text-center py-5">
-      <h1 className="display-4">
-        {isNotFound ? "Page not found." : "Oops! Something went wrong."}
-      </h1>
-      <p className="lead">
-        The page you're looking for doesn't exist or an error occurred.
-      </p>
-      <Link to="/" className="btn btn-primary mt-3">
-        Go to Homepage
-      </Link>
-    </div>
+    <section className="container py-5">
+      <StatePanel
+        headingLevel={1}
+        icon={isNotFound ? "signpost-split" : "exclamation-triangle"}
+        title={isNotFound ? "Page not found" : "Something went wrong"}
+        message={
+          isNotFound
+            ? "The page you're looking for doesn't exist or has moved."
+            : "An unexpected error occurred. Please try again."
+        }
+        action={
+          <Link to="/" className="btn btn-primary">
+            Back to the bookstore
+          </Link>
+        }
+      />
+    </section>
   );
 }

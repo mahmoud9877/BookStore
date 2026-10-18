@@ -8,7 +8,7 @@ test("accepts a valid signup", () => {
 
 test("rejects mismatched password confirmation", () => {
   const { error } = signupSchema.validate({ ...validUser, cPassword: "other" });
-  expect(error.details[0].message).toBe("Passwords do not match.");
+  expect(error.details[0].message).toBe("Passwords don't match.");
 });
 
 test("rejects short user names", () => {
@@ -18,4 +18,16 @@ test("rejects short user names", () => {
 test("requires email and password to log in", () => {
   const { error } = loginSchema.validate({}, { abortEarly: false });
   expect(error.details.map((detail) => detail.path[0])).toEqual(["email", "password"]);
+});
+
+test("explains problems in plain language", () => {
+  const { error } = signupSchema.validate(
+    { userName: "ab", email: "not-an-email", password: "123", cPassword: "123" },
+    { abortEarly: false }
+  );
+  expect(error.details.map((detail) => detail.message)).toEqual([
+    "Your name needs at least 3 characters.",
+    "Enter a valid email address, like name@example.com.",
+    "Your password needs at least 6 characters.",
+  ]);
 });

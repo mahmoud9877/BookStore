@@ -3,15 +3,11 @@ import { Offline } from "react-detect-offline";
 
 export default function OfflineWarning() {
   return (
-    <div>
-      <Offline>
-        <div className="offline-warning">
-          <p>
-            You are currently offline. Please check your internet connection.
-          </p>
-        </div>
-      </Offline>
-    </div>
+    <Offline>
+      <div className="offline-banner text-center py-2 px-3" role="status">
+        <i className="bi bi-wifi-off me-2" aria-hidden="true"></i>
+        You're offline. Some actions won't work until your connection is back.
+      </div>
+    </Offline>
   );
 }
-

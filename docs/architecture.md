@@ -106,6 +106,24 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   components (e.g. `BookForm`, `BookList`, `CartItemCard`, `OrderForm`), the feature's API
   calls (`*.service.js`) and validation. Pages coordinate; components render; services
   talk to the API. Pages never call axios directly.
+- **Design system** (`src/styles/theme.css`): brand tokens on `:root` (burgundy `#630E2B`,
+  shared with the confirmation email; warm paper background; serif headings) mapped onto
+  Bootstrap's CSS variables, so stock Bootstrap components are on-brand. No other global
+  stylesheets; no Bootstrap JavaScript (menus, modals and collapse are React state).
+- **UI kit** (`src/components/ui/`): `ToastProvider`/`useToast` (non-blocking, aria-live
+  notifications instead of `alert()`), `ConfirmProvider`/`useConfirm` (accessible dialog
+  instead of `window.confirm`), `Modal`, `FormField`/`PasswordField` (labels, inline errors,
+  `aria-describedby`), `StatePanel`/`ErrorState` (empty/error states with actions),
+  `BookCover` (placeholder for missing/broken images), `Spinner`.
+- **Cart state** (`modules/cart/CartContext.jsx`) is shared by the header badge, add-to-cart
+  buttons and the cart page. Prices are formatted in `lib/format.js` in the currency the
+  API charges (`REACT_APP_CURRENCY`, default `EGP`); stored-lowercase titles and authors are
+  displayed in title/name case.
+- **UX conventions:** browsing is public (buying and admin need an account); catalogue
+  search/category/sort live in the URL; every request has loading, empty and error states;
+  destructive actions ask for confirmation; results are reported with toasts; forms
+  validate inline with human-readable messages. Verified with axe-core (WCAG 2.1 AA + best
+  practices: 0 violations on every page and interactive state) at 1280px and 390px.
 - **Shared hooks** (`src/hooks/`): `useAsyncData(load)` (loading/error/data for any request,
   ignoring superseded responses) and `useForm(initialValues)` (controlled inputs, incl. files).
 - Category options come from `GET /category/options`, so the API is the single source.

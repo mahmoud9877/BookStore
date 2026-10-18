@@ -1,101 +1,60 @@
-import { Helmet } from "react-helmet";
-import React, { useState } from "react";
-import useForm from "../../hooks/useForm.js";
+import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import AuthCard from "./AuthCard.jsx";
 import { login } from "./auth.service.js";
 import { useUser } from "./UserContext.jsx";
 import { loginSchema } from "./auth.validation.js";
+import useForm from "../../hooks/useForm.js";
+import Spinner from "../../components/ui/Spinner.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
+import FormField, { PasswordField } from "../../components/ui/FormField.jsx";
+
+// Both "unknown email" and "wrong password" read the same, so the form doesn't reveal which accounts exist.
+const FRIENDLY_ERRORS = {
+  "Wrong Password": "That email and password don't match.",
+  "Email Not found": "That email and password don't match.",
+  "Confirm Your Email": "Please confirm your email address first — check your inbox for the link.",
+};
+
+const toFriendlyError = (err) => {
+  const message = getErrorMessage(err, "We couldn't sign you in. Please try again.");
+  return FRIENDLY_ERRORS[message] ?? message;
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login: startSession } = useUser();
-  const [errorList, setErrorList] = useState([]);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { values: credentials, handleChange: updateField } = useForm({ email: "", password: "" });
-  const notice = location.state?.notice;
+  const { field, formError, isSubmitting, handleSubmit } = useForm(
+    { email: "", password: "" },
+    { schema: loginSchema, errorMessage: toFriendlyError }
+  );
 
-  function handleChange(event) {
-    updateField(event);
-    setError("");
-    setErrorList([]);
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const validation = loginSchema.validate(credentials, { abortEarly: false });
-    if (validation.error) {
-      setErrorList(validation.error.details);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const data = await login(credentials);
-      startSession(data.token);
-      navigate(location.state?.from || "/", { replace: true });
-    } catch (err) {
-      const message = getErrorMessage(err, "An error occurred during login. Please try again.");
-      setError(message === "Wrong Password" ? "Wrong password or email" : message);
-      setIsLoading(false);
-    }
+  async function signIn(credentials) {
+    const { token } = await login(credentials);
+    startSession(token);
+    navigate(location.state?.from || "/", { replace: true });
   }
 
   return (
-    <div className="d-flex justify-content-center py-4">
-      <Helmet>
-        <title>Login</title>
-      </Helmet>
-      <form className="form" onSubmit={handleSubmit} noValidate>
-        <p className="title">Log-In</p>
-
-        {notice && <div className="alert alert-success">{notice}</div>}
-        {error && <div className="alert alert-danger" role="alert">{error}</div>}
-        {errorList.map((err) => (
-          <div key={err.path.join(".")} className="alert alert-danger" role="alert">
-            {err.message}
-          </div>
-        ))}
-
-        <div className="mb-2">
-          <label htmlFor="login-email" className="h6 pt-3">Email</label>
-          <input
-            id="login-email"
-            type="email"
-            className="form-control pt-2"
-            placeholder="Your Email"
-            name="email"
-            autoComplete="email"
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mb-2">
-          <label htmlFor="login-password" className="h6 pt-3">Password</label>
-          <input
-            id="login-password"
-            type="password"
-            className="form-control pt-2"
-            placeholder="Your Password"
-            name="password"
-            autoComplete="current-password"
-            onChange={handleChange}
-          />
-        </div>
-        <button className="btn py-2 w-75 bg-black" type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <span className="spinner-border spinner-border-sm" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </span>
-          ) : (
-            "Login"
-          )}
+    <AuthCard
+      title="Sign in"
+      subtitle="Welcome back to BookSaw."
+      error={formError}
+      footer={
+        <>
+          New to BookSaw? <Link to="/signup">Create an account</Link>
+        </>
+      }
+    >
+      {location.state?.notice && <div className="alert alert-info small">{location.state.notice}</div>}
+      <form onSubmit={handleSubmit(signIn)} noValidate>
+        <FormField label="Email" type="email" autoComplete="email" autoFocus {...field("email")} />
+        <PasswordField label="Password" autoComplete="current-password" {...field("password")} />
+        <button className="btn btn-primary w-100 py-2" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <Spinner label="Signing in" /> : "Sign in"}
         </button>
-        <p>
-          Don't have an account? <Link to="/signup">Sign-Up</Link>
-        </p>
       </form>
-    </div>
+    </AuthCard>
   );
 }

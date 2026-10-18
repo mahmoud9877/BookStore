@@ -1,131 +1,103 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import useForm from "../../hooks/useForm.js";
+import { bookSchema } from "./book.validation.js";
+import { CURRENCY } from "../../config/api.js";
+import { formatTitle, formatName } from "../../lib/format.js";
+import BookCover from "../../components/ui/BookCover.jsx";
+import FormField from "../../components/ui/FormField.jsx";
 
 const BOOK_FIELDS = ["bookTitle", "author", "description", "quantity", "price", "category"];
-const INPUT_CLASS = "form-control book-input shadow-sm rounded-3";
 
 const toFormValues = (book) => ({
-  ...Object.fromEntries(BOOK_FIELDS.map((field) => [field, book?.[field] ?? ""])),
+  bookTitle: book ? formatTitle(book.bookTitle) : "",
+  author: book ? formatName(book.author) : "",
+  description: book?.description ?? "",
+  quantity: book?.quantity ?? "",
+  price: book?.price ?? "",
+  category: book?.category ?? "",
   image: null,
 });
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
-
-/** Labelled input in the dashboard's style. */
-function BookField({ name, label, className = "mb-4", as: Control = "input", ...controlProps }) {
-  return (
-    <div className={className}>
-      <label htmlFor={`book-${name}`} className="form-label fw-bold">
-        {label}
-      </label>
-      <Control id={`book-${name}`} name={name} className={INPUT_CLASS} {...controlProps} />
-    </div>
-  );
+/** Object URL preview for a freshly chosen file, revoked when it changes. */
+function useFilePreview(file) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!file) return setUrl(null);
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  return url;
 }
 
 /**
- * Add/edit form for a book. Re-mount it (via `key`) to reset it.
- * `onSubmit` receives the multipart FormData the API expects.
+ * Add/edit form for a book, rendered inside a modal. Submitted through the
+ * modal footer button (form="book-form"). `onSubmit` receives multipart FormData.
  */
-export default function BookForm({ book, categories, isSaving, error, onSubmit }) {
-  const { values, handleChange } = useForm(toFormValues(book));
+export default function BookForm({ book, categories, onSubmit }) {
   const isEditing = Boolean(book);
-  const field = (name) => ({ name, value: values[name], onChange: handleChange, required: true });
+  const { values, handleChange, field, errors, handleSubmit } = useForm(toFormValues(book), {
+    schema: bookSchema,
+    validate: ({ image }) => (!isEditing && !image ? { image: "Add a cover image." } : {}),
+  });
+  const preview = useFilePreview(values.image);
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function submitBook() {
     const formData = new FormData();
     BOOK_FIELDS.forEach((name) => formData.append(name, values[name]));
     if (values.image) formData.append("image", values.image);
     onSubmit(formData);
   }
 
-  const submitLabel = isEditing
-    ? isSaving ? "Updating Book..." : "Update Book"
-    : isSaving ? "Adding Book..." : "Add Book";
-
   return (
-    <form
-      className="form m-auto w-100 pt-4 pb-4 px-3 shadow-lg rounded-3 bg-white"
-      onSubmit={handleSubmit}
-    >
-      <div className="row">
-        <BookField
-          {...field("bookTitle")}
-          className="col-md-6 mb-4"
-          label="Name of the Book"
-          type="text"
-          placeholder="Enter the book title"
-        />
-        <BookField
-          {...field("author")}
-          className="col-md-6 mb-4"
-          label="Author Name"
-          type="text"
-          placeholder="Enter the author's name"
-        />
-      </div>
-
-      <BookField {...field("category")} as="select" label="Category">
-        <option value="" disabled>
-          Select a category
-        </option>
-        {categories.map((category) => (
-          <option key={category} value={category}>
-            {capitalize(category)}
-          </option>
-        ))}
-      </BookField>
-
-      <BookField
-        {...field("description")}
-        as="textarea"
-        label="Description"
-        rows="3"
-        placeholder="Enter a brief description of the book"
-      />
-
-      <div className="row">
-        <BookField
-          {...field("quantity")}
-          className="col-md-6 mb-4"
-          label="Quantity"
-          type="number"
-          placeholder="Enter the quantity"
-        />
-        <BookField
-          {...field("price")}
-          className="col-md-6 mb-4"
-          label="Price $"
-          type="number"
-          placeholder="Enter the price"
-        />
-      </div>
-
-      <div className="mb-4">
-        <label htmlFor="book-image" className="form-label fw-bold">
-          Book Image
-        </label>
-        <input
-          type="file"
-          className="form-control book-input bg-light shadow-sm rounded-3"
-          id="book-image"
-          name="image"
-          accept="image/jpeg,image/png,image/gif"
-          onChange={handleChange}
-        />
-      </div>
-
-      {error && <div className="alert alert-danger text-center">{error}</div>}
-
-      <div className="d-flex justify-content-center">
-        <button
-          className="btn btn-primary book-button shadow-sm rounded-3 w-100"
-          type="submit"
-          disabled={isSaving}
-        >
-          {submitLabel}
-        </button>
+    <form id="book-form" onSubmit={handleSubmit(submitBook)} noValidate>
+      <div className="row g-3">
+        <div className="col-sm-7">
+          <FormField label="Title" className="" {...field("bookTitle")} />
+        </div>
+        <div className="col-sm-5">
+          <FormField label="Author" className="" {...field("author")} />
+        </div>
+        <div className="col-sm-6">
+          <FormField label="Category" as="select" className="" {...field("category")}>
+            <option value="">Choose…</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </option>
+            ))}
+          </FormField>
+        </div>
+        <div className="col-6 col-sm-3">
+          <FormField label={`Price (${CURRENCY})`} type="number" min="0" step="0.01" className="" {...field("price")} />
+        </div>
+        <div className="col-6 col-sm-3">
+          <FormField label="In stock" type="number" min="1" step="1" className="" {...field("quantity")} />
+        </div>
+        <div className="col-12">
+          <FormField label="Description" as="textarea" rows={3} className="" {...field("description")} />
+        </div>
+        <div className="col-12 d-flex gap-3 align-items-start">
+          <BookCover src={preview ?? book?.image} alt="Cover preview" className="image-preview" />
+          <div className="flex-grow-1">
+            <label htmlFor="book-image" className="form-label">
+              Cover image {isEditing && <span className="text-muted fw-normal">(optional)</span>}
+            </label>
+            <input
+              id="book-image"
+              type="file"
+              name="image"
+              accept="image/jpeg,image/png,image/gif"
+              className={`form-control ${errors.image ? "is-invalid" : ""}`}
+              onChange={handleChange}
+            />
+            {errors.image ? (
+              <div className="invalid-feedback">{errors.image}</div>
+            ) : (
+              <div className="form-text">JPEG, PNG or GIF. {isEditing && "Leave empty to keep the current cover."}</div>
+            )}
+          </div>
+        </div>
       </div>
     </form>
   );

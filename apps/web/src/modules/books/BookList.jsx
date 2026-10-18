@@ -1,26 +1,74 @@
 import React from "react";
+import { LOW_STOCK_THRESHOLD } from "./StockNote.jsx";
+import BookCover from "../../components/ui/BookCover.jsx";
+import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
 
+function StockBadge({ quantity }) {
+  if (quantity <= 0) return <span className="badge text-bg-danger">Out of stock</span>;
+  if (quantity <= LOW_STOCK_THRESHOLD) return <span className="badge text-bg-warning">{quantity} · low</span>;
+  return <span className="badge text-bg-light border">{quantity}</span>;
+}
+
+/** Catalogue table for administrators. */
 export default function BookList({ books, onEdit, onDelete }) {
   return (
-    <div className="book-list">
-      <h3>Book List</h3>
-      <ul>
-        {books.map((book) => (
-          <li key={book._id}>
-            <div>
-              <strong>{book.bookTitle}</strong> by {book.author}
-            </div>
-            <div>
-              <button type="button" onClick={() => onEdit(book)}>
-                Edit
-              </button>
-              <button type="button" onClick={() => onDelete(book)} aria-label={`Delete ${book.bookTitle}`}>
-                <i className="bi bi-trash-fill" aria-hidden="true"></i>
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="table-responsive">
+      <table className="table data-table align-middle">
+        <thead>
+          <tr>
+            <th scope="col">Book</th>
+            <th scope="col" className="d-none d-md-table-cell">
+              Category
+            </th>
+            <th scope="col" className="text-end d-none d-sm-table-cell">
+              Price
+            </th>
+            <th scope="col" className="text-center">
+              Stock
+            </th>
+            <th scope="col" className="text-end">
+              <span className="visually-hidden">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {books.map((book) => {
+            const title = formatTitle(book.bookTitle);
+            return (
+              <tr key={book._id}>
+                <td>
+                  <div className="d-flex align-items-center gap-3">
+                    <BookCover src={book.image} alt="" className="table-cover" />
+                    <div className="min-w-0">
+                      <div className="fw-semibold text-truncate">{title}</div>
+                      <div className="small text-muted text-truncate">{formatName(book.author)}</div>
+                      <div className="small fw-semibold d-sm-none">{formatPrice(book.price)}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="d-none d-md-table-cell text-capitalize">{book.category}</td>
+                <td className="text-end text-nowrap d-none d-sm-table-cell">{formatPrice(book.price)}</td>
+                <td className="text-center">
+                  <StockBadge quantity={book.quantity} />
+                </td>
+                <td className="text-end text-nowrap">
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => onEdit(book)} aria-label={`Edit ${title}`}>
+                    <i className="bi bi-pencil" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost-danger"
+                    onClick={() => onDelete(book)}
+                    aria-label={`Delete ${title}`}
+                  >
+                    <i className="bi bi-trash3" aria-hidden="true"></i>
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

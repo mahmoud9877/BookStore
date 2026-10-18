@@ -38,12 +38,13 @@ Further reading: [architecture & conventions](docs/architecture.md) ·
 │       │   ├── lib/          api-client.js (axios), auth-token.js
 │       │   ├── modules/      auth, books, cart, orders, profile (pages + services)
 │       │   ├── layouts/      RootLayout, Header, Footer
-│       │   ├── components/   ErrorPage, OfflineWarning
-│       │   ├── styles/  assets/
+│       │   ├── components/   ui/ kit (toasts, dialogs, form fields, states), ErrorPage
+│       │   ├── hooks/        useAsyncData, useForm
+│       │   ├── styles/       theme.css — design tokens + Bootstrap mapping
 │       ├── nginx.conf        production web server + /api reverse proxy
 │       └── Dockerfile
 ├── docs/                     architecture, API reference, Postman collection
-├── scripts/smoke-test.sh     end-to-end workflow checks against a running stack
+├── scripts/                  smoke-test.sh (end-to-end checks), seed-dev-data.sh (demo data)
 ├── docker-compose.yml        shared service definitions
 ├── docker-compose.dev.yml    development overrides (local MongoDB, hot reload)
 ├── docker-compose.prod.yml   production overrides
@@ -69,7 +70,14 @@ volume) regardless of `MONGODB_URI`, and email confirmation is off by default so
 accounts can log in immediately. Host ports are bound to `127.0.0.1` and configurable
 with `DEV_WEB_PORT`, `DEV_API_PORT`, `DEV_MONGO_PORT`.
 
-To create an admin (needed for the `/dashboard` page), sign up and then:
+To explore the app with realistic data (9 books with covers, categories and two accounts:
+`admin@bookstore.local` / `admin123` and `reader@bookstore.local` / `reader123`):
+
+```bash
+./scripts/seed-dev-data.sh
+```
+
+To make your own account an admin (needed for the `/dashboard` page), sign up and then:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec mongo \
@@ -127,7 +135,7 @@ REACT_APP_API_URL=http://localhost:3000 PORT=3001 npm --prefix apps/web start
 ## Tests, lint and builds
 
 ```bash
-npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 25 tests)
+npm test                         # API (node:test, 96 tests) + web (Jest/RTL, 44 tests)
 npm run lint                     # ESLint for the web app (zero warnings allowed)
 CI=true npm --prefix apps/web run build
 
