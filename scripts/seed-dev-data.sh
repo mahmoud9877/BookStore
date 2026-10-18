@@ -22,7 +22,12 @@ signup() {
     -d "{\"userName\":\"$1\",\"email\":\"$2\",\"password\":\"$3\",\"cPassword\":\"$3\"}"
 }
 
-curl -sf "$API_URL/health" >/dev/null || { echo "API is not reachable at $API_URL" >&2; exit 1; }
+if ! curl -sf "$API_URL/health" >/dev/null; then
+  echo "API is not reachable at $API_URL." >&2
+  [[ -f .env ]] || echo "No .env file found — create one first: cp .env.example .env" >&2
+  echo "Check why it isn't healthy with: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs api" >&2
+  exit 1
+fi
 
 signup "Store Admin" admin@bookstore.local admin123
 signup "Reader" reader@bookstore.local reader123
