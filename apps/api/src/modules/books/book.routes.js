@@ -7,27 +7,29 @@ import {
   UpdateBookDto,
 } from "./book.dto.js";
 import { validate } from "../../middleware/validate.js";
-import { fileUpload, allowedMimeTypes } from "../../middleware/upload.js";
+import { PERMISSIONS } from "../roles/permissions.js";
+import { UPLOAD_LIMITS, allowedMimeTypes, fileUpload } from "../../middleware/upload.js";
 
 export function createBookRouter({ bookController, authGuard }) {
   const router = Router();
-  const adminOnly = authGuard.adminOnly();
-  const imageUpload = fileUpload(allowedMimeTypes.image).single("image");
+  const canManage = authGuard.requirePermission(PERMISSIONS.BooksManage);
+  const imageUpload = fileUpload(allowedMimeTypes.image, { maxBytes: UPLOAD_LIMITS.image }).single("image");
 
   router.get("/", validate(ListBooksQueryDto), bookController.listBooks);
   router.get("/:bookId", validate(BookIdDto), bookController.getBookById);
+  router.get("/:bookId/editions", validate(BookIdDto), bookController.listEditions);
 
-  router.post("/add", adminOnly, imageUpload, validate(CreateBookDto), bookController.addBook);
+  router.post("/add", canManage, imageUpload, validate(CreateBookDto), bookController.addBook);
   router.post(
     "/edit/:id",
-    adminOnly,
+    canManage,
     imageUpload,
     validate(UpdateBookDto),
     bookController.updateBook
   );
   router.delete(
     "/delete/:id",
-    adminOnly,
+    canManage,
     validate(DeleteBookDto),
     bookController.deleteBook
   );

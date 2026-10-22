@@ -32,14 +32,14 @@ describe("authentication and authorization", () => {
     }
   });
 
-  test("POST /book/add without an image keeps the legacy `error` field", async (t) => {
+  test("POST /book/add rejects an ISBN with a wrong check digit", async (t) => {
     const headers = authenticateAs(t, server.container, makeUser("Admin"));
     const res = await server.request("POST", "/book/add", {
       headers,
-      body: { bookTitle: "t", author: "a", description: "d", price: 1, category: "fiction", quantity: 1 },
+      body: { bookTitle: "t", author: "a", description: "d", category: "507f1f77bcf86cd799439011", isbn: "9780441172710" },
     });
-    assert.equal(res.status, 400);
-    assert.deepEqual(res.json, { message: "Image file is required", error: "Image file is required" });
+    expectValidationError(res);
+    assert.match(JSON.stringify(res.json.validationErr), /Invalid ISBN/);
   });
 
   test("lets admins through to request validation", async (t) => {

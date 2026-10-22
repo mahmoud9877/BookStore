@@ -76,6 +76,23 @@ export const env = Object.freeze({
   mail: Object.freeze({
     user: process.env.EMAIL,
     password: process.env.EMAIL_PASSWORD,
+    fromName: process.env.MAIL_FROM_NAME || "Library",
+    // "gmail" sends real email; "log" only logs (the default outside production).
+    transport: process.env.MAIL_TRANSPORT || (nodeEnv === "production" ? "gmail" : "log"),
+  }),
+  // Browser origins allowed to call the API (comma-separated). Unset: any origin —
+  // acceptable because auth is a bearer header, never a cookie.
+  corsOrigins: process.env.CORS_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? null,
+  // Files on disk: public covers (served at /uploads) and private documents.
+  uploadDir: process.env.UPLOAD_DIR || path.join(apiRoot, "uploads"),
+  // Optional catalogue assistant. Without a key it falls back to keyword search.
+  assistant: Object.freeze({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: process.env.ASSISTANT_MODEL || "claude-opus-5-5",
+  }),
+  worker: Object.freeze({
+    // How often the worker runs its jobs (notifications, holds, reminders).
+    intervalMs: Number(process.env.WORKER_INTERVAL_MS) || 60_000,
   }),
 });
 

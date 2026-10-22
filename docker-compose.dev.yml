@@ -2,16 +2,30 @@
 services:
   mongo:
     image: mongo:7
+    # A single-node replica set: MongoDB transactions (used by circulation,
+    # payments and inventory) require one. The health check initiates it once.
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    # MongoDB keeps a file open per collection and index; the Docker default
+    # limit (often 1024) crashes it ("Too many open files"). 64000 is MongoDB's recommendation.
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
     volumes:
       - mongo-data:/data/db
     ports:
       - "127.0.0.1:${DEV_MONGO_PORT:-27017}:27017"
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       start_period: 20s
-      retries: 5
+      retries: 10
     networks:
       - backend
 
@@ -21,32 +35,43 @@ services:
     environment:
       NODE_ENV: development
       # Always the local container, so development can never write to a production database.
-      MONGODB_URI: mongodb://mongo:27017/bookstore
+      MONGODB_URI: mongodb://mongo:27017/bookstore?replicaSet=rs0
+      MAIL_TRANSPORT: log
+      UPLOAD_DIR: /app/uploads
       FRONTEND_URL: http://localhost:${DEV_WEB_PORT:-3000}
       REQUIRE_EMAIL_CONFIRMATION: ${REQUIRE_EMAIL_CONFIRMATION:-false}
+    # Pending migrations are applied before the dev server starts.
+    command: ["sh", "-c", "npm run migrate && npm run dev"]
     volumes:
       - ./apps/api/src:/app/src
+      - ./apps/api/tests:/app/tests
+      # npm scripts; dependencies stay those installed in the image (rebuild after adding one).
+      - ./apps/api/package.json:/app/package.json:ro
+      - uploads:/app/uploads
     ports:
       - "127.0.0.1:${DEV_API_PORT:-4000}:3000"
     depends_on:
       mongo:
         condition: service_healthy
 
-  web:
+  worker:
     build:
       target: development
+    command: ["npm", "run", "worker:dev"]
     environment:
-      # Read by the browser, so it must be the host-published API port.
-      REACT_APP_API_URL: http://localhost:${DEV_API_PORT:-4000}
-      REACT_APP_BEARER_KEY: ${BEARER_KEY:-}
-      WATCHPACK_POLLING: "true"
-      WDS_SOCKET_PORT: ${DEV_WEB_PORT:-3000}
-      BROWSER: none
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/bookstore?replicaSet=rs0
+      MAIL_TRANSPORT: log
+      UPLOAD_DIR: /app/uploads
+      WORKER_INTERVAL_MS: "30000"
     volumes:
-      - ./apps/web/src:/app/src
-      - ./apps/web/public:/app/public
-    ports:
-      - "127.0.0.1:${DEV_WEB_PORT:-3000}:3000"
+      - ./apps/api/src:/app/src
+      - ./apps/api/package.json:/app/package.json:ro
+      - uploads:/app/uploads
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   mongo-data:
+  uploads:

@@ -3,8 +3,10 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import Logo from "../assets/images/main-logo.png";
 import { initials } from "../lib/format.js";
 import { useCartCount } from "../modules/cart/cart.queries.js";
-import { useCurrentUser } from "../modules/auth/auth.store.js";
+import { selectUser, useAuthStore } from "../modules/auth/auth.store.js";
+import { useAdminSections } from "../modules/admin/useAdminSections.js";
 import useSignOut from "../modules/auth/useSignOut.js";
+import NotificationBell from "../modules/account/NotificationBell.jsx";
 
 /** Closes a popup on outside click or Escape. */
 function useDismiss(ref, isOpen, close) {
@@ -21,7 +23,7 @@ function useDismiss(ref, isOpen, close) {
   }, [ref, isOpen, close]);
 }
 
-function UserMenu({ user, isAdmin, onLogout }) {
+function UserMenu({ user, canAdminister, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
   const close = () => setIsOpen(false);
@@ -51,14 +53,19 @@ function UserMenu({ user, isAdmin, onLogout }) {
             <hr className="dropdown-divider" />
           </li>
           <li>
+            <Link className="dropdown-item" to="/account" onClick={close}>
+              <i className="bi bi-person-vcard me-2" aria-hidden="true"></i>My library
+            </Link>
+          </li>
+          <li>
             <Link className="dropdown-item" to="/profile" onClick={close}>
               <i className="bi bi-person me-2" aria-hidden="true"></i>Profile
             </Link>
           </li>
-          {isAdmin && (
+          {canAdminister && (
             <li>
               <Link className="dropdown-item" to="/dashboard" onClick={close}>
-                <i className="bi bi-speedometer2 me-2" aria-hidden="true"></i>Manage catalogue
+                <i className="bi bi-speedometer2 me-2" aria-hidden="true"></i>Dashboard
               </Link>
             </li>
           )}
@@ -74,7 +81,8 @@ function UserMenu({ user, isAdmin, onLogout }) {
 }
 
 export default function Header() {
-  const { user, isAdmin } = useCurrentUser();
+  const user = useAuthStore(selectUser);
+  const canAdminister = useAdminSections().length > 0;
   const count = useCartCount();
   const signOut = useSignOut();
   const location = useLocation();
@@ -92,6 +100,7 @@ export default function Header() {
           </Link>
 
           <div className="d-flex align-items-center gap-1 ms-auto order-md-last">
+            {user && <NotificationBell />}
             <NavLink
               to="/cart"
               className="nav-link cart-link px-2"
@@ -105,7 +114,7 @@ export default function Header() {
               )}
             </NavLink>
             {user ? (
-              <UserMenu user={user} isAdmin={isAdmin} onLogout={signOut} />
+              <UserMenu user={user} canAdminister={canAdminister} onLogout={signOut} />
             ) : (
               <Link to="/login" className="btn btn-primary btn-sm ms-1 d-none d-md-inline-block">
                 Sign in
@@ -130,10 +139,27 @@ export default function Header() {
                   Browse books
                 </NavLink>
               </li>
-              {isAdmin && (
+              <li className="nav-item">
+                <NavLink to="/digital" className="nav-link">
+                  Digital library
+                </NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink to="/events" className="nav-link">
+                  Events
+                </NavLink>
+              </li>
+              {user && (
+                <li className="nav-item">
+                  <NavLink to="/account" className="nav-link">
+                    My library
+                  </NavLink>
+                </li>
+              )}
+              {canAdminister && (
                 <li className="nav-item">
                   <NavLink to="/dashboard" className="nav-link">
-                    Manage catalogue
+                    Dashboard
                   </NavLink>
                 </li>
               )}

@@ -1,8 +1,5 @@
 import { create } from "zustand";
-import { useShallow } from "zustand/react/shallow";
 import { TOKEN_STORAGE_KEY, clearAuthToken, readSession, setAuthToken } from "../../lib/auth-token.js";
-
-export const USER_ROLES = Object.freeze({ Admin: "Admin", User: "User" });
 
 /**
  * The signed-in user (decoded JWT claims + token), or null. The token in
@@ -29,11 +26,6 @@ export const useAuthStore = create((set) => ({
 
 export const selectUser = (state) => state.user;
 export const selectIsSignedIn = (state) => Boolean(state.user);
-export const selectIsAdmin = (state) => state.user?.role === USER_ROLES.Admin;
-
-/** `{ user, isAdmin }` for components that render account details. */
-export const useCurrentUser = () =>
-  useAuthStore(useShallow((state) => ({ user: selectUser(state), isAdmin: selectIsAdmin(state) })));
 
 // Signing in or out in one tab updates every open tab.
 window.addEventListener("storage", (event) => {

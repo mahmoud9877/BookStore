@@ -7,7 +7,7 @@ export class CategoryRepository extends BaseRepository {
   }
 
   list() {
-    return this.findMany();
+    return this.findMany({}, { sort: { name: 1 } });
   }
 
   findByName(name) {

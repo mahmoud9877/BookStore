@@ -1,41 +1,64 @@
 import { asyncHandler } from "./error-handler.js";
-import { USER_ROLES } from "../modules/users/user.roles.js";
+import { AccessContext } from "../core/access-context.js";
 import { ForbiddenError, UnauthorizedError } from "../core/http-errors.js";
 
 /**
  * Builds authentication middleware. Requests must send
- * `Authorization: <bearerKey><jwt>`; the user is attached to `req.user`.
+ * `Authorization: <bearerKey><jwt>`; the user is attached to `req.user` and
+ * what they may do to `req.access` (an AccessContext).
+ * Permissions come from the user's role and are looked up on every request, so
+ * a role change or deactivation applies immediately, without signing in again.
  */
 export class AuthGuard {
   #bearerKey;
   #accessTokens;
   #users;
+  #roles;
 
-  constructor({ bearerKey, accessTokens, userRepository }) {
+  constructor({ bearerKey, accessTokens, userRepository, roleService }) {
     this.#bearerKey = bearerKey;
     this.#accessTokens = accessTokens;
     this.#users = userRepository;
-  }
-
-  /** Middleware for signed-in users; a non-empty `allowedRoles` also restricts by role. */
-  authenticate(allowedRoles = []) {
-    return asyncHandler(async (req, res, next) => {
-      req.user = await this.#resolveUser(req.headers.authorization);
-      if (allowedRoles.length && !allowedRoles.includes(req.user.role)) {
-        throw new ForbiddenError("Not authorized account");
-      }
-      return next();
-    });
+    this.#roles = roleService;
   }
 
   /** Any signed-in user. */
   signedIn() {
-    return this.authenticate();
+    return asyncHandler(async (req, res, next) => {
+      await this.#authenticate(req);
+      return next();
+    });
   }
 
-  /** Signed-in administrators only. */
-  adminOnly() {
-    return this.authenticate([USER_ROLES.Admin]);
+  /** Authenticates when credentials are sent; anonymous requests pass with no `req.user`. */
+  optional() {
+    return asyncHandler(async (req, res, next) => {
+      if (req.headers.authorization) await this.#authenticate(req);
+      return next();
+    });
+  }
+
+  /** Signed-in users whose role grants at least one of `permissions`. */
+  requirePermission(...permissions) {
+    return asyncHandler(async (req, res, next) => {
+      await this.#authenticate(req);
+      if (!req.access.can(...permissions)) throw new ForbiddenError("Not authorized account");
+      return next();
+    });
+  }
+
+  async #authenticate(req) {
+    const user = await this.#resolveUser(req.headers.authorization);
+    const { permissions, branchScope } = await this.#roles.accessFor(user.role);
+    req.user = user;
+    req.access = new AccessContext({
+      userId: user._id,
+      userName: user.userName,
+      role: user.role,
+      permissions,
+      branchScope,
+      branches: user.branches ?? [],
+    });
   }
 
   async #resolveUser(authorization) {
@@ -50,6 +73,7 @@ export class AuthGuard {
 
     const user = await this.#users.findAuthUserById(decoded.id);
     if (!user) throw new UnauthorizedError("Not registered account");
+    if (user.isActive === false) throw new UnauthorizedError("This account has been deactivated");
     return user;
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { coverUrl } from "../../lib/cover-url.js";
 
-/** Cover image that falls back to a neutral placeholder when missing or broken. */
+/** Cover image (local "/uploads/…" paths resolved against the API) with a placeholder when missing or broken. */
 export default function BookCover({ src, alt, className = "book-cover" }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
@@ -10,5 +11,5 @@ export default function BookCover({ src, alt, className = "book-cover" }) {
       </div>
     );
   }
-  return <img src={src} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />;
+  return <img src={coverUrl(src)} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />;
 }

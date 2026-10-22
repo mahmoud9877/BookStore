@@ -1,44 +1,63 @@
-import { CATEGORY_OPTIONS } from "./category-options.js";
 import { CategoryResponseDto } from "./category.dto.js";
-import { BadRequestError, ensureFound } from "../../core/http-errors.js";
+import { BookResponseDto } from "../books/book.dto.js";
+import { ConflictError, ensureFound } from "../../core/http-errors.js";
 
 const CATEGORY_NOT_FOUND = "Category not found";
 
+/** Categories and the books that belong to them (one category has many books). */
 export class CategoryService {
   #categories;
+  #books;
 
-  constructor({ categoryRepository }) {
+  constructor({ categoryRepository, bookRepository }) {
     this.#categories = categoryRepository;
+    this.#books = bookRepository;
   }
 
   async listCategories() {
-    return CategoryResponseDto.fromList(await this.#categories.list());
-  }
-
-  listCategoryOptions() {
-    return CATEGORY_OPTIONS;
+    const [categories, counts] = await Promise.all([this.#categories.list(), this.#books.countByCategory()]);
+    return CategoryResponseDto.fromList(
+      categories.map((category) => ({ ...category, bookCount: counts[String(category._id)] ?? 0 }))
+    );
   }
 
   async getCategory(id) {
-    return CategoryResponseDto.from(ensureFound(await this.#categories.findById(id), CATEGORY_NOT_FOUND));
+    const category = ensureFound(await this.#categories.findById(id), CATEGORY_NOT_FOUND);
+    return CategoryResponseDto.from({ ...category, bookCount: await this.#books.countInCategory(id) });
+  }
+
+  async listBooksInCategory(id) {
+    ensureFound(await this.#categories.findById(id), CATEGORY_NOT_FOUND);
+    return BookResponseDto.fromList(await this.#books.list({ category: id }));
   }
 
   /** @param {import("./category.dto.js").CreateCategoryDto} dto */
   async createCategory({ name }) {
-    return CategoryResponseDto.from(await this.#categories.create({ name }));
+    await this.#assertNameIsFree(name);
+    return CategoryResponseDto.from({ ...(await this.#categories.create({ name })), bookCount: 0 });
   }
 
   /** @param {import("./category.dto.js").UpdateCategoryDto} dto */
   async updateCategory({ id, name }) {
-    if (!CATEGORY_OPTIONS.includes(name)) {
-      const message = `Invalid category name. Choose from: ${CATEGORY_OPTIONS.join(", ")}`;
-      throw new BadRequestError(message, { error: message });
-    }
-    const category = await this.#categories.updateById(id, { name });
-    return CategoryResponseDto.from(ensureFound(category, CATEGORY_NOT_FOUND));
+    await this.#assertNameIsFree(name, id);
+    const category = ensureFound(await this.#categories.updateById(id, { name }), CATEGORY_NOT_FOUND);
+    return CategoryResponseDto.from({ ...category, bookCount: await this.#books.countInCategory(id) });
   }
 
+  /** A category that still has books cannot be deleted (they would be orphaned). */
   async deleteCategory(id) {
-    ensureFound(await this.#categories.deleteById(id), CATEGORY_NOT_FOUND);
+    ensureFound(await this.#categories.findById(id), CATEGORY_NOT_FOUND);
+    const bookCount = await this.#books.countInCategory(id);
+    if (bookCount > 0) {
+      throw new ConflictError(`This category has ${bookCount} book(s). Move or delete them first.`);
+    }
+    await this.#categories.deleteById(id);
+  }
+
+  async #assertNameIsFree(name, exceptId) {
+    const existing = await this.#categories.findByName(name.toLowerCase());
+    if (existing && String(existing._id) !== String(exceptId)) {
+      throw new ConflictError("A category with this name already exists");
+    }
   }
 }

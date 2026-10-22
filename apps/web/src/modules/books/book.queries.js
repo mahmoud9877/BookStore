@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createBook, deleteBook, getBook, listBooks, updateBook } from "./book.service.js";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createBook, deleteBook, getBook, listBooks, listEditions, listRelated, searchCatalog, updateBook } from "./book.service.js";
 
 export const bookKeys = {
   all: ["books"],
@@ -38,3 +38,17 @@ export function useDeleteBook() {
     },
   });
 }
+
+/** One page of the public catalogue search; the previous page stays visible while the next loads. */
+export const useCatalogSearch = (params) =>
+  useQuery({
+    queryKey: [...bookKeys.all, "search", params],
+    queryFn: () => searchCatalog(params),
+    placeholderData: keepPreviousData,
+  });
+
+export const useEditions = (bookId) =>
+  useQuery({ queryKey: [...bookKeys.detail(bookId), "editions"], queryFn: () => listEditions(bookId), enabled: Boolean(bookId) });
+
+export const useRelatedBooks = (bookId) =>
+  useQuery({ queryKey: [...bookKeys.detail(bookId), "related"], queryFn: () => listRelated(bookId), enabled: Boolean(bookId) });

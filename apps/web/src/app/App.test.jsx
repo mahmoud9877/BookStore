@@ -12,6 +12,8 @@ import * as bookService from "../modules/books/book.service.js";
 import * as cartService from "../modules/cart/cart.service.js";
 import * as orderService from "../modules/orders/order.service.js";
 import * as categoryService from "../modules/categories/category.service.js";
+import * as userService from "../modules/users/user.service.js";
+import * as roleService from "../modules/roles/role.service.js";
 
 jest.mock("react-detect-offline", () => ({ Offline: () => null }));
 jest.mock("../modules/auth/auth.service.js");
@@ -19,11 +21,28 @@ jest.mock("../modules/books/book.service.js");
 jest.mock("../modules/cart/cart.service.js");
 jest.mock("../modules/orders/order.service.js");
 jest.mock("../modules/categories/category.service.js");
+jest.mock("../modules/users/user.service.js");
+jest.mock("../modules/roles/role.service.js");
+jest.mock("../modules/assistant/assistant.service.js", () => ({
+  getAssistantStatus: async () => ({ ai: false }),
+  askAssistant: jest.fn(),
+}));
+jest.mock("../modules/branches/branch.queries.js", () => ({
+  useActiveBranches: () => ({ data: [{ _id: "br1", code: "MAIN", name: "Main Library" }], isLoading: false }),
+}));
 
+const FANTASY = { _id: "c00000000000000000000001", name: "fantasy" };
+const NON_FICTION = { _id: "c00000000000000000000002", name: "non-fiction" };
+const CATEGORIES = [
+  { ...FANTASY, bookCount: 2 },
+  { ...NON_FICTION, bookCount: 1 },
+  { _id: "c00000000000000000000003", name: "poetry", bookCount: 0 },
+];
+const ALL_PERMISSIONS = ["books:manage", "categories:manage", "orders:manage", "users:read", "users:manage", "roles:manage"];
 const BOOKS = [
-  { _id: "b1", bookTitle: "dune", author: "frank herbert", price: 320, quantity: 12, category: "fantasy", image: "", description: "Desert planet." },
-  { _id: "b2", bookTitle: "sapiens", author: "yuval noah harari", price: 410, quantity: 3, category: "non-fiction", image: "" },
-  { _id: "b3", bookTitle: "the hobbit", author: "j. r. r. tolkien", price: 250, quantity: 0, category: "fantasy", image: "" },
+  { _id: "b1", bookTitle: "dune", author: "frank herbert", price: 320, quantity: 12, category: FANTASY, image: "", description: "Desert planet." },
+  { _id: "b2", bookTitle: "sapiens", author: "yuval noah harari", price: 410, quantity: 3, category: NON_FICTION, image: "" },
+  { _id: "b3", bookTitle: "the hobbit", author: "j. r. r. tolkien", price: 250, quantity: 0, category: FANTASY, image: "" },
 ];
 const CART_ITEM = { bookId: "b1", bookTitle: "dune", price: 320, quantity: 2, image: "" };
 
@@ -49,11 +68,26 @@ beforeEach(() => {
   localStorage.clear();
   resetStores();
   bookService.listBooks.mockResolvedValue(BOOKS);
+  // The home page searches on the server; emulate its text and category filters.
+  bookService.searchCatalog.mockImplementation(async ({ q = "", category } = {}) => {
+    const needle = q.toLowerCase();
+    const data = BOOKS.filter((book) => !category || book.category._id === category).filter(
+      (book) => !needle || `${book.bookTitle} ${book.author}`.includes(needle)
+    );
+    return { data, meta: { page: 1, limit: 24, total: data.length, pages: 1 } };
+  });
+  bookService.listEditions.mockResolvedValue([]);
+  bookService.listRelated.mockResolvedValue([]);
   bookService.getBook.mockResolvedValue(BOOKS[0]);
   cartService.getCartItems.mockResolvedValue([]);
   cartService.addToCart.mockResolvedValue({});
   cartService.clearCart.mockResolvedValue({});
-  categoryService.listCategoryOptions.mockResolvedValue(["fantasy", "non-fiction"]);
+  categoryService.listCategories.mockResolvedValue(CATEGORIES);
+  // GET /auth/me: the role's permissions, as the API resolves them.
+  authService.getCurrentUser.mockImplementation(async () => {
+    const { role } = useAuthStore.getState().user ?? {};
+    return { role, permissions: role === "Admin" ? ALL_PERMISSIONS : [] };
+  });
 });
 
 describe("browsing", () => {
@@ -71,8 +105,9 @@ describe("browsing", () => {
     await screen.findByRole("link", { name: "Dune" });
 
     userEvent.type(screen.getByRole("searchbox", { name: /search books/i }), "harari");
+    // The search runs on the server (debounced): wait for the narrowed results.
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Dune" })).not.toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Sapiens" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Dune" })).not.toBeInTheDocument();
 
     userEvent.click(screen.getByRole("button", { name: "fantasy" }));
     expect(await screen.findByText("No books match your search")).toBeInTheDocument();
@@ -187,7 +222,7 @@ describe("accounts", () => {
     renderAt("/profile", { token: makeToken({ userName: "reader" }) });
     expect(await screen.findByRole("heading", { name: "reader" })).toBeInTheDocument();
     expect(screen.getByText("Customer")).toBeInTheDocument();
-    expect(screen.queryByText("Manage catalogue")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
   });
 });
 
@@ -258,11 +293,11 @@ describe("catalogue administration", () => {
   test("the dashboard is only available to admins", async () => {
     renderAt("/dashboard", { token: makeToken({ role: "User" }) });
     expect(await screen.findByRole("heading", { name: "Find your next great read" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Manage catalogue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
   });
 
   test("admins see the catalogue table with stock status", async () => {
-    renderAt("/dashboard", { token: adminToken() });
+    renderAt("/dashboard/books", { token: adminToken() });
     expect(await screen.findByRole("heading", { name: "Catalogue" })).toBeInTheDocument();
     expect(await screen.findByText("Out of stock")).toBeInTheDocument();
     expect(screen.getByText("3 · low")).toBeInTheDocument();
@@ -270,7 +305,7 @@ describe("catalogue administration", () => {
 
   test("editing a book pre-fills the form and saves through the modal", async () => {
     bookService.updateBook.mockResolvedValue({});
-    renderAt("/dashboard", { token: adminToken() });
+    renderAt("/dashboard/books", { token: adminToken() });
 
     userEvent.click(await screen.findByRole("button", { name: "Edit Dune" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit book" });
@@ -281,23 +316,24 @@ describe("catalogue administration", () => {
     const [bookId, formData] = bookService.updateBook.mock.calls[0];
     expect(bookId).toBe("b1");
     expect(formData.get("author")).toBe("Frank Herbert");
+    expect(formData.get("category")).toBe(FANTASY._id); // books reference their category by id
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  test("adding a book requires a cover and valid fields", async () => {
-    renderAt("/dashboard", { token: adminToken() });
+  test("adding a book validates its fields (the cover is optional)", async () => {
+    renderAt("/dashboard/books", { token: adminToken() });
     userEvent.click(await screen.findByRole("button", { name: "Add book" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a book" });
     userEvent.click(within(dialog).getByRole("button", { name: "Add book" }));
 
     expect(await within(dialog).findByText("Enter the book's title.")).toBeInTheDocument();
-    expect(within(dialog).getByText("Add a cover image.")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Add a cover image.")).not.toBeInTheDocument();
     expect(bookService.createBook).not.toHaveBeenCalled();
   });
 
   test("deleting a book needs confirmation", async () => {
     bookService.deleteBook.mockResolvedValue({});
-    renderAt("/dashboard", { token: adminToken() });
+    renderAt("/dashboard/books", { token: adminToken() });
 
     userEvent.click(await screen.findByRole("button", { name: "Delete Dune" }));
     const dialog = await screen.findByRole("dialog", { name: "Delete this book?" });
@@ -305,5 +341,93 @@ describe("catalogue administration", () => {
 
     expect(await screen.findByText("Deleted “Dune”.")).toBeInTheDocument();
     expect(bookService.deleteBook).toHaveBeenCalledWith("b1");
+  });
+});
+
+describe("roles and permissions", () => {
+  const adminToken = () => makeToken({ id: "admin-1", role: "Admin", userName: "Store Admin" });
+  const ROLES = [
+    { name: "Admin", permissions: ALL_PERMISSIONS, isSystem: true, userCount: 1 },
+    { name: "User", permissions: [], isSystem: true, userCount: 1 },
+    { _id: "r1", name: "Editor", description: "Catalogue staff", permissions: ["books:manage"], isSystem: false, userCount: 0 },
+  ];
+  const CATALOGUE = [
+    { key: "books:manage", label: "Manage books", description: "Add, edit and delete books." },
+    { key: "roles:manage", label: "Manage roles", description: "Edit roles." },
+  ];
+
+  beforeEach(() => {
+    roleService.listRoles.mockResolvedValue(ROLES);
+    roleService.listPermissions.mockResolvedValue(CATALOGUE);
+    userService.listUsers.mockResolvedValue({
+      users: [
+        { _id: "admin-1", userName: "Store Admin", email: "admin@example.com", role: "Admin", confirmEmail: true, branches: [], isActive: true },
+        { _id: "u2", userName: "Reader", email: "reader@example.com", role: "User", confirmEmail: true, branches: [], isActive: true },
+      ],
+      meta: { page: 1, limit: 25, total: 2, pages: 1 },
+    });
+  });
+
+  test("a custom role only sees the sections its permissions allow", async () => {
+    authService.getCurrentUser.mockResolvedValue({ role: "Category staff", permissions: ["categories:manage"] });
+    renderAt("/dashboard", { token: makeToken({ role: "Category staff", userName: "Cat" }) });
+
+    expect(await screen.findByRole("heading", { name: "Welcome, Cat" })).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Administration" });
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual(["Overview", "Categories"]);
+  });
+
+  test("a section the role does not grant redirects home", async () => {
+    authService.getCurrentUser.mockResolvedValue({ role: "Category staff", permissions: ["categories:manage"] });
+    renderAt("/dashboard/roles", { token: makeToken({ role: "Category staff" }) });
+    expect(await screen.findByRole("heading", { name: "Find your next great read" })).toBeInTheDocument();
+  });
+
+  test("categories show their book count and only empty ones can be deleted", async () => {
+    renderAt("/dashboard/categories", { token: adminToken() });
+    expect(await screen.findByRole("link", { name: "2" })).toHaveAttribute("href", "/?category=fantasy");
+    expect(screen.getByRole("button", { name: "Delete fantasy" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete poetry" })).toBeEnabled();
+  });
+
+  test("adding a category", async () => {
+    categoryService.createCategory.mockResolvedValue({});
+    renderAt("/dashboard/categories", { token: adminToken() });
+    userEvent.click(await screen.findByRole("button", { name: "Add category" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a category" });
+    userEvent.type(within(dialog).getByLabelText("Name"), "history");
+    userEvent.click(within(dialog).getByRole("button", { name: "Add category" }));
+
+    expect(await screen.findByText("Added the “history” category.")).toBeInTheDocument();
+    expect(categoryService.createCategory).toHaveBeenCalledWith("history");
+  });
+
+  test("admins change another account's role, but not their own", async () => {
+    userService.changeUserRole.mockResolvedValue({});
+    renderAt("/dashboard/users", { token: adminToken() });
+
+    const select = await screen.findByRole("combobox", { name: "Role of Reader" });
+    expect(screen.queryByRole("combobox", { name: "Role of Store Admin" })).not.toBeInTheDocument();
+    userEvent.selectOptions(select, "Editor");
+
+    expect(await screen.findByText("Reader is now Editor.")).toBeInTheDocument();
+    expect(userService.changeUserRole).toHaveBeenCalledWith("u2", "Editor");
+  });
+
+  test("creating a role with chosen permissions; built-in roles are read-only", async () => {
+    roleService.createRole.mockResolvedValue({});
+    renderAt("/dashboard/roles", { token: adminToken() });
+
+    expect(await screen.findByRole("heading", { name: "Editor" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
+
+    userEvent.click(screen.getByRole("button", { name: "New role" }));
+    const dialog = await screen.findByRole("dialog", { name: "New role" });
+    userEvent.type(within(dialog).getByLabelText("Name"), "Support");
+    userEvent.click(within(dialog).getByRole("checkbox", { name: /Manage books/ }));
+    userEvent.click(within(dialog).getByRole("button", { name: "Create role" }));
+
+    expect(await screen.findByText("Created the “Support” role.")).toBeInTheDocument();
+    expect(roleService.createRole).toHaveBeenCalledWith({ name: "Support", description: "", permissions: ["books:manage"], branchScope: "assigned" });
   });
 });

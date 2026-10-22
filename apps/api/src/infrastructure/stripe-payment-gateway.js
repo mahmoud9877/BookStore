@@ -47,12 +47,54 @@ export class StripePaymentGateway {
     return { id: session.id, url: session.url };
   }
 
+  /**
+   * A one-off payment of `amount` minor units (library fines). `metadata` comes
+   * back on the webhook event; `returnPath` is the web app route to return to.
+   */
+  async createPaymentCheckout({ reference, description, amount, currency, customerEmail, metadata, returnPath }) {
+    const returnUrl = `${this.#frontendUrl}/#${returnPath}`;
+    const session = await this.#stripe().checkout.sessions.create(
+      {
+        mode: "payment",
+        payment_method_types: ["card"],
+        customer_email: customerEmail || undefined,
+        client_reference_id: reference,
+        metadata,
+        payment_intent_data: { metadata },
+        success_url: returnUrl,
+        cancel_url: returnUrl,
+        line_items: [
+          {
+            price_data: { currency: currency.toLowerCase(), product_data: { name: description }, unit_amount: amount },
+            quantity: 1,
+          },
+        ],
+      },
+      // Stripe deduplicates retried requests with the same key.
+      { idempotencyKey: `checkout:${reference}` }
+    );
+    return { id: session.id, url: session.url };
+  }
+
+  /** Refunds `amount` minor units of a captured payment; resolves `{ id }`. */
+  async refund({ paymentRef, amount, reference }) {
+    const refund = await this.#stripe().refunds.create(
+      { payment_intent: paymentRef, amount },
+      { idempotencyKey: `refund:${reference}` }
+    );
+    return { id: refund.id };
+  }
+
   /** Verifies the signature and translates the Stripe event into a payment outcome. */
   parseWebhookEvent(rawBody, signature) {
     const event = this.#verify(rawBody, signature);
+    const object = event.data?.object ?? {};
     return {
+      eventId: event.id,
       outcome: OUTCOME_BY_EVENT_TYPE[event.type] ?? PAYMENT_OUTCOMES.ignored,
-      orderId: event.data?.object?.metadata?.orderId,
+      orderId: object.metadata?.orderId,
+      metadata: object.metadata ?? {},
+      paymentRef: typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id,
     };
   }
 
@@ -72,7 +114,8 @@ export class StripePaymentGateway {
     if (!this.isConfigured) {
       throw new ServiceUnavailableError("Card payments are not configured");
     }
-    this.#client ??= new Stripe(this.#secretKey);
+    // Bounded network time and automatic retries for transient failures.
+    this.#client ??= new Stripe(this.#secretKey, { timeout: 20_000, maxNetworkRetries: 2 });
     return this.#client;
   }
 }

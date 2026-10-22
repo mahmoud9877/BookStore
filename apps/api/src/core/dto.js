@@ -1,5 +1,6 @@
 import joi from "joi";
 import { Types } from "mongoose";
+import { paginationKeys } from "./pagination.js";
 
 /** Joi fields shared by request DTOs. */
 export const fields = {
@@ -10,6 +11,8 @@ export const fields = {
         Types.ObjectId.isValid(value) ? value : helper.message("Invalid ObjectId")
       )
       .required(),
+  /** An optional reference to another document (24 hex characters). */
+  ref: () => joi.string().hex().length(24),
 };
 
 const schemaKeysCache = new WeakMap();
@@ -78,4 +81,37 @@ export class ResponseDto {
       this[name] = nested[name] ? nested[name].fromList(source[name]) : source[name];
     }
   }
+}
+
+/** Drops keys whose value is undefined (partial updates must not erase fields). */
+export const definedOnly = (object) =>
+  Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+
+/**
+ * Request DTOs for a CrudController. `attributes` are Joi rules without
+ * `.required()`; names in `required` must be present on create. Updates accept
+ * any subset. `filters` are extra list query keys; `sortable` the list sort fields.
+ */
+export function crudDtos({ attributes, required = [], filters = {}, sortable = ["name", "createdAt"], defaultSort = "name" }) {
+  const createKeys = Object.fromEntries(
+    Object.entries(attributes).map(([name, rule]) => [name, required.includes(name) ? rule.required() : rule])
+  );
+  return {
+    Id: class extends RequestDto {
+      static schema = joi.object({ id: fields.objectId() });
+    },
+    List: class extends RequestDto {
+      static schema = joi.object({
+        ...paginationKeys(sortable, defaultSort),
+        search: joi.string().trim().max(100).allow(""),
+        ...filters,
+      });
+    },
+    Create: class extends RequestDto {
+      static schema = joi.object(createKeys);
+    },
+    Update: class extends RequestDto {
+      static schema = joi.object({ id: fields.objectId(), ...attributes }).min(2);
+    },
+  };
 }

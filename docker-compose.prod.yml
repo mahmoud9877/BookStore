@@ -1,17 +1,57 @@
 # Production: optimized images, only the web port is published; the API is reachable
 # through nginx at /api. MONGODB_URI (and all secrets) must come from .env.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate   # every deployment
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# ENV_FILE selects another environment file (default .env), e.g. for a staging copy.
+#
+# MongoDB: use a managed replica set (e.g. Atlas) via MONGODB_URI, or start the
+# bundled single-node replica set with `--profile local-db` and set
+# MONGODB_URI=mongodb://mongo:27017/library?replicaSet=rs0 (see README: backups).
+x-api-runtime: &api-runtime
+  build:
+    target: production
+  environment:
+    NODE_ENV: production
+    UPLOAD_DIR: /app/uploads
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp # multer stores uploads here before they are moved to storage
+  volumes:
+    - uploads:/app/uploads
+  security_opt:
+    - no-new-privileges:true
+
 services:
   api:
+    <<: *api-runtime
+
+  worker:
+    <<: *api-runtime
+    command: ["node", "src/worker.js"]
+    healthcheck:
+      disable: true # no HTTP port; Docker restarts it if the process exits
+
+  # One-off: applies pending database migrations. Run it explicitly on every deployment.
+  migrate:
+    <<: *api-runtime
+    # Not in docker-compose.yml, so it declares its own build and environment file.
     build:
+      context: ./apps/api
       target: production
-    environment:
-      NODE_ENV: production
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp # multer stores uploads here before they are sent to Cloudinary
-    security_opt:
-      - no-new-privileges:true
+    env_file:
+      - path: ${ENV_FILE:-.env}
+        required: false
+    command: ["node", "src/migrate.js", "up"]
+    restart: "no"
+    profiles: ["tools"]
+    healthcheck:
+      disable: true
+    networks:
+      - backend
 
   web:
     build:
@@ -27,3 +67,34 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+
+  # Optional self-hosted MongoDB (single-node replica set, required for transactions).
+  # Not published on any host port. Enable with --profile local-db.
+  mongo:
+    image: mongo:7
+    profiles: ["local-db"]
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }"
+      interval: 10s
+      timeout: 10s
+      start_period: 20s
+      retries: 10
+    networks:
+      - backend
+
+volumes:
+  uploads:
+  mongo-data:

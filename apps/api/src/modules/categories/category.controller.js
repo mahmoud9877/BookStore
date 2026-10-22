@@ -11,12 +11,12 @@ export class CategoryController {
     return res.status(200).json(await this.#categoryService.listCategories());
   });
 
-  listCategoryOptions = (req, res) => {
-    return res.status(200).json({ categories: this.#categoryService.listCategoryOptions() });
-  };
-
   getCategoryById = asyncHandler(async (req, res) => {
     return res.status(200).json(await this.#categoryService.getCategory(req.dto.id));
+  });
+
+  listCategoryBooks = asyncHandler(async (req, res) => {
+    return res.status(200).json({ books: await this.#categoryService.listBooksInCategory(req.dto.id) });
   });
 
   createCategory = asyncHandler(async (req, res) => {

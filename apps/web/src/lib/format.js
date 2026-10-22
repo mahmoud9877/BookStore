@@ -37,3 +37,31 @@ export const initials = (name = "") =>
 
 export const pluralize = (count, singular, plural = `${singular}s`) =>
   `${count} ${count === 1 ? singular : plural}`;
+
+const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
+const dateTimeFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
+
+/** "Oct 22, 2026" (empty for missing dates). */
+export const formatDate = (value) => (value ? dateFormatter.format(new Date(value)) : "");
+
+/** "Oct 22, 2026, 4:30 PM" */
+export const formatDateTime = (value) => (value ? dateTimeFormatter.format(new Date(value)) : "");
+
+/**
+ * Library amounts are integers in the currency's minor unit (piastres/cents):
+ * 1250 -> "EGP 12.50".
+ */
+export const formatMoney = (minor, currency = CURRENCY) =>
+  new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" }).format((Number(minor) || 0) / 100);
+
+/** Major units typed by staff ("12.50") -> minor units (1250). */
+export const toMinorUnits = (major) => Math.round(Number(major) * 100);
+
+/** "on_loan" -> "On loan" */
+export const humanize = (value = "") => {
+  const text = String(value).replace(/[_-]+/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+/** Whole days from now until `date` (negative when in the past). */
+export const daysUntil = (date) => Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
