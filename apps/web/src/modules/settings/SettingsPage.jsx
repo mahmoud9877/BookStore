@@ -130,7 +130,7 @@ function PoliciesForm({ settings, onReload }) {
         <NumberField id="due-soon" label="Due-date reminder (days before)" min={1} value={form.notifications.dueSoonDays} onChange={int("notifications", "dueSoonDays")} />
         <NumberField id="expiry-days" label="Membership expiry reminder (days before)" min={1} value={form.notifications.membershipExpiryDays} onChange={int("notifications", "membershipExpiryDays")} />
         <div className="col-12">
-          <h3 className="h6 mt-2">Message templates</h3>
+          <h2 className="h6 mt-2">Message templates</h2>
           <p className="small text-muted mb-2">Use the listed {"{{placeholders}}"}; unknown ones are left empty.</p>
           {Object.entries(form.notifications.templates).map(([type, template]) => (
             <details key={type} className="border rounded p-2 mb-2">

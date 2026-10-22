@@ -1,8 +1,9 @@
 import React from "react";
 import { useActiveBranches } from "../branches/branch.queries.js";
+import { t } from "../../i18n/index.js";
 
 /** A labelled branch filter/select ("" = all branches). */
-export default function BranchSelect({ id, label = "Branch", value, onChange, allLabel = "All branches", className = "" }) {
+export default function BranchSelect({ id, label = t("Branch"), value, onChange, allLabel = t("All branches"), className = "" }) {
   const { data: branches } = useActiveBranches();
   return (
     <div className={className}>

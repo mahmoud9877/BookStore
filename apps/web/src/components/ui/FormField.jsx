@@ -1,4 +1,5 @@
 import React, { useId, useState } from "react";
+import { t } from "../../i18n/index.js";
 
 /**
  * Labelled form control with an inline error. `as` selects the element
@@ -59,7 +60,7 @@ export function PasswordField({ label, error, hint, className = "mb-3", ...props
           type="button"
           className="btn btn-sm btn-ghost password-toggle"
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          aria-label={visible ? t("Hide {field}", { field: label }) : t("Show {field}", { field: label })}
           aria-pressed={visible}
         >
           <i className={`bi bi-${visible ? "eye-slash" : "eye"}`} aria-hidden="true"></i>
@@ -84,6 +85,7 @@ export function PasswordField({ label, error, hint, className = "mb-3", ...props
 export const fieldErrors = (joiError) =>
   (joiError?.details ?? []).reduce((errors, { path, message }) => {
     const field = path[0];
-    if (!errors[field]) errors[field] = message.replace(/^"[^"]+" /, "").replace(/^./, (c) => c.toUpperCase());
+    // Custom schema messages are English keys, translated here.
+    if (!errors[field]) errors[field] = t(message.replace(/^"[^"]+" /, "").replace(/^./, (c) => c.toUpperCase()));
     return errors;
   }, {});

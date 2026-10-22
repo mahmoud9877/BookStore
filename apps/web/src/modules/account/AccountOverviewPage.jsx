@@ -1,6 +1,5 @@
 import React from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { usePagedQuery } from "../../lib/resource.js";
 import { daysUntil, formatDate, formatMoney, formatTitle } from "../../lib/format.js";
 import { accountKeys } from "./account.queries.js";
@@ -16,7 +15,7 @@ function Count({ label, value, to, tone }) {
   );
 }
 
-/** Membership card, account counts and the loans due soonest. */
+/** Account counts, membership warnings and the loans due soonest. */
 export default function AccountOverviewPage() {
   const { membership } = useOutletContext();
   const loans = usePagedQuery(accountKeys.loans(), "/loans/me", { status: "active", limit: 50 });
@@ -26,25 +25,22 @@ export default function AccountOverviewPage() {
 
   return (
     <>
-      <div className="card mb-4">
-        <div className="card-body d-flex flex-wrap gap-4 align-items-center">
-          <i className="bi bi-person-vcard display-6 text-primary" aria-hidden="true"></i>
-          <div className="flex-grow-1">
-            <h2 className="h5 mb-1">{membership.name}</h2>
-            <div className="text-muted small">
-              Card <strong className="text-body">{membership.memberNumber}</strong> · {membership.membershipType?.name} · Home branch{" "}
-              {membership.homeBranch?.name}
-            </div>
-          </div>
-          <div className="text-md-end">
-            <StatusBadge status={membership.isExpired ? "expired" : membership.status} />
-            <div className={`small mt-1 ${expiresIn <= 30 ? "text-warning-emphasis" : "text-muted"}`}>
-              {membership.isExpired ? "Expired" : "Valid until"} {formatDate(membership.expiresAt)}
-              {!membership.isExpired && expiresIn <= 30 && ` (${expiresIn} days) — renew at any branch`}
-            </div>
-          </div>
+      {/* The card details are in the portal header; here only what needs action. */}
+      {(membership.isExpired || expiresIn <= 30) && (
+        <div className="alert alert-warning d-flex gap-2 align-items-start" role="status">
+          <i className="bi bi-exclamation-triangle" aria-hidden="true"></i>
+          <span>
+            {membership.isExpired
+              ? `Your membership expired on ${formatDate(membership.expiresAt)}. Renew it at any branch to borrow again.`
+              : `Your membership expires on ${formatDate(membership.expiresAt)} (in ${expiresIn} days). Renew it at any branch.`}
+          </span>
         </div>
-      </div>
+      )}
+      {membership.status === "suspended" && (
+        <div className="alert alert-danger" role="status">
+          Your membership is suspended{membership.statusReason ? `: ${membership.statusReason}` : ""}. Please contact a branch.
+        </div>
+      )}
 
       <div className="row g-3 mb-4">
         <Count label="On loan" value={`${summary.activeLoans} / ${membership.membershipType?.loanLimit ?? "—"}`} to="loans" />
@@ -60,7 +56,7 @@ export default function AccountOverviewPage() {
         </p>
       ) : dueSoon.length === 0 ? (
         <p className="text-muted">
-          Nothing on loan. <Link to="/">Find something to read</Link>.
+          Nothing on loan. <Link to="/catalog">Find something to read</Link>.
         </p>
       ) : (
         <ul className="list-group">

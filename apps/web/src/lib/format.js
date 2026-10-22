@@ -1,15 +1,22 @@
 import { CURRENCY } from "../config/api.js";
+import { currentLocale, t, tp } from "../i18n/index.js";
 
-const priceFormatter = new Intl.NumberFormat("en", {
-  style: "currency",
-  currency: CURRENCY,
-  currencyDisplay: "code",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
+// Formatters follow the interface language (cached per locale).
+const cache = new Map();
+const formatter = (kind, options) => {
+  const key = `${currentLocale()}|${kind}|${JSON.stringify(options)}`;
+  if (!cache.has(key)) cache.set(key, new (kind === "date" ? Intl.DateTimeFormat : Intl.NumberFormat)(currentLocale(), options));
+  return cache.get(key);
+};
 
-/** "EGP 320", "EGP 12.5" */
-export const formatPrice = (amount) => priceFormatter.format(Number(amount) || 0);
+/** "EGP 320", "EGP 12.5" (shop prices, in major units). */
+export const formatPrice = (amount) =>
+  formatter("number", { style: "currency", currency: CURRENCY, currencyDisplay: "code", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(
+    Number(amount) || 0
+  );
+
+/** 1234 -> "1,234" (in the interface language). */
+export const formatNumber = (value) => formatter("number", {}).format(Number(value) || 0);
 
 const MINOR_WORDS = new Set(["a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or", "the", "to"]);
 
@@ -35,32 +42,37 @@ export const initials = (name = "") =>
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "?";
 
-export const pluralize = (count, singular, plural = `${singular}s`) =>
-  `${count} ${count === 1 ? singular : plural}`;
+/**
+ * A counted noun in the interface language: `pluralize(3, "book")` → "3 books" /
+ * "3 كتب". The noun must have a plural table in i18n/ar/common.js (id = the
+ * singular English noun); prefer tp() directly in new code.
+ */
+export const pluralize = (count, noun) => tp(noun, count);
 
-const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
-const dateTimeFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
-
-/** "Oct 22, 2026" (empty for missing dates). */
-export const formatDate = (value) => (value ? dateFormatter.format(new Date(value)) : "");
+/** "Oct 22, 2026" / "22 أكتوبر 2026" (empty for missing dates). */
+export const formatDate = (value) => (value ? formatter("date", { dateStyle: "medium" }).format(new Date(value)) : "");
 
 /** "Oct 22, 2026, 4:30 PM" */
-export const formatDateTime = (value) => (value ? dateTimeFormatter.format(new Date(value)) : "");
+export const formatDateTime = (value) => (value ? formatter("date", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "");
 
 /**
  * Library amounts are integers in the currency's minor unit (piastres/cents):
  * 1250 -> "EGP 12.50".
  */
 export const formatMoney = (minor, currency = CURRENCY) =>
-  new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "code" }).format((Number(minor) || 0) / 100);
+  formatter("number", { style: "currency", currency, currencyDisplay: "code" }).format((Number(minor) || 0) / 100);
 
 /** Major units typed by staff ("12.50") -> minor units (1250). */
 export const toMinorUnits = (major) => Math.round(Number(major) * 100);
 
-/** "on_loan" -> "On loan" */
+/**
+ * An API enum value as readable text in the interface language:
+ * "on_loan" -> "On loan" / "معار". The English phrases are translated in
+ * i18n/ar/common.js (statuses, types, kinds…).
+ */
 export const humanize = (value = "") => {
   const text = String(value).replace(/[_-]+/g, " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return t(text.charAt(0).toUpperCase() + text.slice(1));
 };
 
 /** Whole days from now until `date` (negative when in the past). */

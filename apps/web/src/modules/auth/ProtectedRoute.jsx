@@ -22,7 +22,7 @@ export default function ProtectedRoute({ children, permissions }) {
         </p>
       );
     }
-    if (!can(...permissions)) return <Navigate to="/" replace />;
+    if (!can(...permissions)) return <Navigate to="/catalog" replace />;
   }
   return children;
 }

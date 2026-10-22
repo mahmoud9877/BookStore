@@ -228,11 +228,11 @@ export default function BookDetailsPage() {
       <nav aria-label="Breadcrumb" className="mb-4">
         <ol className="breadcrumb small mb-0">
           <li className="breadcrumb-item">
-            <Link to="/">Books</Link>
+            <Link to="/catalog">Catalogue</Link>
           </li>
           {book?.category?._id && (
             <li className="breadcrumb-item">
-              <Link to={`/?category=${book.category._id}`} className="text-capitalize">
+              <Link to={`/catalog?category=${book.category._id}`} className="text-capitalize">
                 {book.category.name}
               </Link>
             </li>

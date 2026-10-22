@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { apiClient, getErrorMessage, responseData } from "./api-client.js";
 import { toast } from "../components/ui/toast.store.js";
+import { t } from "../i18n/index.js";
 
 /** Drops empty values so they never reach the query string. */
 export const cleanParams = (params = {}) =>
@@ -36,7 +37,7 @@ export function useDataQuery(key, url, params, options = {}) {
  * outcome with a toast. `success` is a message or a function of the result.
  * Resolves the response body's `data` (or the body).
  */
-export function useApiMutation(request, { invalidate = [], success, failure = "That didn't work. Please try again." } = {}) {
+export function useApiMutation(request, { invalidate = [], success, failure = t("That didn't work. Please try again.") } = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables) => {

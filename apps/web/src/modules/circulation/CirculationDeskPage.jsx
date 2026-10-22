@@ -9,12 +9,13 @@ import { useCurrentUserQuery } from "../auth/auth.queries.js";
 import { CIRCULATION_KEYS } from "./circulation-keys.js";
 import { useMemberLookup } from "./useMemberLookup.js";
 import MemberSummary from "./MemberSummary.jsx";
+import { msg, t } from "../../i18n/index.js";
 
 const NEXT_STEP = {
-  held: "Put it on the hold shelf: it is reserved for the next member, who has been notified.",
-  transfer: "Put it in the transfer bin: it is going to another branch.",
-  shelved: "Return it to the shelf.",
-  damaged: "Set it aside: it was recorded as damaged.",
+  held: msg("Put it on the hold shelf: it is reserved for the next member, who has been notified."),
+  transfer: msg("Put it in the transfer bin: it is going to another branch."),
+  shelved: msg("Return it to the shelf."),
+  damaged: msg("Set it aside: it was recorded as damaged."),
 };
 
 function useInvalidateCirculation() {
@@ -58,8 +59,10 @@ function CheckoutPanel() {
     } catch (error) {
       const message = getErrorMessage(error);
       // Limit and balance blocks may be overridden with a reason; suspensions and expiry may not.
-      if (error?.response?.status === 403 && /limit|fines/i.test(message)) setBlocked(message);
-      else setBlocked(null);
+      // Decided from the member's standing, not the (translated) message text.
+      const standing = member.data;
+      const overridable = error?.response?.status === 403 && (!standing || (standing.status === "active" && !standing.isExpired));
+      setBlocked(overridable ? message : null);
     }
   }
 
@@ -68,12 +71,13 @@ function CheckoutPanel() {
   return (
     <section className="card card-body h-100" aria-labelledby="checkout-title">
       <h2 id="checkout-title" className="h5">
-        <i className="bi bi-box-arrow-up-right me-2 text-primary" aria-hidden="true"></i>Check out
+        <i className="bi bi-box-arrow-up-right me-2 text-primary" aria-hidden="true"></i>
+        {t("Check out")}
       </h2>
       <form onSubmit={submit} noValidate>
         <div className="mb-3">
           <label htmlFor="checkout-member" className="form-label">
-            Member number
+            {t("Member number")}
           </label>
           <input
             id="checkout-member"
@@ -92,16 +96,16 @@ function CheckoutPanel() {
             <MemberSummary member={member.data} />
           </div>
         )}
-        {member.error && memberRef.trim().length >= 3 && <p className="small text-danger">No member with this number.</p>}
+        {member.error && memberRef.trim().length >= 3 && <p className="small text-danger">{t("No member with this number.")}</p>}
         <div className="mb-3">
           <label htmlFor="checkout-barcode" className="form-label">
-            Copy barcode
+            {t("Copy barcode")}
           </label>
           <input
             id="checkout-barcode"
             ref={barcodeRef}
             className="form-control scan-input"
-            placeholder="Scan or type"
+            placeholder={t("Scan or type")}
             autoComplete="off"
             value={barcode}
             onChange={(event) => setBarcode(event.target.value)}
@@ -111,7 +115,7 @@ function CheckoutPanel() {
           <div className="alert alert-warning" role="alert">
             <p className="mb-2">{blocked}</p>
             <label htmlFor="override-reason" className="form-label small fw-semibold">
-              Lend anyway? Give a reason (recorded in the audit log)
+              {t("Lend anyway? Give a reason (recorded in the audit log)")}
             </label>
             <input
               id="override-reason"
@@ -131,13 +135,17 @@ function CheckoutPanel() {
           className="btn btn-primary"
           disabled={checkout.isPending || !barcode.trim() || !memberRef.trim() || (blocked && overrideReason.trim().length < 5)}
         >
-          {checkout.isPending ? <Spinner label="Checking out" /> : blocked ? "Override and lend" : "Check out"}
+          {checkout.isPending ? <Spinner label={t("Checking out")} /> : blocked ? t("Override and lend") : t("Check out")}
         </button>
       </form>
       {result && (
         <div className="alert alert-success mt-3 mb-0" role="status">
-          <strong>Lent “{result.book?.bookTitle}”</strong> ({result.copy?.barcode}) to {result.member?.name}. Due{" "}
-          <strong>{formatDate(result.dueAt)}</strong>.
+          {t("Lent “{title}” ({barcode}) to {name}. Due {date}.", {
+            title: result.book?.bookTitle,
+            barcode: result.copy?.barcode,
+            name: result.member?.name,
+            date: formatDate(result.dueAt),
+          })}
         </div>
       )}
     </section>
@@ -178,15 +186,16 @@ function ReturnPanel() {
   return (
     <section className="card card-body h-100" aria-labelledby="return-title">
       <h2 id="return-title" className="h5">
-        <i className="bi bi-box-arrow-in-down-left me-2 text-primary" aria-hidden="true"></i>Return
+        <i className="bi bi-box-arrow-in-down-left me-2 text-primary" aria-hidden="true"></i>
+        {t("Return")}
       </h2>
       <form onSubmit={submit} noValidate>
         <div className="mb-3">
           <label htmlFor="return-branch" className="form-label">
-            Desk branch
+            {t("Desk branch")}
           </label>
           <select id="return-branch" className="form-select" value={branch} onChange={(event) => setBranch(event.target.value)}>
-            <option value="">The copy's own branch</option>
+            <option value="">{t("The copy's own branch")}</option>
             {deskBranches.map((item) => (
               <option key={item._id} value={item._id}>
                 {item.name}
@@ -196,13 +205,13 @@ function ReturnPanel() {
         </div>
         <div className="mb-3">
           <label htmlFor="return-barcode" className="form-label">
-            Copy barcode
+            {t("Copy barcode")}
           </label>
           <input
             id="return-barcode"
             ref={barcodeRef}
             className="form-control scan-input"
-            placeholder="Scan or type"
+            placeholder={t("Scan or type")}
             autoComplete="off"
             value={barcode}
             onChange={(event) => setBarcode(event.target.value)}
@@ -211,13 +220,13 @@ function ReturnPanel() {
         <div className="form-check mb-2">
           <input id="return-damaged" type="checkbox" className="form-check-input" checked={damaged} onChange={(event) => setDamaged(event.target.checked)} />
           <label htmlFor="return-damaged" className="form-check-label">
-            Returned damaged
+            {t("Returned damaged")}
           </label>
         </div>
         {damaged && (
           <div className="mb-3">
             <label htmlFor="return-notes" className="form-label">
-              What is damaged?
+              {t("What is damaged?")}
             </label>
             <input id="return-notes" className="form-control" value={notes} onChange={(event) => setNotes(event.target.value)} />
           </div>
@@ -228,21 +237,15 @@ function ReturnPanel() {
           </div>
         )}
         <button type="submit" className="btn btn-primary" disabled={checkin.isPending || !barcode.trim()}>
-          {checkin.isPending ? <Spinner label="Returning" /> : "Return"}
+          {checkin.isPending ? <Spinner label={t("Returning")} /> : t("Return")}
         </button>
       </form>
       {result && (
         <div className="alert alert-success mt-3 mb-0" role="status">
-          <strong>Returned “{result.loan?.book?.bookTitle}”</strong> from {result.loan?.member?.name}.{" "}
-          {result.fine > 0 ? (
-            <>
-              Overdue fine charged: <strong>{formatMoney(result.fine)}</strong>.{" "}
-            </>
-          ) : (
-            "No fine. "
-          )}
+          {t("Returned “{title}” from {name}.", { title: result.loan?.book?.bookTitle, name: result.loan?.member?.name })}{" "}
+          {result.fine > 0 ? t("Overdue fine charged: {amount}.", { amount: formatMoney(result.fine) }) : t("No fine.")}
           <span className="d-block mt-1">
-            <strong>{humanize(result.next)}:</strong> {NEXT_STEP[result.next]}
+            <strong>{humanize(result.next)}:</strong> {t(NEXT_STEP[result.next])}
           </span>
         </div>
       )}
@@ -254,7 +257,7 @@ function ReturnPanel() {
 export default function CirculationDeskPage() {
   return (
     <>
-      <PageHeader title="Circulation desk" description="Scan a member card and a barcode. A scanner's Enter submits the form." />
+      <PageHeader title={t("Circulation desk")} description={t("Scan a member card and a barcode. A scanner's Enter submits the form.")} />
       <div className="row g-3">
         <div className="col-lg-6">
           <CheckoutPanel />

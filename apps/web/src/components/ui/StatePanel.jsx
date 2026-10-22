@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n/index.js";
 
 /** Empty, error and informational states share one layout. */
 export default function StatePanel({ icon = "inbox", title, message, action, role, headingLevel = 2 }) {
@@ -17,13 +18,13 @@ export function ErrorState({ message, onRetry }) {
   return (
     <StatePanel
       icon="exclamation-triangle"
-      title="Something went wrong"
+      title={t("Something went wrong")}
       message={message}
       role="alert"
       action={
         onRetry && (
           <button type="button" className="btn btn-outline-primary" onClick={onRetry}>
-            <i className="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Try again
+            <i className="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>{t("Try again")}
           </button>
         )
       }

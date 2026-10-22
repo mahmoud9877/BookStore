@@ -1,7 +1,9 @@
 import React from "react";
 import Pagination from "./Pagination.jsx";
 import StatePanel, { ErrorState } from "./StatePanel.jsx";
+import { SkeletonRows } from "./Skeleton.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
+import { t } from "../../i18n/index.js";
 
 /**
  * A data table with loading, error, empty and paginated states.
@@ -14,20 +16,20 @@ export default function DataTable({ columns, query, rows: givenRows, rowKey = (r
   let body;
   if (query?.isLoading) {
     body = (
-      <p className="text-muted p-4 mb-0" aria-busy="true">
-        Loading…
-      </p>
+      <div aria-busy="true" aria-label={t("Loading")}>
+        <SkeletonRows columns={Math.min(columns.length, 5)} />
+      </div>
     );
   } else if (query?.error) {
     body = (
       <div className="p-3">
-        <ErrorState message={getErrorMessage(query.error, "Couldn't load this list.")} onRetry={query.refetch} />
+        <ErrorState message={getErrorMessage(query.error, t("Couldn't load this list."))} onRetry={query.refetch} />
       </div>
     );
   } else if (!rows.length) {
     body = (
       <div className="p-3">
-        <StatePanel icon={empty.icon ?? "inbox"} title={empty.title ?? "Nothing here yet"} message={empty.message} action={empty.action} />
+        <StatePanel icon={empty.icon ?? "inbox"} title={empty.title ?? t("Nothing here yet")} message={empty.message} action={empty.action} />
       </div>
     );
   } else {

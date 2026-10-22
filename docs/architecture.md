@@ -265,24 +265,49 @@ start-up when migrations are pending; it never runs them by itself.
 - **Config** is build-time (`REACT_APP_API_URL`, `REACT_APP_BEARER_KEY`) with the previously
   hard-coded values as fallbacks, so the GitHub Pages build is unchanged.
 
-### Web: library screens
+### Web: product structure and design system
 
-- **Three areas:** the public catalogue (`/`, `/book/:id`, `/digital`, `/events`), the member
-  portal (`/account/*`: loans, reservations, fines and online payment, notifications, room
-  bookings) and the staff dashboard (`/dashboard/*`, a grouped sidebar). Each dashboard
-  section declares the permissions of its API endpoints (`modules/admin/admin-sections.js`);
-  the sidebar, routes and header links show only what the role grants, and the API enforces
-  the same rules.
-- **Shared building blocks:** `lib/resource.js` (`usePagedQuery` for `{data, meta}` lists with
-  the previous page kept while the next loads, `useDataQuery`, `useApiMutation` with
-  invalidation + toasts), `hooks/useListState.js` (filters reset to page 1),
-  `components/ui/DataTable`, `Pagination`, `PageHeader`, `StatusBadge`.
+- **Four areas, three layouts:**
+
+  | Route | Area | Layout |
+  | --- | --- | --- |
+  | `/` | Product (landing) page | `modules/landing` — own header/footer |
+  | `/catalog`, `/book/:id`, `/digital`, `/events`, `/login`, `/signup`, `/cart` | Public catalogue and shop | `layouts/RootLayout` (site header/footer) |
+  | `/account/*` | Member portal (loans, reservations, fines, notifications, bookings) | `RootLayout` + `AccountLayout` (library-card header) |
+  | `/dashboard/*` | Staff workspace | `modules/admin/AppShell` (navy sidebar, top bar, breadcrumbs) |
+
+  Old catalogue links (`/?category=…`, `/?q=…`) redirect to `/catalog`. After sign-in,
+  members go to `/account` and staff to `/dashboard` (unless they were sent to sign in
+  from a specific page). Every page is a lazily loaded chunk (`app/routes.jsx`).
+- **Navigation follows permissions:** `modules/admin/admin-sections.js` maps each
+  workspace section to the permissions of its API endpoints; the sidebar, the routes and
+  the header links show only what the role grants. The API enforces the same rules.
+- **Design tokens** (`styles/theme.css`, `:root`): navy brand scale (`--brand-900…50`,
+  primary `--brand-600`), gold accent (`--accent-500`; `--accent-600` for text), warm ivory
+  page (`--paper`), cool neutrals (`--ink-*`), status colours, a type scale (`--text-*`;
+  Inter for UI, a serif display face only for editorial headings via `.font-display`), a
+  4px spacing scale (`--space-*`), radii, shadows, `--focus-ring`, `--ease`. They are
+  mapped onto Bootstrap's variables, so Bootstrap components inherit the brand.
+  `styles/shell.css` (workspace) and `styles/landing.css` (product page) load with their
+  pages only.
+- **Shared components:** `components/ui/` — `Brand`, `PageHeader`, `DataTable` (skeleton
+  loading, error and empty states, pagination), `Pagination`, `StatusBadge` (text + colour,
+  never colour alone), `Skeleton`, `PageLoader`, `Modal`, `ConfirmDialog`, `FormField`,
+  `StatePanel`, `Toaster`; `layouts/UserMenu` (account menu used by both headers).
+  Data hooks: `lib/resource.js` (`usePagedQuery`, `useDataQuery`, `useApiMutation`).
+- **Sessions:** a signed-in request answered `401` (expired token, deactivated account)
+  signs the user out once, clears cached data and says why (`App.jsx`, `onSessionExpired`).
+- **Hash routing** (kept for GitHub Pages and simple static hosting) owns the URL hash,
+  so in-page links (landing sections, skip links) scroll and move focus in JavaScript
+  instead of using `#anchor` URLs. Search engines index the landing page's content and
+  metadata, but not individual hash routes; switching to path routing would need
+  server-side fallbacks on every host.
 - **Money** from the library endpoints is in minor units: `formatMoney()` to display,
   `toMinorUnits()` for staff input. Shop prices keep their original format.
 - **Protected files** (digital publications, purchase documents, CSV exports) are fetched
   with the session token as blobs and opened through object URLs — never bare links.
 - **Tests** render single pages with `test-utils/render-page.jsx` (`renderPage` + `fakeApi`);
-  `app/App.test.jsx` covers the shell, routing and access rules.
+  `app/App.test.jsx` covers the layouts, routing, redirects and access rules.
 
 ### Why no `packages/shared`
 

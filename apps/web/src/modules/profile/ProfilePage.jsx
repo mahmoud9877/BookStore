@@ -61,7 +61,7 @@ export default function ProfilePage() {
           detail={count ? `${pluralize(count, "book")} waiting for checkout` : "Your cart is empty"}
         />
         <ProfileLink to="/account" icon="person-vcard" title="My library" detail="Loans, reservations, fines and notifications" />
-        <ProfileLink to="/" icon="book" title="Browse books" detail="Discover your next read" />
+        <ProfileLink to="/catalog" icon="book" title="Browse books" detail="Discover your next read" />
         {canAdminister && (
           <ProfileLink to="/dashboard" icon="speedometer2" title="Dashboard" detail="Run the library: circulation, catalogue, members and more" />
         )}

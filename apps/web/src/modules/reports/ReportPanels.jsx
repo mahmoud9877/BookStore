@@ -1,6 +1,7 @@
 import React from "react";
 import { Bar } from "./report-definitions.jsx";
-import { formatMoney, humanize } from "../../lib/format.js";
+import { formatMoney, formatNumber, humanize } from "../../lib/format.js";
+import { t, tp } from "../../i18n/index.js";
 
 function Tile({ label, value, note }) {
   return (
@@ -21,17 +22,17 @@ export function SummaryReport({ data }) {
   return (
     <>
       <div className="row g-3 mb-3">
-        <Tile label="Titles" value={data.titles} />
-        <Tile label="Copies" value={totalCopies} />
-        <Tile label="Active loans" value={data.activeLoans} note={`${data.overdueLoans} overdue`} />
-        <Tile label="Active members" value={data.members.active} note={`${data.members.expired} expired · ${data.members.suspended} suspended`} />
-        <Tile label="Fines outstanding" value={formatMoney(data.outstandingFines)} />
-        <Tile label="Collected this month" value={formatMoney(data.collectedThisMonth)} note={`${data.openReservations} open reservations`} />
+        <Tile label={t("Titles")} value={formatNumber(data.titles)} />
+        <Tile label={t("Copies")} value={formatNumber(totalCopies)} />
+        <Tile label={t("Active loans")} value={formatNumber(data.activeLoans)} note={t("{count} overdue", { count: formatNumber(data.overdueLoans) })} />
+        <Tile label={t("Active members")} value={formatNumber(data.members.active)} note={t("{expired} expired · {suspended} suspended", { expired: formatNumber(data.members.expired), suspended: formatNumber(data.members.suspended) })} />
+        <Tile label={t("Fines outstanding")} value={formatMoney(data.outstandingFines)} />
+        <Tile label={t("Collected this month")} value={formatMoney(data.collectedThisMonth)} note={t("{count} open reservations", { count: formatNumber(data.openReservations) })} />
       </div>
       <div className="card card-body">
-        <h3 className="h6">Copies by status</h3>
+        <h3 className="h6">{t("Copies by status")}</h3>
         <table className="table table-sm mb-0">
-          <caption className="visually-hidden">Copies by status</caption>
+          <caption className="visually-hidden">{t("Copies by status")}</caption>
           <tbody>
             {statuses.map(([status, count]) => (
               <tr key={status}>
@@ -51,26 +52,26 @@ export function MembershipsReport({ data }) {
   return (
     <>
       <div className="row g-3 mb-3">
-        <Tile label="Joined in period" value={data.joinedInPeriod} />
-        <Tile label="Expiring within 30 days" value={data.expiringWithin30Days} />
+        <Tile label={t("Joined in period")} value={formatNumber(data.joinedInPeriod)} />
+        <Tile label={t("Expiring within 30 days")} value={formatNumber(data.expiringWithin30Days)} />
       </div>
       <div className="card">
         <div className="table-responsive">
           <table className="table data-table align-middle">
-            <caption className="visually-hidden">Members by membership type</caption>
+            <caption className="visually-hidden">{t("Members by membership type")}</caption>
             <thead>
               <tr>
-                <th scope="col">Membership type</th>
-                <th scope="col">Active</th>
-                <th scope="col">Expired</th>
-                <th scope="col">Suspended</th>
-                <th scope="col">Cancelled</th>
+                <th scope="col">{t("Membership type")}</th>
+                <th scope="col">{t("Active")}</th>
+                <th scope="col">{t("Expired")}</th>
+                <th scope="col">{t("Suspended")}</th>
+                <th scope="col">{t("Cancelled")}</th>
               </tr>
             </thead>
             <tbody>
               {data.byType.map((row) => (
                 <tr key={row.type?._id ?? "none"}>
-                  <td>{row.type?.name ?? "Unknown type"}</td>
+                  <td>{row.type?.name ?? t("Unknown type")}</td>
                   <td>{row.active}</td>
                   <td>{row.expired}</td>
                   <td>{row.suspended}</td>
@@ -79,7 +80,7 @@ export function MembershipsReport({ data }) {
               ))}
               {!data.byType.length && (
                 <tr>
-                  <td colSpan={5} className="text-muted">No members match these filters.</td>
+                  <td colSpan={5} className="text-muted">{t("No members match these filters.")}</td>
                 </tr>
               )}
             </tbody>
@@ -97,12 +98,12 @@ export function ReportTotals({ reportKey, body }) {
     const { outstanding, collected, refunded, issuedByType } = body.totals;
     return (
       <div className="row g-3 mb-3">
-        <Tile label="Outstanding" value={formatMoney(outstanding)} />
-        <Tile label="Collected in period" value={formatMoney(collected)} note={`${formatMoney(refunded)} refunded`} />
+        <Tile label={t("Outstanding")} value={formatMoney(outstanding)} />
+        <Tile label={t("Collected in period")} value={formatMoney(collected)} note={t("{amount} refunded", { amount: formatMoney(refunded) })} />
         <Tile
-          label="Issued in period"
+          label={t("Issued in period")}
           value={formatMoney(issuedByType.reduce((sum, row) => sum + row.amount, 0))}
-          note={issuedByType.map((row) => `${humanize(row.type)}: ${row.count}`).join(" · ") || "None"}
+          note={issuedByType.map((row) => `${humanize(row.type)}: ${formatNumber(row.count)}`).join(" · ") || t("None")}
         />
       </div>
     );
@@ -111,8 +112,8 @@ export function ReportTotals({ reportKey, body }) {
     const outcomes = Object.entries(body.outcomes);
     return (
       <div className="row g-3 mb-3">
-        <Tile label="Ended in period" value={outcomes.reduce((sum, [, count]) => sum + count, 0)} note={outcomes.map(([status, count]) => `${humanize(status)}: ${count}`).join(" · ") || "None"} />
-        <Tile label="Average wait" value={body.averageWaitHours == null ? "—" : `${Math.round(body.averageWaitHours)} h`} note="from placing to ready" />
+        <Tile label={t("Ended in period")} value={formatNumber(outcomes.reduce((sum, [, count]) => sum + count, 0))} note={outcomes.map(([status, count]) => `${humanize(status)}: ${formatNumber(count)}`).join(" · ") || t("None")} />
+        <Tile label={t("Average wait")} value={body.averageWaitHours == null ? "—" : tp("hour", Math.round(body.averageWaitHours))} note={t("from placing to ready")} />
       </div>
     );
   }

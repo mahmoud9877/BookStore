@@ -73,7 +73,7 @@ export default function MyReservationsPage() {
       columns={columns}
       query={reservations}
       rows={reservations.data ?? []}
-      empty={{ icon: "bookmark", title: "No reservations", message: "Reserve a title from its page when every copy is out.", action: <Link to="/">Browse the catalogue</Link> }}
+      empty={{ icon: "bookmark", title: "No reservations", message: "Reserve a title from its page when every copy is out.", action: <Link to="/catalog">Browse the catalogue</Link> }}
     />
   );
 }

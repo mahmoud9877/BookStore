@@ -11,6 +11,7 @@ import { getErrorMessage } from "../../lib/api-client.js";
 import { usePermissions } from "../auth/auth.queries.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
+import { t } from "../../i18n/index.js";
 
 const NO_ROWS = [];
 
@@ -65,7 +66,7 @@ export default function ReportsPage() {
     try {
       await downloadCsv(report, params);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Couldn't export this report."));
+      toast.error(getErrorMessage(error, t("Couldn't export this report.")));
     } finally {
       setDownloading(false);
     }
@@ -76,13 +77,13 @@ export default function ReportsPage() {
   return (
     <>
       <PageHeader
-        title="Reports"
-        description="Figures come straight from the library's records. Amounts are in the library currency."
+        title={t("Reports")}
+        description={t("Figures come straight from the library's records. Amounts are in the library currency.")}
         actions={
           report.csv && (
             <button type="button" className="btn btn-outline-primary" onClick={handleDownload} disabled={downloading}>
-              {downloading ? <Spinner label="Exporting" /> : <i className="bi bi-download me-1" aria-hidden="true"></i>}
-              Download CSV
+              {downloading ? <Spinner label={t("Exporting")} /> : <i className="bi bi-download me-1" aria-hidden="true"></i>}
+              {t("Download CSV")}
             </button>
           )
         }
@@ -90,7 +91,7 @@ export default function ReportsPage() {
 
       <div className="row g-3">
         <div className="col-lg-3">
-          <div className="list-group" role="tablist" aria-label="Reports">
+          <div className="list-group" role="tablist" aria-label={t("Reports")}>
             {reports.map((item) => (
               <button
                 key={item.key}
@@ -100,34 +101,34 @@ export default function ReportsPage() {
                 className={`list-group-item list-group-item-action ${item.key === report.key ? "active" : ""}`}
                 onClick={() => choose(item.key)}
               >
-                {item.label}
+                {t(item.label)}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="col-lg-9" role="tabpanel" aria-label={report.label}>
-          <h2 className="h5 mb-1">{report.label}</h2>
-          <p className="text-muted small">{report.description}</p>
+        <div className="col-lg-9" role="tabpanel" aria-label={t(report.label)}>
+          <h2 className="h5 mb-1">{t(report.label)}</h2>
+          <p className="text-muted small">{t(report.description)}</p>
 
-          <form className="d-flex flex-wrap gap-2 align-items-end mb-3" onSubmit={(event) => event.preventDefault()} aria-label="Report filters">
+          <form className="d-flex flex-wrap gap-2 align-items-end mb-3" onSubmit={(event) => event.preventDefault()} aria-label={t("Report filters")}>
             {report.filters.includes("range") && (
               <>
                 <div>
-                  <label htmlFor="report-from" className="form-label small mb-1">From</label>
+                  <label htmlFor="report-from" className="form-label small mb-1">{t("From")}</label>
                   <input id="report-from" type="date" className="form-control form-control-sm" value={filters.from} onChange={(event) => setFilter("from", event.target.value)} />
                 </div>
                 <div>
-                  <label htmlFor="report-to" className="form-label small mb-1">To</label>
+                  <label htmlFor="report-to" className="form-label small mb-1">{t("To")}</label>
                   <input id="report-to" type="date" className="form-control form-control-sm" value={filters.to} onChange={(event) => setFilter("to", event.target.value)} />
                 </div>
               </>
             )}
             {report.filters.includes("branch") && (
               <div>
-                <label htmlFor="report-branch" className="form-label small mb-1">Branch</label>
+                <label htmlFor="report-branch" className="form-label small mb-1">{t("Branch")}</label>
                 <select id="report-branch" className="form-select form-select-sm" value={filters.branch} onChange={(event) => setFilter("branch", event.target.value)}>
-                  <option value="">All my branches</option>
+                  <option value="">{t("All my branches")}</option>
                   {branches.map((branch) => (
                     <option key={branch._id} value={branch._id}>{branch.name}</option>
                   ))}
@@ -136,10 +137,10 @@ export default function ReportsPage() {
             )}
             {report.filters.includes("order") && (
               <div>
-                <label htmlFor="report-order" className="form-label small mb-1">Order</label>
+                <label htmlFor="report-order" className="form-label small mb-1">{t("Order")}</label>
                 <select id="report-order" className="form-select form-select-sm" value={filters.order} onChange={(event) => setFilter("order", event.target.value)}>
-                  <option value="most">Most borrowed</option>
-                  <option value="least">Least borrowed</option>
+                  <option value="most">{t("Most borrowed")}</option>
+                  <option value="least">{t("Least borrowed")}</option>
                 </select>
               </div>
             )}
@@ -149,18 +150,18 @@ export default function ReportsPage() {
             <>
               <ReportTotals reportKey={report.key} body={query.data} />
               <DataTable
-                caption={report.label}
+                caption={t(report.label)}
                 columns={report.columns(rows)}
                 query={query}
                 rowKey={(row) => row._id ?? row.loanId ?? row.book?._id ?? row.branch?._id ?? row.supplier?._id ?? row.actor ?? JSON.stringify(row)}
-                empty={{ icon: "bar-chart", title: "No data for these filters", message: "Try a wider date range or another branch." }}
+                empty={{ icon: "bar-chart", title: t("No data for these filters"), message: t("Try a wider date range or another branch.") }}
                 onPageChange={report.paged ? setPage : undefined}
               />
             </>
           ) : query.isLoading ? (
-            <p className="text-muted" aria-busy="true">Loading…</p>
+            <p className="text-muted" aria-busy="true">{t("Loading…")}</p>
           ) : query.error ? (
-            <ErrorState message={getErrorMessage(query.error, "Couldn't load this report.")} onRetry={query.refetch} />
+            <ErrorState message={getErrorMessage(query.error, t("Couldn't load this report."))} onRetry={query.refetch} />
           ) : report.key === "summary" ? (
             <SummaryReport data={query.data?.data} />
           ) : (

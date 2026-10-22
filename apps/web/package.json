@@ -27,7 +27,9 @@
     "test": "react-scripts test",
     "lint": "eslint --max-warnings=0 --ext .js,.jsx src",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "prestart": "node scripts/copy-bootstrap.js",
+    "prebuild": "node scripts/copy-bootstrap.js"
   },
   "eslintConfig": {
     "extends": [

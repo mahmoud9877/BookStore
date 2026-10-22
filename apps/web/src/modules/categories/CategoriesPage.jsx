@@ -112,7 +112,7 @@ export default function CategoriesPage() {
                     <td className="fw-semibold text-capitalize">{category.name}</td>
                     <td className="text-end">
                       {category.bookCount > 0 ? (
-                        <Link to={`/?category=${encodeURIComponent(category.name)}`}>{category.bookCount}</Link>
+                        <Link to={`/catalog?category=${encodeURIComponent(category.name)}`}>{category.bookCount}</Link>
                       ) : (
                         <span className="text-muted">0</span>
                       )}

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Modal from "../../components/ui/Modal.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import FormField from "../../components/ui/FormField.jsx";
+import { t } from "../../i18n/index.js";
 
 /**
  * Asks for a reason (and optionally an amount) before a sensitive action.
@@ -9,8 +10,8 @@ import FormField from "../../components/ui/FormField.jsx";
  */
 export default function ReasonModal({
   title,
-  label = "Reason",
-  confirmLabel = "Confirm",
+  label = t("Reason"),
+  confirmLabel = t("Confirm"),
   tone = "danger",
   required = true,
   minLength = 3,
@@ -26,11 +27,11 @@ export default function ReasonModal({
   async function submit(event) {
     event.preventDefault();
     const errors = {};
-    if (required && reason.trim().length < minLength) errors.reason = `Enter a reason (at least ${minLength} characters).`;
+    if (required && reason.trim().length < minLength) errors.reason = t("Enter a reason (at least {count} characters).", { count: minLength });
     if (amount) {
       const number = Number(amountValue);
-      if (!amountValue || !(number > 0)) errors.amount = "Enter an amount greater than zero.";
-      else if (amount.max != null && number > amount.max) errors.amount = `At most ${amount.max}.`;
+      if (!amountValue || !(number > 0)) errors.amount = t("Enter an amount greater than zero.");
+      else if (amount.max != null && number > amount.max) errors.amount = t("At most {max}.", { max: amount.max });
     }
     setError(errors);
     if (Object.keys(errors).length) return;
@@ -53,10 +54,10 @@ export default function ReasonModal({
       footer={
         <>
           <button type="button" className="btn btn-light" onClick={onClose} disabled={busy}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="submit" form="reason-form" className={`btn btn-${tone}`} disabled={busy}>
-            {busy ? <Spinner label="Working" /> : confirmLabel}
+            {busy ? <Spinner label={t("Working")} /> : confirmLabel}
           </button>
         </>
       }
@@ -75,7 +76,7 @@ export default function ReasonModal({
           />
         )}
         <FormField
-          label={required ? label : `${label} (optional)`}
+          label={required ? label : t("{label} (optional)", { label })}
           as="textarea"
           rows={3}
           className=""

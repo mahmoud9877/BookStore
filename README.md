@@ -89,7 +89,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 | Service | URL / notes |
 | --- | --- |
-| Web (hot reload) | http://localhost:3000 |
+| Web (hot reload) | http://localhost:3000 — product page `/#/`, catalogue `/#/catalog`, member portal `/#/account`, staff workspace `/#/dashboard` |
 | API (hot reload) | http://localhost:4000 — health at `/health` |
 | Worker | logs only (`… logs -f worker`); emails are printed, never sent (`MAIL_TRANSPORT=log`) |
 | MongoDB | single-node replica set `rs0`, `127.0.0.1:27017` (data in the `mongo-data` volume) |

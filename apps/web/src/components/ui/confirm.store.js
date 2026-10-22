@@ -1,6 +1,7 @@
 import { create } from "zustand";
+import { msg } from "../../i18n/index.js";
 
-const DEFAULTS = { confirmLabel: "Confirm", tone: "danger" };
+const DEFAULTS = { confirmLabel: msg("Confirm"), tone: "danger" };
 
 /** The pending confirmation request rendered by <ConfirmDialog />, if any. */
 export const useConfirmStore = create((set, get) => ({

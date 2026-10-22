@@ -31,9 +31,10 @@ export default function LoginPage() {
   );
 
   async function signIn(credentials) {
-    const { token } = await login(credentials);
+    const { token, role } = await login(credentials);
     startSession(token);
-    navigate(location.state?.from || "/", { replace: true });
+    // Back to where they were going; otherwise members to their library, staff to the workspace.
+    navigate(location.state?.from || (role && role !== "User" ? "/dashboard" : "/account"), { replace: true });
   }
 
   return (

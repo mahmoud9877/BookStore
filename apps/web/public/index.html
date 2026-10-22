@@ -5,16 +5,43 @@
   <meta charset="utf-8" />
   <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="description" content="Web site created using create-react-app" />
-  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <meta name="theme-color" content="#12234a" />
+  <meta name="description" content="BookSaw is a library management system: catalogue, circulation, members, inventory, branches, fines and reports in one place, with a self-service portal for members." />
+  <meta property="og:title" content="BookSaw — library management" />
+  <meta property="og:description" content="Catalogue, circulation, members, inventory and branches in one organized system." />
+  <meta property="og:type" content="website" />
 
-  <!-- إضافة قاعدة المسار لحل مشكلة الروابط -->
+  <!-- Resolve relative asset paths against the app's base path (GitHub Pages sub-path). -->
   <base href="%PUBLIC_URL%/">
+
+  <!-- Inter (Latin UI), IBM Plex Sans Arabic (Arabic UI), Noto Naskh Arabic (Arabic display).
+       display=swap: text renders immediately with a system font. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@500;600;700&display=swap" rel="stylesheet" />
 
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-  <title>BookSaw</title>
+  <!--
+    Language and direction are applied before anything renders, so Arabic pages
+    never flash left-to-right: the saved language (or the browser's) picks
+    <html lang/dir> and the matching Bootstrap build (RTL for Arabic).
+  -->
+  <link id="bootstrap-css" rel="stylesheet" href="%PUBLIC_URL%/vendor/bootstrap.min.css" />
+  <script>
+    (function () {
+      var lang = "en";
+      try {
+        lang = localStorage.getItem("language") || ((navigator.language || "").toLowerCase().indexOf("ar") === 0 ? "ar" : "en");
+      } catch (e) {}
+      if (lang !== "ar") lang = "en";
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+      if (lang === "ar") document.getElementById("bootstrap-css").href = "%PUBLIC_URL%/vendor/bootstrap.rtl.min.css";
+    })();
+  </script>
+
+  <title>BookSaw — library management</title>
 </head>
 
 <body>

@@ -90,9 +90,37 @@ beforeEach(() => {
   });
 });
 
+describe("landing page", () => {
+  test("presents the product with working calls to action and section links", async () => {
+    renderAt("/");
+    expect(await screen.findByRole("heading", { level: 1, name: /Books, members, loans and branches/ })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Get started" })[0]).toHaveAttribute("href", "/signup");
+    expect(screen.getAllByRole("link", { name: "Sign in" })[0]).toHaveAttribute("href", "/login");
+    for (const name of ["Features", "How it works", "Benefits", "Who it's for", "About"]) {
+      expect(screen.getAllByRole("link", { name })[0]).toBeInTheDocument();
+    }
+    expect(screen.getAllByText(/Illustration with sample data/)).toHaveLength(2); // both previews are labelled
+    // Section links scroll within the page instead of changing the route.
+    userEvent.click(screen.getAllByRole("link", { name: "Features" })[0]);
+    expect(screen.getByRole("heading", { level: 1, name: /Books, members, loans and branches/ })).toBeInTheDocument();
+  });
+
+  test("old catalogue links (/?category=…) open the catalogue", async () => {
+    renderAt("/?category=fantasy");
+    expect(await screen.findByRole("heading", { name: "Find your next great read" })).toBeInTheDocument();
+    await waitFor(() => expect(bookService.searchCatalog).toHaveBeenCalledWith(expect.objectContaining({ category: FANTASY._id })));
+  });
+
+  test("signed-in visitors are offered their workspace instead of sign-up", async () => {
+    renderAt("/", { token: makeToken({ role: "Admin", userName: "Store Admin" }) });
+    expect(await screen.findByRole("link", { name: "Open workspace" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: "Get started" })).not.toBeInTheDocument();
+  });
+});
+
 describe("browsing", () => {
   test("anonymous visitors can browse the catalogue with formatted titles, authors and prices", async () => {
-    renderAt("/");
+    renderAt("/catalog");
     expect(await screen.findByRole("link", { name: "Dune" })).toBeInTheDocument();
     expect(screen.getByText("J. R. R. Tolkien")).toBeInTheDocument();
     expect(screen.getByText(/EGP\s320/)).toBeInTheDocument();
@@ -101,7 +129,7 @@ describe("browsing", () => {
   });
 
   test("search and category filters narrow the results and can be cleared", async () => {
-    renderAt("/");
+    renderAt("/catalog");
     await screen.findByRole("link", { name: "Dune" });
 
     userEvent.type(screen.getByRole("searchbox", { name: /search books/i }), "harari");
@@ -118,7 +146,7 @@ describe("browsing", () => {
   });
 
   test("an anonymous add-to-cart asks the visitor to sign in", async () => {
-    renderAt("/");
+    renderAt("/catalog");
     userEvent.click(await screen.findByRole("button", { name: "Add Dune to cart" }));
     expect(await signInHeading()).toBeInTheDocument();
     expect(screen.getByText("Sign in to add books to your cart.")).toBeInTheDocument();
@@ -127,7 +155,7 @@ describe("browsing", () => {
 
   test("signed-in shoppers get a confirmation and an updated cart badge", async () => {
     cartService.getCartItems.mockResolvedValueOnce([]).mockResolvedValue([CART_ITEM]);
-    renderAt("/", { token: makeToken() });
+    renderAt("/catalog", { token: makeToken() });
 
     userEvent.click(await screen.findByRole("button", { name: "Add Dune to cart" }));
 
@@ -174,6 +202,15 @@ describe("accounts", () => {
     expect(localStorage.getItem("userToken")).toBeTruthy();
   });
 
+  test("staff land in the workspace after signing in", async () => {
+    authService.login.mockResolvedValue({ message: "Done", token: makeToken({ userName: "Store Admin", role: "Admin" }), role: "Admin" });
+    renderAt("/login");
+    await signInHeading();
+    fillAndSubmit(VALID_LOGIN, "Sign in");
+    expect(await screen.findByRole("heading", { name: "Welcome, Store Admin" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Workspace sections" })).toBeInTheDocument();
+  });
+
   test("wrong credentials get a friendly message that doesn't reveal which part was wrong", async () => {
     authService.login.mockRejectedValue({ response: { data: { message: "Email Not found" } } });
     renderAt("/login");
@@ -209,7 +246,7 @@ describe("accounts", () => {
   });
 
   test("signing out from the account menu confirms it and clears the session", async () => {
-    renderAt("/", { token: makeToken({ userName: "reader" }) });
+    renderAt("/catalog", { token: makeToken({ userName: "reader" }) });
     userEvent.click(await screen.findByRole("button", { name: "Account menu for reader" }));
     userEvent.click(await screen.findByRole("button", { name: /sign out/i }));
 
@@ -230,7 +267,7 @@ describe("cart and checkout", () => {
   test("an empty cart invites the shopper to browse", async () => {
     renderAt("/cart", { token: makeToken() });
     expect(await screen.findByText("Your cart is empty")).toBeInTheDocument();
-    expect(within(screen.getByRole("main")).getByRole("link", { name: "Browse books" })).toHaveAttribute("href", "/");
+    expect(within(screen.getByRole("main")).getByRole("link", { name: "Browse books" })).toHaveAttribute("href", "/catalog");
   });
 
   test("the summary shows line totals and the order total", async () => {
@@ -373,7 +410,7 @@ describe("roles and permissions", () => {
     renderAt("/dashboard", { token: makeToken({ role: "Category staff", userName: "Cat" }) });
 
     expect(await screen.findByRole("heading", { name: "Welcome, Cat" })).toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "Administration" });
+    const nav = screen.getByRole("navigation", { name: "Workspace sections" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual(["Overview", "Categories"]);
   });
 
@@ -385,7 +422,7 @@ describe("roles and permissions", () => {
 
   test("categories show their book count and only empty ones can be deleted", async () => {
     renderAt("/dashboard/categories", { token: adminToken() });
-    expect(await screen.findByRole("link", { name: "2" })).toHaveAttribute("href", "/?category=fantasy");
+    expect(await screen.findByRole("link", { name: "2" })).toHaveAttribute("href", "/catalog?category=fantasy");
     expect(screen.getByRole("button", { name: "Delete fantasy" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Delete poetry" })).toBeEnabled();
   });

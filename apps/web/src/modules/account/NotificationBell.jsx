@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/resource.js";
 import { accountKeys } from "./account.queries.js";
+import { t } from "../../i18n/index.js";
 
 /** Bell with the signed-in user's unread in-app notifications (refreshed every minute). */
 export default function NotificationBell() {
@@ -15,7 +16,7 @@ export default function NotificationBell() {
     <NavLink
       to="/account/notifications"
       className="nav-link cart-link px-2"
-      aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+      aria-label={unread ? t("Notifications, {count} unread", { count: unread }) : t("Notifications")}
     >
       <i className="bi bi-bell fs-5" aria-hidden="true"></i>
       {unread > 0 && (
