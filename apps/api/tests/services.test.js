@@ -28,7 +28,7 @@ const bookInput = {
   author: "a",
   description: "d",
   price: 10,
-  category: "fiction",
+  category: new Types.ObjectId().toString(),
   quantity: 2,
 };
 
@@ -71,13 +71,18 @@ const rejectsWithStatus = (promise, status, message) =>
 describe("BookService", () => {
   const makeService = (overrides = {}) => {
     const deps = {
-      bookRepository: fake({ list: [], create: {}, updateById: {}, addLike: {} }),
-      categoryRepository: fake({ findByName: { name: "fiction" } }),
+      bookRepository: fake({ list: [], create: { _id: "b1" }, findWithCategory: {}, updateDetails: {}, addLike: {}, findByIsbn: null }),
+      categoryRepository: fake({ findById: { name: "fiction" } }),
+      authorRepository: fake({ findOrCreateByNames: async (names) => names.map((name, index) => ({ _id: `a${index}`, name })) }),
+      publisherRepository: fake({ findById: { name: "Ace" } }),
+      copyRepository: fake({ availabilityFor: {}, countWhere: 0 }),
       imageStorage: fake({ upload: { secure_url: "https://img/cover.png" } }),
+      auditService: fake({ record: {} }),
       ...overrides,
     };
     return { service: new BookService(deps), ...deps };
   };
+  const cover = { path: "/tmp/cover.png", originalname: "cover.png" };
 
   test("listBooks paginates only when a positive limit is given", async () => {
     const { service, bookRepository } = makeService();
@@ -90,28 +95,34 @@ describe("BookService", () => {
     );
   });
 
-  test("createBook uploads the cover and stores its URL", async () => {
+  test("createBook uploads an optional cover and links authors and the edition group", async () => {
     const { service, bookRepository, imageStorage } = makeService();
-    await service.createBook(parse(CreateBookDto, bookInput), "/tmp/cover.png");
-    assert.deepEqual(imageStorage.upload.mock.calls[0].arguments, ["/tmp/cover.png", "book"]);
-    assert.equal(bookRepository.create.mock.calls[0].arguments[0].image, "https://img/cover.png");
+    await service.createBook(parse(CreateBookDto, { ...bookInput, author: "Ann Lee, Bo Chen" }), cover);
+    assert.deepEqual(imageStorage.upload.mock.calls[0].arguments, ["/tmp/cover.png", "book", "cover.png"]);
+    const saved = bookRepository.create.mock.calls[0].arguments[0];
+    assert.equal(saved.image, "https://img/cover.png");
+    assert.deepEqual(saved.authors, ["a0", "a1"]);
+    assert.equal(saved.author, "Ann Lee, Bo Chen");
+    assert.equal(saved.workKey, "t|ann lee");
+
+    const { service: noCover, bookRepository: books } = makeService();
+    await noCover.createBook(parse(CreateBookDto, bookInput), undefined);
+    assert.equal("image" in books.create.mock.calls[0].arguments[0], false);
   });
 
-  test("createBook requires a cover image and keeps the legacy `error` field", async () => {
-    const { service, bookRepository } = makeService();
-    await assert.rejects(service.createBook({ category: "fiction" }, undefined), (error) => {
-      assert.equal(error.status, 400);
-      assert.deepEqual(error.details, { error: "Image file is required" });
-      return true;
+  test("an ISBN identifies one edition", async () => {
+    const { service, bookRepository } = makeService({
+      bookRepository: fake({ create: {}, findByIsbn: { _id: "other" } }),
     });
+    await rejectsWithStatus(service.createBook(parse(CreateBookDto, { ...bookInput, isbn: "9780441172719" })), 409, /ISBN/);
     assert.equal(bookRepository.create.mock.callCount(), 0);
   });
 
   test("createBook rejects unknown categories before uploading anything", async () => {
     const { service, imageStorage } = makeService({
-      categoryRepository: fake({ findByName: null }),
+      categoryRepository: fake({ findById: null }),
     });
-    await rejectsWithStatus(service.createBook({ category: "nope" }, "/tmp/c.png"), 404, /Category/);
+    await rejectsWithStatus(service.createBook(parse(CreateBookDto, bookInput), cover), 404, /Category/);
     assert.equal(imageStorage.upload.mock.callCount(), 0);
   });
 
@@ -119,12 +130,19 @@ describe("BookService", () => {
     const { service, bookRepository } = makeService();
     const id = new Types.ObjectId().toString();
     await service.updateBook(parse(UpdateBookDto, { ...bookInput, id, totalLikes: 999 }));
-    const [updatedId, fields] = bookRepository.updateById.mock.calls[0].arguments;
+    const [updatedId, fields] = bookRepository.updateDetails.mock.calls[0].arguments;
     assert.equal(updatedId, id);
     assert.equal(fields.bookTitle, "t");
     assert.equal("id" in fields, false);
     assert.equal("totalLikes" in fields, false);
     assert.equal("image" in fields, false);
+  });
+
+  test("a book with physical copies cannot be deleted", async () => {
+    const { service, bookRepository } = makeService({ copyRepository: fake({ countWhere: 3 }) });
+    bookRepository.deleteById = mock.fn(async () => ({}));
+    await rejectsWithStatus(service.deleteBook("b1", {}), 409, /copies/);
+    assert.equal(bookRepository.deleteById.mock.callCount(), 0);
   });
 
   test("likeBook reports an existing like as a 400", async () => {
@@ -134,15 +152,50 @@ describe("BookService", () => {
 });
 
 describe("CategoryService", () => {
-  test("updateCategory only accepts the predefined options", async () => {
-    const categoryRepository = fake({ updateById: {} });
-    const service = new CategoryService({ categoryRepository });
-    await rejectsWithStatus(service.updateCategory("id", "poetry"), 400, /Choose from/);
-    assert.equal(categoryRepository.updateById.mock.callCount(), 0);
+  const makeService = ({ categories = {}, books = {} } = {}) => {
+    const categoryRepository = fake({ list: [], findById: { _id: "c1", name: "fiction" }, findByName: null, ...categories });
+    const bookRepository = fake({ list: [], countByCategory: {}, countInCategory: 0, ...books });
+    return { service: new CategoryService({ categoryRepository, bookRepository }), categoryRepository, bookRepository };
+  };
+
+  test("listCategories reports how many books each category has", async () => {
+    const { service } = makeService({
+      categories: { list: [{ _id: "c1", name: "fiction" }, { _id: "c2", name: "science" }] },
+      books: { countByCategory: { c1: 3 } },
+    });
+    const counts = (await service.listCategories()).map(({ name, bookCount }) => [name, bookCount]);
+    assert.deepEqual(counts, [["fiction", 3], ["science", 0]]);
+  });
+
+  test("listBooksInCategory returns only that category's books", async () => {
+    const { service, bookRepository } = makeService();
+    await service.listBooksInCategory("c1");
+    assert.deepEqual(bookRepository.list.mock.calls[0].arguments, [{ category: "c1" }]);
+  });
+
+  test("names are unique, but a category may keep its own name", async () => {
+    const { service } = makeService({ categories: { findByName: { _id: "c2", name: "poetry" } } });
+    await rejectsWithStatus(service.createCategory({ name: "Poetry" }), 409);
+    await rejectsWithStatus(service.updateCategory({ id: "c1", name: "poetry" }), 409);
+
+    const { service: renaming, categoryRepository } = makeService({
+      categories: { findByName: { _id: "c1", name: "poetry" }, updateById: { _id: "c1", name: "poetry" } },
+    });
+    await renaming.updateCategory({ id: "c1", name: "poetry" });
+    assert.equal(categoryRepository.updateById.mock.callCount(), 1);
+  });
+
+  test("deleteCategory refuses while the category still has books", async () => {
+    const { service, categoryRepository } = makeService({
+      categories: { deleteById: {} },
+      books: { countInCategory: 2 },
+    });
+    await rejectsWithStatus(service.deleteCategory("c1"), 409, /2 book/);
+    assert.equal(categoryRepository.deleteById.mock.callCount(), 0);
   });
 
   test("deleteCategory reports a missing category as 404", async () => {
-    const service = new CategoryService({ categoryRepository: fake({ deleteById: null }) });
+    const { service } = makeService({ categories: { findById: null } });
     await rejectsWithStatus(service.deleteCategory("id"), 404);
   });
 });

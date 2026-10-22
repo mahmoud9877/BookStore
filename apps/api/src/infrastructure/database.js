@@ -5,13 +5,19 @@ mongoose.set("strictQuery", false);
 
 export class Database {
   #uri;
+  #autoIndex;
 
-  constructor(uri) {
+  /**
+   * `autoIndex`: let Mongoose build indexes at start-up (development). In
+   * production indexes are created by the migrations (`npm run migrate`).
+   */
+  constructor(uri, { autoIndex = true } = {}) {
     this.#uri = uri;
+    this.#autoIndex = autoIndex;
   }
 
   async connect() {
-    await mongoose.connect(this.#uri);
+    await mongoose.connect(this.#uri, { autoIndex: this.#autoIndex, serverSelectionTimeoutMS: 15_000 });
     console.log("Database connected.");
   }
 

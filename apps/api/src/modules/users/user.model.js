@@ -1,4 +1,4 @@
-import mongoose, { Schema, model } from "mongoose";
+import mongoose, { Schema, Types, model } from "mongoose";
 import { USER_ROLES } from "./user.roles.js";
 
 const userSchema = new Schema(
@@ -20,15 +20,22 @@ const userSchema = new Schema(
     },
     phone: String,
     address: String,
+    // A built-in role (see roles/system-roles.js) or the name of a custom role.
     role: {
       type: String,
       default: USER_ROLES.User,
-      enum: Object.values(USER_ROLES),
     },
     confirmEmail: {
       type: Boolean,
       default: false,
     },
+    // Deactivated accounts cannot sign in or use existing tokens.
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    // Staff: the branches their role's branch-specific permissions apply to.
+    branches: [{ type: Types.ObjectId, ref: "Branch" }],
     image: Object,
     DOB: String,
     code: { type: Number, default: null },

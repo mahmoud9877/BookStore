@@ -1,5 +1,6 @@
 import React from "react";
 import Modal from "./Modal.jsx";
+import { t } from "../../i18n/index.js";
 import { useConfirmStore } from "./confirm.store.js";
 
 /** Renders the pending confirm() request. Mount once. */
@@ -16,10 +17,10 @@ export default function ConfirmDialog() {
       footer={
         <>
           <button type="button" className="btn btn-light" onClick={() => settle(false)}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className={`btn btn-${request.tone}`} onClick={() => settle(true)}>
-            {request.confirmLabel}
+            {t(request.confirmLabel)}
           </button>
         </>
       }

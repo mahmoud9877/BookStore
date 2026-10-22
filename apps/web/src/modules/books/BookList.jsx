@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { LOW_STOCK_THRESHOLD } from "./StockNote.jsx";
 import BookCover from "../../components/ui/BookCover.jsx";
 import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
@@ -24,7 +25,7 @@ export default function BookList({ books, onEdit, onDelete }) {
               Price
             </th>
             <th scope="col" className="text-center">
-              Stock
+              Shop stock
             </th>
             <th scope="col" className="text-end">
               <span className="visually-hidden">Actions</span>
@@ -41,17 +42,24 @@ export default function BookList({ books, onEdit, onDelete }) {
                     <BookCover src={book.image} alt="" className="table-cover" />
                     <div className="min-w-0">
                       <div className="fw-semibold text-truncate">{title}</div>
-                      <div className="small text-muted text-truncate">{formatName(book.author)}</div>
-                      <div className="small fw-semibold d-sm-none">{formatPrice(book.price)}</div>
+                      <div className="small text-muted text-truncate">
+                        {formatName(book.author)}
+                        {book.isbn && ` · ISBN ${book.isbn}`}
+                        {book.edition && ` · ${book.edition} ed.`}
+                      </div>
+                      {book.isForSale !== false && <div className="small fw-semibold d-sm-none">{formatPrice(book.price)}</div>}
                     </div>
                   </div>
                 </td>
-                <td className="d-none d-md-table-cell text-capitalize">{book.category}</td>
-                <td className="text-end text-nowrap d-none d-sm-table-cell">{formatPrice(book.price)}</td>
+                <td className="d-none d-md-table-cell text-capitalize">{book.category?.name}</td>
+                <td className="text-end text-nowrap d-none d-sm-table-cell">{book.isForSale === false ? <span className="text-muted">—</span> : formatPrice(book.price)}</td>
                 <td className="text-center">
-                  <StockBadge quantity={book.quantity} />
+                  {book.isForSale === false ? <span className="small text-muted">Library only</span> : <StockBadge quantity={book.quantity} />}
                 </td>
                 <td className="text-end text-nowrap">
+                  <Link to={`/dashboard/copies?book=${book._id}`} className="btn btn-sm btn-ghost" aria-label={`Copies of ${title}`}>
+                    <i className="bi bi-upc" aria-hidden="true"></i>
+                  </Link>
                   <button type="button" className="btn btn-sm btn-ghost" onClick={() => onEdit(book)} aria-label={`Edit ${title}`}>
                     <i className="bi bi-pencil" aria-hidden="true"></i>
                   </button>

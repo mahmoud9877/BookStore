@@ -22,27 +22,50 @@ const id = () => new Types.ObjectId().toString();
 
 describe("request DTOs", () => {
   test("drop fields the client is not allowed to set", () => {
+    const category = id();
     const { dto } = CreateBookDto.parse({
       bookTitle: " Dune ",
       author: "Frank Herbert",
       description: "d",
       price: "12.5",
-      category: "fiction",
+      category,
       quantity: "3",
       totalLikes: 1000,
       image: "https://attacker.example/x.png",
     });
     assert.ok(dto instanceof CreateBookDto);
-    assert.deepEqual(dto.toAttributes(), {
-      bookTitle: "Dune",
-      author: "Frank Herbert",
-      description: "d",
-      price: 12.5,
-      category: "fiction",
-      quantity: 3,
-    });
+    const attributes = dto.toAttributes();
+    assert.deepEqual(
+      { ...attributes, subjects: undefined, keywords: undefined },
+      {
+        bookTitle: "Dune",
+        author: "Frank Herbert",
+        description: "d",
+        price: 12.5,
+        category,
+        quantity: 3,
+        isForSale: true,
+        isbn: null,
+        edition: undefined,
+        publisher: null,
+        publicationYear: null,
+        language: undefined,
+        pageCount: null,
+        subjects: undefined,
+        keywords: undefined,
+      }
+    );
     assert.equal("totalLikes" in dto, false);
     assert.equal("image" in dto, false);
+  });
+
+  test("ISBNs are checked and normalized; subject lists accept comma-separated text", () => {
+    const base = { bookTitle: "t", author: "a, b", description: "d", category: id() };
+    assert.ok(CreateBookDto.parse({ ...base, isbn: "978-0-441-17271-8" }).error, "bad check digit");
+    const { dto } = CreateBookDto.parse({ ...base, isbn: "978-0-441-17271-9", subjects: "Space, Politics ,," });
+    assert.equal(dto.isbn, "9780441172719");
+    assert.deepEqual(dto.subjects, ["Space", "Politics"]);
+    assert.deepEqual(dto.authorNames, ["a", "b"]);
   });
 
   test("convert multipart/query strings to numbers", () => {
@@ -54,7 +77,7 @@ describe("request DTOs", () => {
     const { dto, error } = UpdateBookDto.parse({ id: "not-an-id", price: -1 });
     assert.equal(dto, undefined);
     const paths = error.details.map((detail) => detail.path[0]);
-    for (const field of ["id", "price", "bookTitle", "quantity"]) assert.ok(paths.includes(field), field);
+    for (const field of ["id", "price", "bookTitle", "author", "category"]) assert.ok(paths.includes(field), field);
   });
 
   test("password confirmation is checked but never carried into the DTO", () => {

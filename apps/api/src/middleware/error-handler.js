@@ -16,6 +16,7 @@ const isHttpStatus = (value) => Number.isInteger(value) && value >= 400 && value
 const STATUS_RULES = [
   [(err) => err instanceof HttpError, (err) => err.status],
   [(err) => isHttpStatus(err.cause), (err) => err.cause],
+  [(err) => err.code === "LIMIT_FILE_SIZE", () => 413], // multer
   [(err) => isHttpStatus(err.status), (err) => err.status], // body-parser, multer
   [(err) => isHttpStatus(err.statusCode), (err) => err.statusCode],
   [(err) => ["CastError", "ValidationError", "MulterError"].includes(err.name), () => 400],

@@ -32,10 +32,8 @@ describe("app", () => {
     assert.equal(res.status, 400);
   });
 
-  test("GET /category/options is reachable (was shadowed by /:id)", async () => {
-    const res = await server.request("GET", "/category/options");
-    assert.equal(res.status, 200);
-    assert.ok(res.json.categories.includes("fiction"));
+  test("GET /category/:id/books validates the category id", async () => {
+    expectValidationError(await server.request("GET", "/category/not-an-id/books"));
   });
 
   test("invalid ObjectIds are rejected with 400 instead of a 500", async () => {

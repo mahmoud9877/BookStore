@@ -18,5 +18,5 @@ export class UpdateCategoryDto extends RequestDto {
 // ---------- Responses
 
 export class CategoryResponseDto extends ResponseDto {
-  static fields = ["_id", "name", "createdAt", "updatedAt"];
+  static fields = ["_id", "name", "bookCount", "createdAt", "updatedAt"];
 }

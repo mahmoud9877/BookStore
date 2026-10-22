@@ -21,7 +21,10 @@ describe("StripePaymentGateway.parseWebhookEvent", () => {
     };
     for (const [type, outcome] of Object.entries(cases)) {
       const parsed = gateway.parseWebhookEvent(...signed({ type, data: { object: { metadata: { orderId: "o1" } } } }));
-      assert.deepEqual(parsed, { outcome, orderId: "o1" }, type);
+      assert.equal(parsed.outcome, outcome, type);
+      assert.equal(parsed.orderId, "o1");
+      assert.equal(parsed.eventId, "evt_1");
+      assert.deepEqual(parsed.metadata, { orderId: "o1" });
     }
   });
 

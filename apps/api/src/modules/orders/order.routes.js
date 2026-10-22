@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { CancelOrderDto, CreateOrderDto, OrderIdDto } from "./order.dto.js";
 import { validate } from "../../middleware/validate.js";
+import { PERMISSIONS } from "../roles/permissions.js";
 
 // POST /order/webhook is registered in app.js because it needs the raw request body.
 export function createOrderRouter({ orderController, authGuard }) {
@@ -20,7 +21,7 @@ export function createOrderRouter({ orderController, authGuard }) {
   );
   router.patch(
     "/:orderId/delivered",
-    authGuard.adminOnly(),
+    authGuard.requirePermission(PERMISSIONS.OrdersManage),
     validate(OrderIdDto),
     orderController.deliverOrder
   );

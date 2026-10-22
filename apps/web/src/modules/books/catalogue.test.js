@@ -1,9 +1,9 @@
 import { filterBooks } from "./catalogue.js";
 
 const books = [
-  { bookTitle: "dune", author: "frank herbert", price: 320, category: "fantasy" },
-  { bookTitle: "sapiens", author: "yuval noah harari", price: 410, category: "non-fiction" },
-  { bookTitle: "the hobbit", author: "j. r. r. tolkien", price: 250, category: "fantasy" },
+  { bookTitle: "dune", author: "frank herbert", price: 320, category: { _id: "c1", name: "fantasy" } },
+  { bookTitle: "sapiens", author: "yuval noah harari", price: 410, category: { _id: "c2", name: "non-fiction" } },
+  { bookTitle: "the hobbit", author: "j. r. r. tolkien", price: 250, category: { _id: "c1", name: "fantasy" } },
 ];
 const titles = (list) => list.map((book) => book.bookTitle);
 

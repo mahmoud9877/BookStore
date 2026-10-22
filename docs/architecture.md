@@ -3,11 +3,19 @@
 ## Overview
 
 ```text
-browser ──► web (nginx :8080) ──/api/*──► api (Express :3000) ──► MongoDB
-               │ static React build                  ├──► Cloudinary (book covers)
-               └ SPA fallback to index.html          ├──► Stripe (card checkout + webhook)
-                                                     └──► Gmail SMTP (confirmation email)
+browser ──► web (nginx :8080) ──/api/*──► api (Express :3000) ──► MongoDB (replica set)
+               │ static React build                  ├──► uploads volume (covers, digital files, documents)
+               └ SPA fallback to index.html          ├──► Cloudinary (optional: book covers)
+                                                     ├──► Stripe (optional: card checkout, refunds, webhook)
+                                                     └──► Claude API (optional: catalogue assistant)
+
+worker (same image, node src/worker.js) ──► MongoDB ──► Gmail SMTP (queued emails, retries)
+                                           └ scheduled jobs: hold expiry, due-soon/overdue/membership reminders
 ```
+
+The system is a **modular monolith**: one API process (scaled horizontally if needed),
+one worker process, one database. Modules talk to each other through services and
+repositories in the same process; there are no internal network calls.
 
 In development the browser talks to the CRA dev server (`:3000`) and directly to the API
 (`:4000`); in production everything is same-origin through nginx.
@@ -52,7 +60,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   copies), single-id DTOs come from `objectIdParamDto(name)`, response DTOs declare
   `fields`/`nested`, `HttpError` subclasses declare only `status`/`defaultMessage`,
   `ensureFound()` replaces repeated not-found checks, and `authGuard.signedIn()` /
-  `adminOnly()` name the two access levels. Checked with jscpd (0 clones at the default
+  `requirePermission(...)` name the access levels. Checked with jscpd (0 clones at the default
   thresholds across API source, API tests and the web app).
 - **Composition root:** `src/container.js` is the only place that instantiates concrete
   classes and wires them together. `createApp(container)` mounts the routers;
@@ -79,7 +87,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   short) and `releaseStock` (one `bulkWrite`). Services decide *what* should happen and
   coordinate across repositories (e.g. release reserved stock if creating the order
   fails); repositories decide *how* it is done in MongoDB. Shared constants live in
-  `order-statuses.js` and `category-options.js`, so services never import model files.
+  `order-statuses.js` and `roles/permissions.js`, so services never import model files.
 - **Thin controllers:** a controller method extracts input from `req`, awaits exactly one
   service call and maps the result to a response. The only branches left choose the
   response form from facts the service reports (redirect vs JSON after email confirmation,
@@ -90,7 +98,19 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   are merged into the JSON body, which keeps legacy fields such as `error`). `globalErrorHandler`
   maps them, plus Mongoose cast/validation errors (400), JWT errors (401) and duplicate
   keys (409).
-- **Authorization:** `authGuard.authenticate([roles])` — role lists live next to the routes.
+- **Authorization (RBAC):** routes declare the permission they need,
+  `authGuard.requirePermission(PERMISSIONS.BooksManage)`; the guard resolves the user's role
+  through `RoleService.permissionsFor()` on every request. The built-in `Admin` (all
+  permissions) and `User` (none) roles live in code (`roles/system-roles.js`) and never
+  touch the database; custom roles are documents in `roles` and users reference a role by
+  name. `RoleService.assertCanGrant()` stops privilege escalation: nobody grants or removes
+  a permission they lack, whether by editing a role or by changing an account's role.
+- **Category → books (one-to-many):** `books.category` is an ObjectId reference
+  (indexed); `Category` declares a `books` virtual. `BookRepository` always populates
+  `{_id, name}`, counts books per category (one aggregation) and a category with books
+  cannot be deleted. Books saved when the category was a name are re-linked at startup by
+  `linkLegacyBookCategories()` (idempotent; creates a missing category instead of
+  orphaning a book).
 - **Security helpers** are classes too: `PasswordHasher` and `JwtTokenService` (two
   instances: login tokens signed with `TOKEN_SIGNATURE`, email tokens with `EMAIL_TOKEN`).
 - **Stock:** `book.quantity` is stock. `OrderService` reserves it atomically per item
@@ -99,6 +119,85 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 - **Testing:** service tests construct a service with fake collaborators
   (`tests/services.test.js`); HTTP tests start the real app and stub methods on the
   container's instances (`tests/helpers.js`).
+
+### Library domain (API)
+
+**Modules** (`apps/api/src/modules/`): `books` (bibliographic records = editions), `authors`,
+`publishers`, `categories`, `copies` (physical items), `branches` (branches, rooms, shelves),
+`members` (members, membership types, membership history), `circulation` (loans,
+reservations, the copy allocator), `finance` (fines, payments, the payment webhook
+dispatcher), `transfers`, `inventory` (stocktakes), `acquisitions` (suppliers, purchase
+orders), `facilities` (rooms, bookings, events), `digital`, `discovery` (catalogue search,
+related titles), `assistant`, `notifications` (outbox + reminders), `reports`, `audit`,
+`settings`, `roles`, `users`, `auth`, plus the original shop modules `cart` and `orders`.
+
+**Data model.**
+
+```text
+Category 1─* Book (edition: ISBN unique, workKey groups editions) *─* Author ; Book *─1 Publisher
+Book 1─* Copy (barcode unique, status, condition, cost) *─1 Branch ; Copy *─1 Location (shelf in a room)
+MembershipType 1─* Member *─1 Branch (home) ; Member 0..1─1 User (self-service)
+Copy 1─* Loan *─1 Member         (unique index: one ACTIVE loan per copy)
+Book 1─* Reservation *─1 Member  (unique index: one OPEN reservation per member and title)
+Loan 1─* Fine *─1 Member         (unique index: one overdue/lost/damaged fine per loan)
+Payment *─1 Member, allocations → Fines ; refunds embedded
+Copy 1─* Transfer (unique index: one open transfer per copy, history embedded)
+Supplier 1─* PurchaseOrder (lines, deliveries → created copies, documents)
+Branch 1─* Room 1─* RoomBooking ; Event *─1 Room? ; Event 1─* EventRegistration
+AuditLog, Setting, Notification (outbox, dedupe key unique), Counter, JobLock, Migration
+```
+
+**State machines** live next to the models (`copy-statuses.js`, `circulation-statuses.js`,
+`finance-statuses.js`, `transfer.model.js`, `acquisition.model.js`) and every transition is
+a *guarded* update (`updateWhere({ _id, status: <expected> }, …)`): if another request got
+there first, nothing changes and the service answers `409`.
+
+**Transactions and concurrency.** Multi-document workflows (checkout, return, renew,
+reservations, transfers, payments, refunds, deliveries, stocktake reconciliation, room
+bookings) run in `TransactionRunner.run()` (MongoDB transactions, retried by the driver on
+transient conflicts). The active session travels through `AsyncLocalStorage`
+(`core/transaction-context.js`), so every repository call inside the callback joins the
+transaction without passing a session around. Three techniques combine:
+
+1. *Guarded transitions* on the copy/loan/reservation/payment (no double lending, no double processing).
+2. *Unique partial indexes* as the last line of defence (active loan per copy, open reservation per member+title, one fine per loan+type, one open transfer per copy, one open stocktake per branch).
+3. *Serialising touches*: a checkout or reservation first increments `members.circulationVersion`, a room booking `rooms.bookingVersion`. Two concurrent transactions for the same member/room then write-conflict; the driver retries the loser, which now sees the first one's loan/booking — so loan limits and room overlaps cannot be raced. The integration tests prove each case with concurrent requests.
+
+Identifiers that must never collide (barcodes, member numbers, receipts, PO numbers) come
+from `SequenceGenerator` (one atomic `$inc` per number), drawn *outside* transactions so
+counters never become a conflict hotspot (gaps are harmless).
+
+**Where a returned copy goes** is decided in one place, `CopyAllocator.release()`: the
+oldest reservation picking up at this branch, else (cross-branch pickup allowed) the oldest
+anywhere — by transfer — else back on the shelf (sent home first if `returnToHomeBranch`).
+Returns, cancelled/expired holds and received transfers all call it.
+
+**Authorization** is two-dimensional: permissions (`requirePermission(...)` on routes) and
+branch scope (`req.access`, an `AccessContext`, passed to services, which call
+`assertBranch()` / `branchFilter()`). A role's `branchScope` is `all` or `assigned`
+(`users.branches`). Nobody can grant a permission or the `all` scope they do not have.
+
+**Policies** are data, not code: `settings` (validated by `library-settings.js`, cached
+30 s, optimistic `version`) and `membership-types`. Defaults never charge fines — the
+library decides its own amounts.
+
+**Background work** uses MongoDB, not new infrastructure: notifications are written in
+the same transaction as the event (outbox, unique `dedupeKey`), and `worker.js` delivers
+emails (lease-based claiming, 5 attempts with backoff) and runs scheduled jobs. A
+`JobScheduler` lease per job lets several workers run without doing a job twice. No Redis
+or message broker is needed at this scale; the boundaries (`NotificationService`,
+`JobScheduler`) are where one would plug in if that changes.
+
+**Integrations behind ports:** payments (`StripePaymentGateway`: hosted checkout,
+refunds, verified webhooks with timeouts/retries), files (`LocalFileStorage` public/private
+areas; `CloudinaryImageStorage` for covers when configured), mail (`GmailMailer` with
+timeouts, `LogMailer` in development/tests), search (`MongoCatalogSearch` — a dedicated
+engine would implement the same `search()`), AI (`ClaudeCatalogModel`, optional).
+
+**Migrations** (`src/migrations/`, `npm run migrate`) are ordered, recorded in the
+`migrations` collection, run under a lock, and only add data or indexes. In production
+Mongoose `autoIndex` is off; the first migration creates every index. The API warns at
+start-up when migrations are pending; it never runs them by itself.
 
 ### Web (`apps/web`)
 
@@ -126,19 +225,22 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   practices: 0 violations on every page and interactive state) at 1280px and 390px.
 - **Shared hooks** (`src/hooks/`): `useForm(initialValues, options)` — controlled inputs
   (incl. files) plus the validate → inline errors → submit lifecycle.
-- Category options come from `GET /category/options`, so the API is the single source.
+- Categories come from `GET /category` (with `bookCount`), so the API is the single source.
 - **`lib/api-client.js`** is the single axios instance; it attaches
   `Authorization: <BEARER_KEY><token>` and `getErrorMessage()` turns API errors into UI text.
 - **State management** is split by where the truth lives:
   - **Server state → TanStack Query** (`lib/query-client.js`, `modules/*/*.queries.js`).
-    Books, a book's details, category options and the cart are cached queries; every
+    Books, a book's details, categories, users, roles, the current user's permissions and the cart are cached queries; every
     write is a mutation that updates or invalidates the cache.
 
     | Hook | Key | Behaviour |
     | --- | --- | --- |
     | `useBooksQuery`, `useBookQuery(id)` | `["books", "list"]`, `["books", "detail", id]` | details show the catalogue's cached copy as placeholder data |
     | `useSaveBook`, `useDeleteBook` | — | invalidate `["books"]` |
-    | `useCategoryOptions` | `["categories", "options"]` | `staleTime: Infinity` |
+    | `useCategoriesQuery`, `useSaveCategory`, `useDeleteCategory` | `["categories"]` | saving also invalidates `["books"]` (books show the name) |
+    | `useCurrentUserQuery`, `usePermissions` | `["me", userId]` | `GET /auth/me`; permissions come from here, not the JWT, so role changes apply without signing in again |
+    | `useUsersQuery`, `useChangeUserRole` | `["users"]` | changing a role also invalidates `["roles"]` (user counts) |
+    | `useRolesQuery`, `usePermissionCatalogue`, `useSaveRole`, `useDeleteRole` | `["roles", …]` | the catalogue is `staleTime: Infinity` |
     | `useCartQuery(select)`, `useCartCount` | `["cart", userId]` | per user; disabled when signed out; `select` derives count/subtotal |
     | `useAddCartItem`, `useRemoveCartItem`, `useClearCart` | — | remove/clear are optimistic with rollback |
     | `usePlaceOrder` | — | empties the cached cart, invalidates `["books"]` (stock changed) |
@@ -150,15 +252,62 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   - **Client state → Zustand**: `auth.store.js` (the session, mirrored from the stored
     JWT and synced across tabs), `toast.store.js` (`toast.success()` + `<Toaster />`) and
     `confirm.store.js` (`await confirm()` + `<ConfirmDialog />`). Components subscribe via
-    selectors (`selectUser`, `useCurrentUser`) so they re-render only for their slice.
+    selectors (`selectUser`, `selectIsSignedIn`) so they re-render only for their slice.
 
   Tests give every render a fresh retry-less `QueryClient` and reset Zustand stores from
   inside each test file (not `setupTests.js`, which runs before `jest.mock`).
-- `ProtectedRoute` guards signed-in routes and accepts a `role` (the dashboard requires `Admin`).
+- `ProtectedRoute` guards signed-in routes and accepts `permissions` (any of them must be
+  granted). `/dashboard` is an admin area (`modules/admin/`): `ADMIN_SECTIONS` maps each
+  section (books, categories, users, roles) to the permissions its API endpoints require,
+  so tabs, routes and the header link show only what the user's role allows.
 - **Routing** is defined once in `app/routes.jsx`; `App` creates a hash router (deep links
   work on GitHub Pages and nginx). Tests inject a memory router.
 - **Config** is build-time (`REACT_APP_API_URL`, `REACT_APP_BEARER_KEY`) with the previously
   hard-coded values as fallbacks, so the GitHub Pages build is unchanged.
+
+### Web: product structure and design system
+
+- **Four areas, three layouts:**
+
+  | Route | Area | Layout |
+  | --- | --- | --- |
+  | `/` | Product (landing) page | `modules/landing` — own header/footer |
+  | `/catalog`, `/book/:id`, `/digital`, `/events`, `/login`, `/signup`, `/cart` | Public catalogue and shop | `layouts/RootLayout` (site header/footer) |
+  | `/account/*` | Member portal (loans, reservations, fines, notifications, bookings) | `RootLayout` + `AccountLayout` (library-card header) |
+  | `/dashboard/*` | Staff workspace | `modules/admin/AppShell` (navy sidebar, top bar, breadcrumbs) |
+
+  Old catalogue links (`/?category=…`, `/?q=…`) redirect to `/catalog`. After sign-in,
+  members go to `/account` and staff to `/dashboard` (unless they were sent to sign in
+  from a specific page). Every page is a lazily loaded chunk (`app/routes.jsx`).
+- **Navigation follows permissions:** `modules/admin/admin-sections.js` maps each
+  workspace section to the permissions of its API endpoints; the sidebar, the routes and
+  the header links show only what the role grants. The API enforces the same rules.
+- **Design tokens** (`styles/theme.css`, `:root`): navy brand scale (`--brand-900…50`,
+  primary `--brand-600`), gold accent (`--accent-500`; `--accent-600` for text), warm ivory
+  page (`--paper`), cool neutrals (`--ink-*`), status colours, a type scale (`--text-*`;
+  Inter for UI, a serif display face only for editorial headings via `.font-display`), a
+  4px spacing scale (`--space-*`), radii, shadows, `--focus-ring`, `--ease`. They are
+  mapped onto Bootstrap's variables, so Bootstrap components inherit the brand.
+  `styles/shell.css` (workspace) and `styles/landing.css` (product page) load with their
+  pages only.
+- **Shared components:** `components/ui/` — `Brand`, `PageHeader`, `DataTable` (skeleton
+  loading, error and empty states, pagination), `Pagination`, `StatusBadge` (text + colour,
+  never colour alone), `Skeleton`, `PageLoader`, `Modal`, `ConfirmDialog`, `FormField`,
+  `StatePanel`, `Toaster`; `layouts/UserMenu` (account menu used by both headers).
+  Data hooks: `lib/resource.js` (`usePagedQuery`, `useDataQuery`, `useApiMutation`).
+- **Sessions:** a signed-in request answered `401` (expired token, deactivated account)
+  signs the user out once, clears cached data and says why (`App.jsx`, `onSessionExpired`).
+- **Hash routing** (kept for GitHub Pages and simple static hosting) owns the URL hash,
+  so in-page links (landing sections, skip links) scroll and move focus in JavaScript
+  instead of using `#anchor` URLs. Search engines index the landing page's content and
+  metadata, but not individual hash routes; switching to path routing would need
+  server-side fallbacks on every host.
+- **Money** from the library endpoints is in minor units: `formatMoney()` to display,
+  `toMinorUnits()` for staff input. Shop prices keep their original format.
+- **Protected files** (digital publications, purchase documents, CSV exports) are fetched
+  with the session token as blobs and opened through object URLs — never bare links.
+- **Tests** render single pages with `test-utils/render-page.jsx` (`renderPage` + `fakeApi`);
+  `app/App.test.jsx` covers the layouts, routing, redirects and access rules.
 
 ### Why no `packages/shared`
 

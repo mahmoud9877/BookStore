@@ -1,6 +1,6 @@
 import { makeToken } from "../../test-utils/make-token.js";
 import { resetStores } from "../../test-utils/reset-stores.js";
-import { selectIsAdmin, selectIsSignedIn, useAuthStore } from "./auth.store.js";
+import { selectIsSignedIn, useAuthStore } from "./auth.store.js";
 
 beforeEach(() => {
   localStorage.clear();
@@ -12,7 +12,6 @@ test("signIn stores the token and exposes the decoded user", () => {
   const state = useAuthStore.getState();
   expect(state.user).toMatchObject({ userName: "reader", role: "Admin" });
   expect(selectIsSignedIn(state)).toBe(true);
-  expect(selectIsAdmin(state)).toBe(true);
   expect(localStorage.getItem("userToken")).toBeTruthy();
 });
 

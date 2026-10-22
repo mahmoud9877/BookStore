@@ -25,6 +25,7 @@ export class CartService {
    */
   async addItem(userId, { bookId, quantity }) {
     const book = ensureFound(await this.#books.findById(bookId), "Book not found");
+    if (book.isForSale === false) throw new BadRequestError("This book is not for sale");
     if (book.quantity < quantity) throw new BadRequestError("Insufficient stock available");
 
     const item = {

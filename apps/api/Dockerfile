@@ -23,6 +23,8 @@ ENV NODE_ENV=production
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
+# Mount point for the uploads volume, owned by the unprivileged user.
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \

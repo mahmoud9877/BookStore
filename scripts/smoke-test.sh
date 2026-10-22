@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# End-to-end smoke test of the main bookstore workflows against a running stack
-# with a real MongoDB. Intended for the development Compose stack:
+# End-to-end smoke test of the shop and library workflows against a running stack
+# with a real MongoDB (replica set). Intended for the development Compose stack:
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 #   ./scripts/smoke-test.sh
@@ -61,10 +61,13 @@ CATEGORY_ID="$(json "$BODY" d.category._id)"
 request GET "/category/$CATEGORY_ID"
 expect_status 200 "get a category by id"
 
-request PUT "/category/$CATEGORY_ID" '{"name":"poetry"}' "$USER_TOKEN"
-expect_status 400 "category names outside the predefined options are rejected"
+request POST /category "{\"name\":\"${CATEGORY}-taken\"}" "$USER_TOKEN"
+TAKEN_CATEGORY_ID="$(json "$BODY" d.category._id)"
+request PUT "/category/$CATEGORY_ID" "{\"name\":\"${CATEGORY}-taken\"}" "$USER_TOKEN"
+expect_status 409 "category names are unique"
+request DELETE "/category/$TAKEN_CATEGORY_ID" "" "$USER_TOKEN"
 
-BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'smoke book',author:'tester',description:'d',image:'https://example.com/x.png',price:25,quantity:5,category:'$CATEGORY',totalLikes:0,likes:[],createdAt:new Date(),updatedAt:new Date()}).insertedId.toString())" | tail -1)"
+BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'smoke book',author:'tester',description:'d',image:'https://example.com/x.png',price:25,quantity:5,isForSale:true,category:ObjectId('$CATEGORY_ID'),totalLikes:0,likes:[],createdAt:new Date(),updatedAt:new Date()}).insertedId.toString())" | tail -1)"
 
 request GET /book
 expect_status 200 "list books"
@@ -126,7 +129,7 @@ request GET "/book/$BOOK_ID"
 ok "cancelling restores stock"
 
 # All-or-nothing stock reservation against the real database.
-SHORT_BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'short book',author:'tester',description:'d',image:'https://example.com/y.png',price:10,quantity:1,category:'$CATEGORY',totalLikes:0,likes:[]}).insertedId.toString())" | tail -1)"
+SHORT_BOOK_ID="$(mongo "print(db.books.insertOne({bookTitle:'short book',author:'tester',description:'d',image:'https://example.com/y.png',price:10,quantity:1,isForSale:true,category:ObjectId('$CATEGORY_ID'),totalLikes:0,likes:[]}).insertedId.toString())" | tail -1)"
 request POST /cart/add "{\"bookId\":\"$BOOK_ID\",\"quantity\":1}" "$USER_TOKEN"
 request POST /cart/add "{\"bookId\":\"$SHORT_BOOK_ID\",\"quantity\":1}" "$USER_TOKEN"
 mongo "db.books.updateOne({_id:ObjectId('$SHORT_BOOK_ID')},{\$set:{quantity:0}})" >/dev/null
@@ -154,8 +157,50 @@ expect_status 200 "admin lists users"
 [[ "$(json "$BODY" "d.users.some(u=>'password' in u)")" == "false" ]] || fail "password hashes leaked"
 ok "user list excludes password hashes"
 
-request GET /category/options
-expect_status 200 "category options route is reachable"
+request GET "/category/$CATEGORY_ID/books"
+expect_status 200 "list a category's books"
+[[ "$(json "$BODY" "d.books.length")" == "2" ]] || fail "the category should have 2 books, got: $BODY"
+
+# ---------- Library: copies, members, circulation, reservations, reports
+
+request GET /branches/active "" "$USER_TOKEN"
+BRANCH_ID="$(json "$BODY" d.data[0]._id)"
+request GET /membership-types "" "$USER_TOKEN"
+TYPE_ID="$(json "$BODY" d.data[0]._id)"
+
+request POST /copies "{\"book\":\"$BOOK_ID\",\"branch\":\"$BRANCH_ID\",\"count\":1,\"condition\":\"new\"}" "$USER_TOKEN"
+expect_status 201 "add a physical copy (barcode generated)"
+BARCODE="$(json "$BODY" d.data[0].barcode)"
+
+request POST /members "{\"name\":\"Smoke Member\",\"email\":\"$EMAIL\",\"membershipType\":\"$TYPE_ID\",\"homeBranch\":\"$BRANCH_ID\",\"userEmail\":\"$EMAIL\"}" "$USER_TOKEN"
+expect_status 201 "register a member linked to the account"
+MEMBER_NUMBER="$(json "$BODY" d.data.memberNumber)"
+
+request POST /loans/checkout "{\"barcode\":\"$BARCODE\",\"member\":\"$MEMBER_NUMBER\"}" "$USER_TOKEN"
+expect_status 201 "check out a copy at the desk"
+request POST /loans/checkout "{\"barcode\":\"$BARCODE\",\"member\":\"$MEMBER_NUMBER\"}" "$USER_TOKEN"
+expect_status 409 "a copy on loan cannot be lent again"
+
+request GET /loans/me "" "$USER_TOKEN"
+expect_status 200 "the member sees their loans"
+[[ "$(json "$BODY" "d.data.length")" == "1" ]] || fail "the member should have 1 loan, got: $BODY"
+
+request POST /loans/return "{\"barcode\":\"$BARCODE\"}" "$USER_TOKEN"
+expect_status 200 "return the copy"
+[[ "$(json "$BODY" d.data.next)" == "shelved" ]] || fail "the returned copy should be shelved, got: $BODY"
+
+request POST /reservations/me "{\"book\":\"$BOOK_ID\",\"pickupBranch\":\"$BRANCH_ID\"}" "$USER_TOKEN"
+expect_status 201 "reserve a title (held at once: a copy is on the shelf)"
+[[ "$(json "$BODY" d.data.status)" == "ready" ]] || fail "the reservation should be ready, got: $BODY"
+RESERVATION_ID="$(json "$BODY" d.data._id)"
+request POST "/reservations/me/$RESERVATION_ID/cancel" '{}' "$USER_TOKEN"
+expect_status 200 "cancel the reservation (the copy goes back on the shelf)"
+
+request GET /reports/summary "" "$USER_TOKEN"
+expect_status 200 "reports summary"
+request GET "/audit-logs?action=loan.checkout&limit=5" "" "$USER_TOKEN"
+expect_status 200 "the checkout is in the audit log"
+[[ "$(json "$BODY" "d.data.length > 0")" == "true" ]] || fail "missing audit entry"
 
 request POST /category "{\"name\":\"${CATEGORY}-tmp\"}" "$USER_TOKEN"
 TMP_CATEGORY_ID="$(json "$BODY" d.category._id)"
@@ -167,8 +212,16 @@ expect_status 404 "deleted categories are gone"
 request GET /no-such-route
 expect_status 404 "unknown routes return 404"
 
-# Clean up everything this run created.
+# Clean up everything this run created (audit entries are kept: the log is append-only).
 mongo "const user = db.users.findOne({email:'$EMAIL'});
+  const member = db.members.findOne({user:user._id});
+  db.loans.deleteMany({member:member._id});
+  db.reservations.deleteMany({member:member._id});
+  db.fines.deleteMany({member:member._id});
+  db.notifications.deleteMany({member:member._id});
+  db.membershipevents.deleteMany({member:member._id});
+  db.members.deleteOne({_id:member._id});
+  db.copies.deleteMany({book:ObjectId('$BOOK_ID')});
   db.orders.deleteMany({userId:user._id});
   db.carts.deleteMany({userId:user._id});
   db.books.deleteMany({_id:{\$in:[ObjectId('$BOOK_ID'),ObjectId('$SHORT_BOOK_ID')]}});

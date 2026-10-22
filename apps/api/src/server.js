@@ -1,6 +1,8 @@
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
 import { env, checkEnv } from "./config/env.js";
+import { MIGRATIONS } from "./migrations/index.js";
+import { MigrationRunner } from "./migrations/runner.js";
 
 const { missing, deprecated } = checkEnv();
 if (deprecated.length) {
@@ -14,10 +16,19 @@ if (missing.length) {
 const container = createContainer();
 const app = createApp(container);
 
-container.database.connect().catch((error) => {
-  console.error(`Error connecting to the database: ${error.message}`);
-  process.exit(1);
-});
+container.database
+  .connect()
+  .then(async () => {
+    // Migrations run explicitly (npm run migrate); warn loudly if some are pending.
+    const pending = await new MigrationRunner(MIGRATIONS, container).pending();
+    if (pending.length) {
+      console.warn(`${pending.length} database migration(s) pending — run "npm run migrate": ${pending.map((m) => m.id).join(", ")}`);
+    }
+  })
+  .catch((error) => {
+    console.error(`Error connecting to the database: ${error.message}`);
+    process.exit(1);
+  });
 
 const server = app.listen(env.port, () => {
   console.log(`API listening on port ${env.port} (${env.nodeEnv})`);

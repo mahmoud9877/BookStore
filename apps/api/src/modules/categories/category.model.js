@@ -13,6 +13,13 @@ const categorySchema = new Schema(
   { timestamps: true }
 );
 
+// A category has many books (books.category references categories._id).
+categorySchema.virtual("books", {
+  ref: "Book",
+  localField: "_id",
+  foreignField: "category",
+});
+
 const categoryModel =
   mongoose.models.Category || model("Category", categorySchema);
 

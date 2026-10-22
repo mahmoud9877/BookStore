@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, isRouteErrorResponse, useRouteError } from "react-router-dom";
 import StatePanel from "./ui/StatePanel.jsx";
+import { t } from "../i18n/index.js";
 
 /** Route error boundary, also rendered (with `notFound`) for unknown URLs inside the layout. */
 export default function ErrorPage({ notFound = false }) {
@@ -12,15 +13,15 @@ export default function ErrorPage({ notFound = false }) {
       <StatePanel
         headingLevel={1}
         icon={isNotFound ? "signpost-split" : "exclamation-triangle"}
-        title={isNotFound ? "Page not found" : "Something went wrong"}
+        title={isNotFound ? t("Page not found") : t("Something went wrong")}
         message={
           isNotFound
-            ? "The page you're looking for doesn't exist or has moved."
-            : "An unexpected error occurred. Please try again."
+            ? t("The page you're looking for doesn't exist or has moved.")
+            : t("An unexpected error occurred. Please try again.")
         }
         action={
           <Link to="/" className="btn btn-primary">
-            Back to the bookstore
+            {t("Back to the home page")}
           </Link>
         }
       />

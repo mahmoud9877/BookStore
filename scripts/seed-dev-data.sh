@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Seeds the DEVELOPMENT database with categories, a catalogue of books and two
-# accounts, so the web app can be explored with realistic data:
+# Seeds the DEVELOPMENT database with categories, a catalogue of books, two
+# accounts and library data (branches, copies, members, loans, a reservation,
+# fines, rooms, an event), so the web app can be explored with realistic data:
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 #   ./scripts/seed-dev-data.sh
@@ -68,7 +69,9 @@ const books = [
   ["educated", "tara westover", "biography", 330, 7, "9780399590504",
    "A memoir of a young woman who leaves her survivalist family and goes on to earn a PhD."],
 ];
-for (const [bookTitle, author, category, price, quantity, isbn, description] of books) {
+for (const [bookTitle, author, categoryName, price, quantity, isbn, description] of books) {
+  // A book references its category by id (one category has many books).
+  const category = db.categories.findOne({ name: categoryName })._id;
   db.books.updateOne(
     { bookTitle },
     { $setOnInsert: { bookTitle, author, category, price, quantity, description,
@@ -78,4 +81,6 @@ for (const [bookTitle, author, category, price, quantity, isbn, description] of 
 }
 print(`books: ${db.books.countDocuments()}, categories: ${db.categories.countDocuments()}`);
 '
-echo "Seeded. Log in as admin@bookstore.local / admin123 or reader@bookstore.local / reader123."
+# Library data (copies, members, loans, …) goes through the API's own services.
+"${COMPOSE[@]}" exec -T api npm run --silent seed:demo
+echo "Seeded. Log in as admin@bookstore.local / admin123 or reader@bookstore.local / reader123 (a library member)."

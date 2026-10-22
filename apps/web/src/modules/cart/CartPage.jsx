@@ -20,7 +20,7 @@ function OrderPlaced({ order }) {
         order.finalPrice
       )} in cash on delivery.`}
       action={
-        <Link to="/" className="btn btn-primary">
+        <Link to="/catalog" className="btn btn-primary">
           Continue shopping
         </Link>
       }
@@ -101,7 +101,7 @@ export default function CartPage() {
           title="Your cart is empty"
           message="Books you add will appear here."
           action={
-            <Link to="/" className="btn btn-primary">
+            <Link to="/catalog" className="btn btn-primary">
               Browse books
             </Link>
           }

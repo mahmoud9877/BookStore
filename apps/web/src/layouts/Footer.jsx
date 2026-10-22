@@ -1,11 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Logo from "../assets/images/main-logo.png";
+import Brand from "../components/ui/Brand.jsx";
+import { msg, t } from "../i18n/index.js";
 
 const LINKS = [
-  { label: "Browse books", to: "/" },
-  { label: "Your cart", to: "/cart" },
-  { label: "Your account", to: "/profile" },
+  { label: msg("Catalogue"), to: "/catalog" },
+  { label: msg("Digital library"), to: "/digital" },
+  { label: msg("Events"), to: "/events" },
+  { label: msg("My library"), to: "/account" },
+  { label: msg("About BookSaw"), to: "/" },
 ];
 
 export default function Footer() {
@@ -14,14 +17,14 @@ export default function Footer() {
       <div className="container py-4">
         <div className="d-flex flex-column flex-md-row gap-3 justify-content-between align-items-md-center">
           <div>
-            <img src={Logo} alt="BookSaw" className="brand-logo mb-2" />
-            <p className="mb-0">Books worth reading, delivered to your door.</p>
+            <Brand to="/" />
+            <p className="mb-0 mt-2">{t("Borrow, reserve and discover across every branch.")}</p>
           </div>
-          <nav aria-label="Footer">
+          <nav aria-label={t("Footer")}>
             <ul className="list-inline mb-0">
               {LINKS.map(({ label, to }) => (
-                <li key={to} className="list-inline-item me-3">
-                  <Link to={to}>{label}</Link>
+                <li key={label} className="list-inline-item me-3">
+                  <Link to={to}>{t(label)}</Link>
                 </li>
               ))}
             </ul>
@@ -29,7 +32,7 @@ export default function Footer() {
         </div>
         <hr className="my-3" />
         <p className="small mb-0">
-          © {new Date().getFullYear()} BookSaw · Design based on a template by{" "}
+          {t("© {year} BookSaw · Storefront design based on a template by", { year: new Date().getFullYear() })}{" "}
           <a href="https://www.templatesjungle.com/" target="_blank" rel="noopener noreferrer">
             TemplatesJungle
           </a>

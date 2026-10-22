@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
 import BookForm from "./BookForm.jsx";
 import BookList from "./BookList.jsx";
 import { filterBooks } from "./catalogue.js";
@@ -10,7 +11,7 @@ import { formatTitle, pluralize } from "../../lib/format.js";
 import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
 import { useBooksQuery, useDeleteBook, useSaveBook } from "./book.queries.js";
-import { useCategoryOptions } from "../categories/category.queries.js";
+import { useCategoriesQuery } from "../categories/category.queries.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 
 const NEW_BOOK = Symbol("new book");
@@ -19,7 +20,7 @@ const NO_BOOKS = [];
 /** Admin page: add, edit and delete books. */
 export default function BooksDashboardPage() {
   const { data: books = NO_BOOKS, isLoading, error, refetch } = useBooksQuery();
-  const categories = useCategoryOptions();
+  const { data: categories } = useCategoriesQuery();
   const saveBook = useSaveBook();
   const removeBook = useDeleteBook();
   const isSaving = saveBook.isPending;
@@ -65,7 +66,10 @@ export default function BooksDashboardPage() {
       <header className="page-header d-flex flex-wrap gap-3 align-items-end justify-content-between">
         <div>
           <h1>Catalogue</h1>
-          <p className="text-muted mb-0">{isLoading ? "Loading…" : pluralize(books.length, "book")}</p>
+          <p className="text-muted mb-0">
+            {isLoading ? "Loading…" : pluralize(books.length, "record")} · one per edition; physical copies are managed under{" "}
+            <Link to="/dashboard/copies">Copies</Link>.
+          </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setEditing(NEW_BOOK)}>
           <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>Add book

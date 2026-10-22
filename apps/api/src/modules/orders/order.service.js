@@ -59,7 +59,11 @@ export class OrderService {
    * An invalid signature throws BadRequestError. Resolves a short outcome message.
    */
   async processPaymentWebhook(rawBody, signature) {
-    const { outcome, orderId } = this.#payments.parseWebhookEvent(rawBody, signature);
+    return this.applyPaymentEvent(this.#payments.parseWebhookEvent(rawBody, signature));
+  }
+
+  /** Applies an already verified payment event to its order. */
+  async applyPaymentEvent({ outcome, orderId }) {
     if (!orderId || outcome === PAYMENT_OUTCOMES.ignored) return "Ignored";
 
     if (outcome === PAYMENT_OUTCOMES.paid) {

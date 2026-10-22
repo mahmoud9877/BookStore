@@ -1,3 +1,4 @@
+import { t } from "../../i18n/index.js";
 import React from "react";
 import { useToastStore } from "./toast.store.js";
 
@@ -17,7 +18,7 @@ export default function Toaster() {
           <button
             type="button"
             className="btn-close btn-close-white btn-sm"
-            aria-label="Dismiss notification"
+            aria-label={t("Dismiss notification")}
             onClick={() => dismiss(id)}
           ></button>
         </div>

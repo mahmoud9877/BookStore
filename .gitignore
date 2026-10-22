@@ -18,3 +18,9 @@ apps/api/config/
 npm-debug.log*
 *.log
 .DS_Store
+
+# Locally stored files (book covers, digital publications, purchase documents)
+apps/api/uploads/
+
+# Copied from node_modules by apps/web/scripts/copy-bootstrap.js
+apps/web/public/vendor/

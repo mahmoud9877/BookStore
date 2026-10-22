@@ -4,7 +4,12 @@ import { Link } from "react-router-dom";
 import useSignOut from "../auth/useSignOut.js";
 import { useCartCount } from "../cart/cart.queries.js";
 import { initials, pluralize } from "../../lib/format.js";
-import { useCurrentUser } from "../auth/auth.store.js";
+import { selectUser, useAuthStore } from "../auth/auth.store.js";
+import { useCurrentUserQuery } from "../auth/auth.queries.js";
+import { useAdminSections } from "../admin/useAdminSections.js";
+
+// The built-in roles get friendlier names; custom roles show as named.
+const ROLE_LABELS = { Admin: "Administrator", User: "Customer" };
 
 function ProfileLink({ to, icon, title, detail }) {
   return (
@@ -20,7 +25,10 @@ function ProfileLink({ to, icon, title, detail }) {
 }
 
 export default function ProfilePage() {
-  const { user, isAdmin } = useCurrentUser();
+  const user = useAuthStore(selectUser);
+  // The token's role can be out of date after an admin changes it.
+  const role = useCurrentUserQuery().data?.role ?? user.role;
+  const canAdminister = useAdminSections().length > 0;
   const count = useCartCount();
   const signOut = useSignOut();
 
@@ -40,7 +48,7 @@ export default function ProfilePage() {
           </span>
           <div>
             <h2 className="h4 mb-1">{user.userName}</h2>
-            <span className="badge badge-soft">{isAdmin ? "Administrator" : "Customer"}</span>
+            <span className="badge badge-soft">{ROLE_LABELS[role] ?? role}</span>
           </div>
         </div>
       </div>
@@ -52,9 +60,10 @@ export default function ProfilePage() {
           title="Your cart"
           detail={count ? `${pluralize(count, "book")} waiting for checkout` : "Your cart is empty"}
         />
-        <ProfileLink to="/" icon="book" title="Browse books" detail="Discover your next read" />
-        {isAdmin && (
-          <ProfileLink to="/dashboard" icon="speedometer2" title="Manage catalogue" detail="Add, edit and remove books" />
+        <ProfileLink to="/account" icon="person-vcard" title="My library" detail="Loans, reservations, fines and notifications" />
+        <ProfileLink to="/catalog" icon="book" title="Browse books" detail="Discover your next read" />
+        {canAdminister && (
+          <ProfileLink to="/dashboard" icon="speedometer2" title="Dashboard" detail="Run the library: circulation, catalogue, members and more" />
         )}
       </div>
 

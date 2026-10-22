@@ -1,4 +1,4 @@
-# Shared service definitions. Always combine with an environment override:
+# Shared service definitions (api, worker, web). Always combine with an environment override:
 #   development: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 #   production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 name: bookstore
@@ -8,7 +8,7 @@ services:
     build:
       context: ./apps/api
     env_file:
-      - path: .env
+      - path: ${ENV_FILE:-.env}
         required: false
     environment:
       PORT: "3000"
@@ -22,6 +22,16 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+    networks:
+      - backend
+
+  # Background jobs (email delivery, hold expiry, reminders). Same image as the API.
+  worker:
+    build:
+      context: ./apps/api
+    env_file:
+      - path: ${ENV_FILE:-.env}
+        required: false
     networks:
       - backend
 

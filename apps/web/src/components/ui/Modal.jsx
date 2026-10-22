@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { t } from "../../i18n/index.js";
 
 /**
  * Accessible modal dialog: focuses its first control, closes on Escape or a
@@ -38,7 +39,7 @@ export default function Modal({ title, onClose, children, footer, size }) {
           <h2 id="modal-title" className="h5 mb-0">
             {title}
           </h2>
-          <button type="button" className="btn-close" aria-label="Close" onClick={onClose}></button>
+          <button type="button" className="btn-close" aria-label={t("Close")} onClick={onClose}></button>
         </div>
         <div className="px-4 py-3">{children}</div>
         {footer && <div className="d-flex justify-content-end gap-2 px-4 pb-4">{footer}</div>}

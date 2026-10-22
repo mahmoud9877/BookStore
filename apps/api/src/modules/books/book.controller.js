@@ -17,18 +17,22 @@ export class BookController {
   });
 
   addBook = asyncHandler(async (req, res) => {
-    const book = await this.#bookService.createBook(req.dto, req.file?.path);
+    const book = await this.#bookService.createBook(req.dto, req.file, req.access);
     return res.status(201).json({ message: "Book added successfully", book });
   });
 
   updateBook = asyncHandler(async (req, res) => {
-    const book = await this.#bookService.updateBook(req.dto, req.file?.path);
+    const book = await this.#bookService.updateBook(req.dto, req.file, req.access);
     return res.status(200).json({ message: "Book updated successfully", book });
   });
 
   deleteBook = asyncHandler(async (req, res) => {
-    await this.#bookService.deleteBook(req.dto.id);
+    await this.#bookService.deleteBook(req.dto.id, req.access);
     return res.status(200).json({ message: "Book deleted successfully" });
+  });
+
+  listEditions = asyncHandler(async (req, res) => {
+    return res.json({ data: await this.#bookService.listEditions(req.dto.bookId) });
   });
 
   likeBook = asyncHandler(async (req, res) => {
