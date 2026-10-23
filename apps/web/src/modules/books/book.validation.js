@@ -48,5 +48,17 @@ export const bookSchema = Joi.object({
     }),
     otherwise: Joi.any(),
   }),
+  discountPercent: Joi.when("isForSale", {
+    is: true,
+    then: optionalNumber(Joi.number().integer().min(0).max(90)).messages({
+      "alternatives.match": "Enter a whole-number discount from 0 to 90.",
+    }),
+    otherwise: Joi.any(),
+  }),
+  discountEndsAt: Joi.when("isForSale", {
+    is: true,
+    then: Joi.alternatives().try(Joi.string().valid(""), Joi.date().iso()).messages({ "alternatives.match": "Enter a valid date." }),
+    otherwise: Joi.any(),
+  }),
   image: Joi.any(),
 });

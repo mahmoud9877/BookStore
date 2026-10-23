@@ -2,6 +2,8 @@ import { OrderPolicy } from "./order-policy.js";
 import { ORDER_STATUSES } from "./order-statuses.js";
 import { PAYMENT_OUTCOMES } from "./payment-gateway.js";
 import { CheckoutSessionResponseDto, OrderResponseDto } from "./order.dto.js";
+import { round2, salePriceOf } from "../books/book-pricing.js";
+import { couponDiscount, couponProblem } from "../coupons/coupon-rules.js";
 import {
   BadGatewayError,
   BadRequestError,
@@ -13,22 +15,26 @@ export class OrderService {
   #orders;
   #carts;
   #books;
+  #coupons;
   #payments;
 
   /** `paymentGateway` implements the port described in ./payment-gateway.js. */
-  constructor({ orderRepository, cartRepository, bookRepository, paymentGateway }) {
+  constructor({ orderRepository, cartRepository, bookRepository, couponRepository, paymentGateway }) {
     this.#orders = orderRepository;
     this.#carts = cartRepository;
     this.#books = bookRepository;
+    this.#coupons = couponRepository;
     this.#payments = paymentGateway;
   }
 
   /**
    * Turns the user's cart into an order. Card orders also get a checkout
-   * session. Resolves `{ order, session }` (`session` is null for cash).
+   * session. Lines are priced at the books' current sale prices; a `couponCode`
+   * is checked and one use of it claimed. Resolves `{ order, session }`
+   * (`session` is null for cash).
    * @param {import("./order.dto.js").CreateOrderDto} dto
    */
-  async placeOrder(user, { address, phone, note, paymentType }) {
+  async placeOrder(user, { address, phone, note, paymentType, couponCode }) {
     if (paymentType === "card" && !this.#payments.isConfigured) {
       throw new ServiceUnavailableError("Card payments are not configured");
     }
@@ -36,15 +42,30 @@ export class OrderService {
     const cart = await this.#carts.findByUserId(user._id);
     if (!cart?.books?.length) throw new BadRequestError("Empty Cart");
 
+    // Fail fast on an unknown, inactive, expired or used-up code before touching stock.
+    const coupon = couponCode ? await this.#coupons.findByCode(couponCode) : null;
+    if (couponCode) {
+      const problem = couponProblem(coupon, Infinity);
+      if (problem) throw new BadRequestError(problem);
+    }
+
     const items = await this.#reserveStock(cart.books);
-    const order = await this.#createOrReleaseStock(items, {
+    const subtotal = round2(items.reduce((sum, item) => sum + item.finalPrice, 0));
+    const discount = coupon ? await this.#claimCouponOrReleaseStock(coupon, subtotal, items) : 0;
+    // A coupon that covers the whole order leaves nothing to charge: Stripe refuses a
+    // zero-amount session, so the order is placed like a cash order with nothing to collect.
+    const payBy = paymentType === "card" && round2(subtotal - discount) <= 0 ? "cash" : paymentType;
+    const order = await this.#createOrRelease(items, {
       userId: user._id,
       address,
       note,
       phone,
-      paymentType,
+      paymentType: payBy,
+      subtotal,
+      discount,
+      coupon: coupon ? { code: coupon.code, discount } : null,
     });
-    const session = paymentType === "card" ? await this.#startCheckout(order, items, user.email) : null;
+    const session = payBy === "card" ? await this.#startCheckout(order, items, user.email) : null;
 
     // Only empty the cart once the order (and payment session) definitely exists.
     await this.#carts.clearByUserId(user._id);
@@ -71,7 +92,10 @@ export class OrderService {
       return "Done";
     }
     const rejected = await this.#orders.rejectIfAwaitingPayment(orderId);
-    if (rejected) await this.#books.releaseStock(rejected.books);
+    if (rejected) {
+      await this.#books.releaseStock(rejected.books);
+      await this.#releaseCoupon(rejected);
+    }
     return "rejected link";
   }
 
@@ -88,6 +112,7 @@ export class OrderService {
       reason,
     });
     await this.#books.releaseStock(order.books);
+    await this.#releaseCoupon(order);
     return OrderResponseDto.from(canceled);
   }
 
@@ -110,30 +135,57 @@ export class OrderService {
       const { bookTitle, bookId } = result.unavailable;
       throw new BadRequestError(`Book unavailable or out of stock: ${bookTitle ?? bookId}`);
     }
-    return result.reserved.map(({ book, quantity }) => ({
-      bookId: book._id,
-      bookTitle: book.bookTitle,
-      quantity,
-      unitPrice: book.price,
-      finalPrice: book.price * quantity,
-    }));
+    return result.reserved.map(({ book, quantity }) => {
+      const unitPrice = salePriceOf(book);
+      return {
+        bookId: book._id,
+        bookTitle: book.bookTitle,
+        quantity,
+        unitPrice,
+        finalPrice: round2(unitPrice * quantity),
+      };
+    });
   }
 
-  async #createOrReleaseStock(items, { paymentType, ...details }) {
-    const subtotal = items.reduce((sum, item) => sum + item.finalPrice, 0);
+  /**
+   * Checks the coupon against the priced order and claims one use atomically
+   * (a concurrent order may have taken the last use). On failure the reserved
+   * stock is put back. Resolves the discount.
+   */
+  async #claimCouponOrReleaseStock(coupon, subtotal, items) {
+    let problem = couponProblem(coupon, subtotal);
+    if (!problem && !(await this.#coupons.claim(coupon._id))) {
+      const current = await this.#coupons.findById(coupon._id);
+      problem = couponProblem(current, subtotal) ?? "This coupon has reached its usage limit";
+    }
+    if (problem) {
+      await this.#books.releaseStock(items);
+      throw new BadRequestError(problem);
+    }
+    return couponDiscount(coupon, subtotal);
+  }
+
+  async #createOrRelease(items, { paymentType, subtotal, discount, ...details }) {
     try {
       return await this.#orders.create({
         ...details,
         books: items,
         subtotal,
-        finalPrice: subtotal,
+        discount,
+        finalPrice: round2(subtotal - discount),
         paymentType,
         status: OrderPolicy.initialStatus(paymentType),
       });
     } catch (error) {
       await this.#books.releaseStock(items);
+      await this.#releaseCoupon(details);
       throw error;
     }
+  }
+
+  /** Gives back the coupon use an order claimed (cancelled, rejected or never created). */
+  async #releaseCoupon(order) {
+    if (order?.coupon?.code) await this.#coupons.release(order.coupon.code);
   }
 
   /** Opens a checkout session; on failure the order is rejected and its stock released. */
@@ -143,11 +195,13 @@ export class OrderService {
         orderId: order._id.toString(),
         customerEmail,
         items: items.map(({ bookTitle, unitPrice, quantity }) => ({ name: bookTitle, unitPrice, quantity })),
+        ...(order.discount > 0 ? { discount: { amount: order.discount, name: order.coupon?.code } } : {}),
       });
     } catch (error) {
       console.error("Checkout session creation failed:", error.message);
       await this.#orders.updateStatus(order._id, ORDER_STATUSES.rejected);
       await this.#books.releaseStock(items);
+      await this.#releaseCoupon(order);
       throw new BadGatewayError("Stripe session creation failed");
     }
   }

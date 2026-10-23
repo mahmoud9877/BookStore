@@ -14,6 +14,8 @@ export class CreateOrderDto extends RequestDto {
         .required(),
       note: joi.string().allow(""),
       paymentType: joi.string().valid("cash", "card").default("cash"),
+      // Optional coupon; "" means none.
+      couponCode: joi.string().trim().max(60).allow(""),
     })
     .unknown(true);
 
@@ -47,6 +49,8 @@ export class OrderResponseDto extends ResponseDto {
     "note",
     "books",
     "subtotal",
+    "discount",
+    "coupon",
     "finalPrice",
     "paymentType",
     "status",
@@ -56,6 +60,13 @@ export class OrderResponseDto extends ResponseDto {
     "updatedAt",
   ];
   static nested = { books: OrderItemResponseDto };
+
+  constructor(source) {
+    super(source);
+    // Orders placed before coupons existed have neither field.
+    this.discount = source.discount ?? 0;
+    this.coupon = source.coupon?.code ? { code: source.coupon.code, discount: source.coupon.discount } : null;
+  }
 }
 
 /** Only what a client needs to continue to the payment provider's checkout page. */

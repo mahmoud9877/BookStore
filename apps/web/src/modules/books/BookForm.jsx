@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import useForm from "../../hooks/useForm.js";
 import { bookSchema } from "./book.validation.js";
 import { CURRENCY } from "../../config/api.js";
-import { formatTitle, formatName } from "../../lib/format.js";
+import { endOfDay, formatTitle, formatName, toDateInput } from "../../lib/format.js";
 import BookCover from "../../components/ui/BookCover.jsx";
 import FormField from "../../components/ui/FormField.jsx";
 import { usePublisherOptions } from "./publisher.queries.js";
@@ -29,6 +29,8 @@ const toFormValues = (book) => ({
   isForSale: book?.isForSale ?? false,
   quantity: book?.quantity ?? "",
   price: book?.price ?? "",
+  discountPercent: book?.discountPercent ?? 0,
+  discountEndsAt: toDateInput(book?.discountEndsAt),
   image: null,
 });
 
@@ -61,6 +63,9 @@ export default function BookForm({ book, categories, onSubmit }) {
     // Library-only titles carry no shop price or stock.
     formData.append("price", values.isForSale ? values.price : 0);
     formData.append("quantity", values.isForSale ? values.quantity : 0);
+    // A discount only applies to shop prices; it lasts through its end day (empty: until changed).
+    formData.append("discountPercent", values.isForSale ? Number(values.discountPercent) || 0 : 0);
+    formData.append("discountEndsAt", values.isForSale ? endOfDay(values.discountEndsAt) : "");
     if (values.image) formData.append("image", values.image);
     onSubmit(formData);
   }
@@ -136,6 +141,12 @@ export default function BookForm({ book, categories, onSubmit }) {
             </div>
             <div className="col-6 col-sm-3">
               <FormField label={t("Shop stock")} type="number" min="0" step="1" className="" {...field("quantity")} />
+            </div>
+            <div className="col-6 col-sm-3">
+              <FormField label={t("Discount (%)")} type="number" min="0" max="90" step="1" className="" hint={t("0 for no discount.")} {...field("discountPercent")} />
+            </div>
+            <div className="col-6 col-sm-3">
+              <FormField label={t("Discount ends")} type="date" className="" hint={t("Leave empty for no end date.")} {...field("discountEndsAt")} />
             </div>
           </>
         )}

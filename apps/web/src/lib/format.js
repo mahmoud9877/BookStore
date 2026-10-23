@@ -55,6 +55,20 @@ export const formatDate = (value) => (value ? formatter("date", { dateStyle: "me
 /** "Oct 22, 2026, 4:30 PM" */
 export const formatDateTime = (value) => (value ? formatter("date", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "");
 
+/**
+ * An end date picked in a date input ("2026-10-31") as the last moment of that day
+ * in the user's time zone, so a sale or coupon lasts through the day chosen.
+ */
+export const endOfDay = (day) => (day ? new Date(`${day}T23:59:59.999`).toISOString() : "");
+
+/** A stored date as the local day for a date input: "2026-10-31T20:59:59.999Z" -> "2026-10-31" (in Cairo). */
+export const toDateInput = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 /** "4:30 PM" */
 export const formatTime = (value) => (value ? formatter("date", { timeStyle: "short" }).format(new Date(value)) : "");
 

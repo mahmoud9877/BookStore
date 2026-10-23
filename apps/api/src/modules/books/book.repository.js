@@ -32,6 +32,12 @@ export class BookRepository extends BaseRepository {
     );
   }
 
+  /** What the shop needs to price these books now (see book-pricing.js). */
+  findPricing(ids) {
+    if (!ids.length) return Promise.resolve([]);
+    return this.findMany({ _id: { $in: ids } }, { select: "price discountPercent discountEndsAt" });
+  }
+
   findByIsbn(isbn) {
     return this.findOne({ isbn });
   }

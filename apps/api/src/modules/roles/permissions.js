@@ -41,7 +41,7 @@ export const PERMISSION_CATALOGUE = Object.freeze([
   { key: P.AcquisitionsManage, group: "Inventory", label: "Manage acquisitions", description: "Suppliers, purchase orders and deliveries." },
   { key: P.BranchesManage, group: "Library", label: "Manage branches", description: "Branches, rooms and shelves." },
   { key: P.FacilitiesManage, group: "Library", label: "Manage rooms & events", description: "Bookable rooms, room bookings and events." },
-  { key: P.OrdersManage, group: "Shop", label: "Manage orders", description: "Mark shop orders as delivered." },
+  { key: P.OrdersManage, group: "Shop", label: "Manage orders", description: "Mark shop orders as delivered and manage coupons." },
   { key: P.ReportsRead, group: "Administration", label: "View reports", description: "Operational reports and exports." },
   { key: P.AuditRead, group: "Administration", label: "View audit log", description: "Who did what, and when." },
   { key: P.SettingsManage, group: "Administration", label: "Manage settings", description: "Borrowing, fine, reservation and notification policies; membership types." },

@@ -16,8 +16,10 @@ export class StripePaymentGateway {
   #currency;
   #client;
 
-  constructor({ secretKey, webhookSecret, frontendUrl, currency = "egp" } = {}) {
+  /** `client` replaces the Stripe SDK client (tests). */
+  constructor({ secretKey, webhookSecret, frontendUrl, currency = "egp", client } = {}) {
     this.#secretKey = secretKey;
+    this.#client = client;
     this.#webhookSecret = webhookSecret;
     this.#frontendUrl = frontendUrl;
     this.#currency = currency;
@@ -27,8 +29,10 @@ export class StripePaymentGateway {
     return Boolean(this.#secretKey);
   }
 
-  async createCheckout({ orderId, customerEmail, items }) {
-    const session = await this.#stripe().checkout.sessions.create({
+  async createCheckout({ orderId, customerEmail, items, discount = null }) {
+    const stripe = this.#stripe();
+    const discounts = discount?.amount > 0 ? [{ coupon: (await this.#oneOffCoupon(stripe, discount)).id }] : undefined;
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
       customer_email: customerEmail,
@@ -43,8 +47,20 @@ export class StripePaymentGateway {
         },
         quantity: item.quantity,
       })),
+      discounts,
     });
     return { id: session.id, url: session.url };
+  }
+
+  /** A single-use Stripe coupon worth exactly the order's discount, so Stripe charges the order's final price. */
+  #oneOffCoupon(stripe, { amount, name }) {
+    return stripe.coupons.create({
+      amount_off: Math.round(amount * 100), // minor units
+      currency: this.#currency,
+      duration: "once",
+      max_redemptions: 1,
+      ...(name ? { name: String(name).slice(0, 40) } : {}),
+    });
   }
 
   /**

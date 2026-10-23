@@ -1,10 +1,11 @@
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { usePlaceOrder } from "../orders/order.queries.js";
 import { countItems, subtotalOf, useCartQuery, useClearCart, useRemoveCartItem } from "./cart.queries.js";
 import OrderForm from "./OrderForm.jsx";
 import CartLineItem from "./CartLineItem.jsx";
+import CouponBox, { DiscountRow } from "./CouponBox.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
@@ -32,6 +33,9 @@ function OrderPlaced({ order }) {
 
 const NO_ITEMS = [];
 
+/** Changes whenever the cart's contents or prices change (an applied coupon is then dropped). */
+const cartSignature = (items) => items.map((item) => `${item.bookId}:${item.quantity}:${item.price}`).join("|");
+
 export default function CartPage() {
   const { data: items = NO_ITEMS, isLoading, error, refetch } = useCartQuery();
   const removeItem = useRemoveCartItem();
@@ -41,10 +45,16 @@ export default function CartPage() {
   const subtotal = subtotalOf(items);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
+  // The coupon checked against the cart as it was; any change to the cart clears it.
+  const signature = cartSignature(items);
+  const [coupon, setCoupon] = useState(null);
+  const applied = coupon?.signature === signature ? coupon.result : null;
+  useEffect(() => setCoupon((current) => (current && current.signature !== signature ? null : current)), [signature]);
+  const total = applied ? applied.total : subtotal;
 
   async function handlePlaceOrder(details) {
     try {
-      const { url, order } = await placeOrder.mutateAsync(details);
+      const { url, order } = await placeOrder.mutateAsync(applied ? { ...details, couponCode: applied.code } : details);
       if (url) {
         toast.info(t("Redirecting to secure payment…"));
         window.location.href = url; // continue to the payment provider
@@ -135,7 +145,8 @@ export default function CartPage() {
               <div className="card-body p-4">
                 {isCheckingOut ? (
                   <OrderForm
-                    total={subtotal}
+                    total={total}
+                    coupon={applied}
                     isSubmitting={placeOrder.isPending}
                     onSubmit={handlePlaceOrder}
                     onCancel={() => setIsCheckingOut(false)}
@@ -151,9 +162,11 @@ export default function CartPage() {
                       <span className="text-muted">{t("Delivery")}</span>
                       <span>{t("Free")}</span>
                     </div>
+                    <CouponBox applied={applied} onApply={(result) => setCoupon({ signature, result })} onRemove={() => setCoupon(null)} />
+                    {applied && <DiscountRow coupon={applied} />}
                     <div className="summary-row summary-total">
                       <span>{t("Total")}</span>
-                      <span>{formatPrice(subtotal)}</span>
+                      <span>{formatPrice(total)}</span>
                     </div>
                     <button
                       type="button"

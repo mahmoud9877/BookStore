@@ -36,6 +36,12 @@ export const ADMIN_GROUPS = [
     ],
   },
   {
+    label: msg("Shop"),
+    sections: [
+      { path: "coupons", label: msg("Coupons"), icon: "ticket-perforated", permissions: [P.OrdersManage] },
+    ],
+  },
+  {
     label: msg("Library"),
     sections: [
       { path: "branches", label: msg("Branches & shelves"), icon: "building", permissions: [P.BranchesManage] },

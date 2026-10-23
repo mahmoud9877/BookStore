@@ -5,8 +5,9 @@
  *
  * Implementations provide:
  *   isConfigured: boolean
- *   createCheckout({ orderId, customerEmail, items: [{ name, unitPrice, quantity }] })
- *     -> Promise<{ id, url }>
+ *   createCheckout({ orderId, customerEmail, items: [{ name, unitPrice, quantity }],
+ *     discount: { amount (major units), name } | null }) -> Promise<{ id, url }>
+ *     (the session charges the items' total less the discount)
  *   createPaymentCheckout({ reference, description, amount (minor units), currency,
  *     customerEmail, metadata, returnPath }) -> Promise<{ id, url }>   (library fines)
  *   refund({ paymentRef, amount (minor units), reference }) -> Promise<{ id }>

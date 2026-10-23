@@ -18,6 +18,9 @@ const orderSchema = new Schema(
       },
     ],
     subtotal: { type: Number, required: true, default: 1 },
+    // Amount a coupon took off the subtotal; finalPrice = subtotal - discount.
+    discount: { type: Number, default: 0, min: 0 },
+    coupon: { type: new Schema({ code: String, discount: Number }, { _id: false }), default: null },
     finalPrice: { type: Number, required: true, default: 1 },
     paymentType: {
       type: String,

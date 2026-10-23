@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import BookCover from "../../components/ui/BookCover.jsx";
+import Price from "../books/Price.jsx";
 import { formatPrice, formatTitle } from "../../lib/format.js";
 import { t } from "../../i18n/index.js";
 
@@ -14,7 +15,7 @@ export default function CartLineItem({ item, onRemove, isRemoving }) {
           {title}
         </Link>
         <div className="small text-muted">
-          {formatPrice(item.price)} × {item.quantity}
+          <Price amount={item.price} original={item.originalPrice} /> × {item.quantity}
         </div>
         <button
           type="button"

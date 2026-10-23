@@ -15,7 +15,8 @@ export class CartItemIdDto extends objectIdParamDto("bookId") {}
 // ---------- Responses
 
 export class CartItemResponseDto extends ResponseDto {
-  static fields = ["bookId", "bookTitle", "image", "price", "quantity"];
+  // `price` is the current sale price; `originalPrice` the current list price.
+  static fields = ["bookId", "bookTitle", "image", "price", "originalPrice", "quantity"];
 }
 
 export class CartResponseDto extends ResponseDto {

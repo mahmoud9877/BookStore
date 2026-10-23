@@ -144,6 +144,7 @@ export const messages = {
   "Bookable rooms, room bookings and events.": "القاعات القابلة للحجز وحجوزات القاعات والفعاليات.",
   "Manage orders": "إدارة الطلبات",
   "Mark shop orders as delivered.": "تعليم طلبات المتجر بأنها سُلِّمت.",
+  "Mark shop orders as delivered and manage coupons.": "تعليم طلبات المتجر بأنها سُلِّمت وإدارة القسائم.",
   "View reports": "عرض التقارير",
   "Operational reports and exports.": "التقارير التشغيلية وعمليات التصدير.",
   "View audit log": "عرض سجل التدقيق",

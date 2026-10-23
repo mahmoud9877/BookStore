@@ -42,6 +42,9 @@ const bookSchema = new Schema(
       type: Number,
       required: [true, "Price is required"],
     },
+    // Percent off `price` (0 = none) until `discountEndsAt` (null = no end). See book-pricing.js.
+    discountPercent: { type: Number, default: 0, min: 0, max: 90 },
+    discountEndsAt: { type: Date, default: null },
     // Units in the shop's stock; decremented when an order is placed. Not lending copies.
     quantity: {
       type: Number,

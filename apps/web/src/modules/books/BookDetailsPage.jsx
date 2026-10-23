@@ -11,7 +11,8 @@ import { apiClient, getErrorMessage, responseData } from "../../lib/api-client.j
 import BookCover from "../../components/ui/BookCover.jsx";
 import { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { toast } from "../../components/ui/toast.store.js";
-import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
+import { BookPrice } from "./Price.jsx";
+import { formatName, formatTitle } from "../../lib/format.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
 import { accountKeys, useOwnMembership } from "../account/account.queries.js";
 import { selectIsSignedIn, useAuthStore } from "../auth/auth.store.js";
@@ -276,7 +277,7 @@ export default function BookDetailsPage() {
                     {t("Buy your own copy")}
                   </h2>
                   <div className="d-flex align-items-baseline gap-3 mb-3">
-                    <span className="price fs-3">{formatPrice(book.price)}</span>
+                    <BookPrice book={book} className="fs-3" />
                     {book.quantity <= LOW_STOCK_THRESHOLD ? (
                       <StockNote quantity={book.quantity} />
                     ) : (

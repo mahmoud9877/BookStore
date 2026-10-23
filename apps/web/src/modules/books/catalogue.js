@@ -8,10 +8,13 @@ export const SORT_OPTIONS = [
   { value: "title", label: msg("Title A–Z") },
 ];
 
+// What the shopper pays: the sale price while a discount is active.
+const priceOf = (book) => book.salePrice ?? book.price;
+
 const COMPARATORS = {
   newest: () => 0, // the API already returns newest first
-  "price-asc": (a, b) => a.price - b.price,
-  "price-desc": (a, b) => b.price - a.price,
+  "price-asc": (a, b) => priceOf(a) - priceOf(b),
+  "price-desc": (a, b) => priceOf(b) - priceOf(a),
   title: (a, b) => a.bookTitle.localeCompare(b.bookTitle),
 };
 

@@ -162,7 +162,7 @@ describe("response DTOs", () => {
       userId: id(),
       books: [{ _id: id(), bookId, bookTitle: "dune", image: "i", price: 5, quantity: 2 }],
     });
-    assert.deepEqual(Object.keys(cart.books[0]), ["bookId", "bookTitle", "image", "price", "quantity"]);
+    assert.deepEqual(Object.keys(cart.books[0]), ["bookId", "bookTitle", "image", "price", "originalPrice", "quantity"]);
 
     const order = OrderResponseDto.from({ _id: id(), status: "placed", books: [{ bookId, quantity: 1, unitPrice: 5, finalPrice: 5 }] });
     assert.equal(order.books[0].finalPrice, 5);

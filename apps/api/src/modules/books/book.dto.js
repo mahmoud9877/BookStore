@@ -1,5 +1,6 @@
 import joi from "joi";
 import { isValidIsbn, normalizeIsbn } from "./isbn.js";
+import { activeDiscountPercent, salePriceOf } from "./book-pricing.js";
 import { RequestDto, ResponseDto, fields, objectIdParamDto } from "../../core/dto.js";
 
 // ---------- Requests
@@ -39,6 +40,9 @@ const bookAttributes = {
   pageCount: joi.number().integer().min(1).allow(""),
   subjects: stringList(80),
   keywords: stringList(80),
+  // Optional: when absent on an update the stored discount is kept.
+  discountPercent: joi.number().integer().min(0).max(90),
+  discountEndsAt: joi.date().iso().allow("", null),
 };
 const BOOK_ATTRIBUTE_NAMES = Object.keys(bookAttributes);
 
@@ -51,6 +55,10 @@ export class CreateBookDto extends RequestDto {
     const attributes = Object.fromEntries(BOOK_ATTRIBUTE_NAMES.map((name) => [name, this[name]]));
     for (const name of ["publisher", "publicationYear", "pageCount", "isbn"]) {
       if (attributes[name] === "" || attributes[name] === undefined) attributes[name] = null;
+    }
+    if (attributes.discountEndsAt === "") attributes.discountEndsAt = null;
+    for (const name of ["discountPercent", "discountEndsAt"]) {
+      if (attributes[name] === undefined) delete attributes[name];
     }
     return attributes;
   }
@@ -115,6 +123,10 @@ export class BookResponseDto extends ResponseDto {
     "keywords",
     "isForSale",
     "price",
+    "discountPercent",
+    "discountEndsAt",
+    "salePrice",
+    "activeDiscountPercent",
     "quantity",
     "category",
     "totalLikes",
@@ -122,4 +134,13 @@ export class BookResponseDto extends ResponseDto {
     "createdAt",
     "updatedAt",
   ];
+
+  constructor(source) {
+    super(source);
+    // Books saved before discounts existed have no discount fields.
+    this.discountPercent = source.discountPercent ?? 0;
+    this.discountEndsAt = source.discountEndsAt ?? null;
+    this.salePrice = salePriceOf(source);
+    this.activeDiscountPercent = activeDiscountPercent(source);
+  }
 }

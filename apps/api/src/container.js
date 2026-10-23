@@ -30,6 +30,8 @@ import { CartRepository } from "./modules/cart/cart.repository.js";
 import { OrderService } from "./modules/orders/order.service.js";
 import { OrderController } from "./modules/orders/order.controller.js";
 import { OrderRepository } from "./modules/orders/order.repository.js";
+import { CouponService } from "./modules/coupons/coupon.service.js";
+import { CouponRepository } from "./modules/coupons/coupon.repository.js";
 import { RoleService } from "./modules/roles/role.service.js";
 import { RoleController } from "./modules/roles/role.controller.js";
 import { RoleRepository } from "./modules/roles/role.repository.js";
@@ -114,6 +116,7 @@ export function createContainer(config = env, overrides = {}) {
     categoryRepository: new CategoryRepository(),
     cartRepository: new CartRepository(),
     orderRepository: new OrderRepository(),
+    couponRepository: new CouponRepository(),
     roleRepository: new RoleRepository(),
     auditLogRepository: new AuditLogRepository(),
     settingRepository: new SettingRepository(),
@@ -186,6 +189,7 @@ export function createContainer(config = env, overrides = {}) {
   });
   add({
     purchaseOrderService: new PurchaseOrderService(c),
+    couponService: new CouponService(c),
     eventService: new EventService(c),
     paymentWebhookService: new PaymentWebhookService(c),
     catalogAssistantService: new CatalogAssistantService({

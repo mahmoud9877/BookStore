@@ -4,7 +4,8 @@ import StockNote from "./StockNote.jsx";
 import { availabilityLabel } from "./catalogue.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import BookCover from "../../components/ui/BookCover.jsx";
-import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
+import { BookPrice } from "./Price.jsx";
+import { formatName, formatTitle } from "../../lib/format.js";
 import { t } from "../../i18n/index.js";
 
 /** Lending availability under a title: green when a copy is on a shelf. */
@@ -40,7 +41,7 @@ export default function BookCard({ book, onAddToCart, isAdding, badge }) {
         {forSale && onAddToCart && (
           <>
             <div className="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2 mt-auto pt-2">
-              <span className="price">{formatPrice(book.price)}</span>
+              <BookPrice book={book} />
               <StockNote quantity={book.quantity} />
             </div>
             <button

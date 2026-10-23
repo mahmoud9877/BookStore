@@ -2,7 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { LOW_STOCK_THRESHOLD } from "./StockNote.jsx";
 import BookCover from "../../components/ui/BookCover.jsx";
-import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
+import { BookPrice } from "./Price.jsx";
+import { formatName, formatTitle } from "../../lib/format.js";
 import { t } from "../../i18n/index.js";
 
 function StockBadge({ quantity }) {
@@ -48,12 +49,12 @@ export default function BookList({ books, onEdit, onDelete }) {
                         {book.isbn && ` · ISBN ${book.isbn}`}
                         {book.edition && ` · ${t("{edition} ed.", { edition: book.edition })}`}
                       </div>
-                      {book.isForSale !== false && <div className="small fw-semibold d-sm-none">{formatPrice(book.price)}</div>}
+                      {book.isForSale !== false && <div className="small fw-semibold d-sm-none"><BookPrice book={book} /></div>}
                     </div>
                   </div>
                 </td>
                 <td className="d-none d-md-table-cell text-capitalize">{book.category?.name}</td>
-                <td className="text-end text-nowrap d-none d-sm-table-cell">{book.isForSale === false ? <span className="text-muted">—</span> : formatPrice(book.price)}</td>
+                <td className="text-end text-nowrap d-none d-sm-table-cell">{book.isForSale === false ? <span className="text-muted">—</span> : <BookPrice book={book} />}</td>
                 <td className="text-center">
                   {book.isForSale === false ? <span className="small text-muted">{t("Library only")}</span> : <StockBadge quantity={book.quantity} />}
                 </td>

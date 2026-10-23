@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { couponModel } from "../modules/coupons/coupon.model.js";
 import { linkLegacyBookCategories } from "../modules/books/link-legacy-categories.js";
 import { workKeyOf } from "../modules/books/book.model.js";
 import { DEFAULT_STAFF_ROLES } from "../modules/roles/permissions.js";
@@ -87,6 +88,15 @@ export const MIGRATIONS = [
         created.push(role.name);
       }
       return { created };
+    },
+  },
+  {
+    id: "2026-10-23-01-coupon-indexes",
+    description: "Create the coupons collection's indexes (unique code)",
+    async up() {
+      // Production does not auto-create indexes, and the first index migration ran before coupons existed.
+      await couponModel.createIndexes();
+      return { created: true };
     },
   },
 ];

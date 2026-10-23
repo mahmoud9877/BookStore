@@ -216,6 +216,14 @@ export const MESSAGES = {
   "Order not found": "الطلب غير موجود",
   "Cannot cancel your order after it been changed to {0}": "لا يمكن إلغاء طلبك بعد تغيير حالته إلى {0}",
   "Cannot update your order after it has been changed": "لا يمكن تعديل طلبك بعد تغيير حالته",
+
+  // Coupons
+  "Coupon not found": "الكوبون غير موجود",
+  "This coupon is no longer active": "هذا الكوبون لم يعد فعّالًا",
+  "This coupon has expired": "انتهت صلاحية هذا الكوبون",
+  "This coupon has reached its usage limit": "بلغ هذا الكوبون الحد الأقصى لعدد مرات الاستخدام",
+  "Spend at least {0} to use this coupon": "يجب ألا تقل قيمة مشترياتك عن {0} لاستخدام هذا الكوبون",
+  "A percentage coupon must be between 1 and 100": "يجب أن تكون نسبة خصم الكوبون بين 1 و100",
 };
 
 /** Values that appear inside messages ({0}): record kinds, statuses, fields. */
@@ -223,6 +231,7 @@ export const TERMS = {
   Branch: "الفرع", Location: "الموقع", Author: "المؤلف", Publisher: "الناشر", Supplier: "المورّد",
   MembershipType: "نوع العضوية", Room: "القاعة", Event: "الفعالية", Record: "السجل",
   branch: "فرع", location: "موقع", author: "مؤلف", publisher: "ناشر", supplier: "مورّد", membershiptype: "نوع عضوية",
+  Coupon: "الكوبون", coupon: "كوبون",
   room: "قاعة", event: "فعالية", name: "الاسم", code: "الرمز", normalizedName: "الاسم", barcode: "الباركود",
   available: "متاحة", on_loan: "معارة", "on loan": "معارة", on_hold: "محجوزة", "on hold": "محجوزة", in_transit: "قيد النقل", "in transit": "قيد النقل",
   damaged: "تالفة", lost: "مفقودة", missing: "غير موجودة", withdrawn: "مسحوبة",

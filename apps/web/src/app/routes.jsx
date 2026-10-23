@@ -39,6 +39,7 @@ const DigitalAdminPage = lazy(() => import("../modules/digital/DigitalAdminPage.
 const TransfersPage = lazy(() => import("../modules/transfers/TransfersPage.jsx"));
 const StocktakesPage = lazy(() => import("../modules/inventory/StocktakesPage.jsx"));
 const AcquisitionsPage = lazy(() => import("../modules/acquisitions/AcquisitionsPage.jsx"));
+const CouponsPage = lazy(() => import("../modules/coupons/CouponsPage.jsx"));
 const BranchesPage = lazy(() => import("../modules/branches/BranchesPage.jsx"));
 const RoomsEventsPage = lazy(() => import("../modules/facilities/RoomsEventsPage.jsx"));
 const ReportsPage = lazy(() => import("../modules/reports/ReportsPage.jsx"));
@@ -76,6 +77,7 @@ export const routes = [
       adminSection("transfers", <TransfersPage />),
       adminSection("stocktakes", <StocktakesPage />),
       adminSection("acquisitions", <AcquisitionsPage />),
+      adminSection("coupons", <CouponsPage />),
       adminSection("branches", <BranchesPage />),
       adminSection("rooms", <RoomsEventsPage />),
       adminSection("reports", <ReportsPage />),

@@ -8,6 +8,7 @@ import { createUserRouter } from "./modules/users/user.routes.js";
 import { createBookRouter } from "./modules/books/book.routes.js";
 import { createCartRouter } from "./modules/cart/cart.routes.js";
 import { createOrderRouter } from "./modules/orders/order.routes.js";
+import { createCouponRouter } from "./modules/coupons/coupon.routes.js";
 import { createCategoryRouter } from "./modules/categories/category.routes.js";
 import { createRoleRouter } from "./modules/roles/role.routes.js";
 import { createAuditRouter } from "./modules/audit/audit.routes.js";
@@ -100,6 +101,7 @@ export function createApp(container = createContainer()) {
   app.use("/fines", createFineRouter(container));
   app.use("/payments", createPaymentRouter(container));
   app.use("/transfers", createTransferRouter(container));
+  app.use("/coupons", createCouponRouter(container));
   app.use("/suppliers", createSupplierRouter(container));
   app.use("/purchase-orders", createPurchaseOrderRouter(container));
   app.use("/stocktakes", createStocktakeRouter(container));
