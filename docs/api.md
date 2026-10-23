@@ -57,7 +57,7 @@ The library modules (everything below [Library](#library) — plural paths) use 
 | --- | --- | --- | --- |
 | POST | `/auth/signup` | public | `{userName (3–30), email, password (≥6), cPassword?, phone?}` → `201 {message:"Done", _id, token, refreshToken}` (these are email-confirmation tokens, not a signed-in session) |
 | POST | `/auth/login` | public | `{email, password}` → `{message:"Done", accessToken, token, role}` plus HttpOnly refresh cookie. Access token expires in 15 minutes; cookie refresh token expires in 7 days |
-| POST | `/auth/refresh` | public | Rotates the HttpOnly refresh cookie and returns `{accessToken, token}`. Requires a trusted `Origin`; invalid, expired, or reused refresh tokens return `401` |
+| POST | `/auth/refresh` | public | Rotates the HttpOnly refresh cookie and returns `{accessToken, token}`. Requires a trusted `Origin`; invalid or expired tokens return `401`. A token used again within the 10-second rotation grace period returns an access token without rotating the cookie; later reuse revokes the session and returns `401` |
 | POST | `/auth/logout` | public | Revokes the refresh session and clears its cookie |
 | GET | `/auth/confirmEmail/:token` | public | Link from the confirmation email. Redirects to `FRONTEND_URL/#/login` when set |
 | GET | `/auth/NewConfirmEmail/:token` | public | Long-lived link: confirms, or re-sends a fresh confirmation email |

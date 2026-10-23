@@ -12,5 +12,7 @@ npm start       # production
 ```
 
 Login returns a 15-minute access token and sets a rotating, seven-day refresh token
-in an HttpOnly cookie. Configure `FRONTEND_URL` (and `CORS_ORIGINS` for additional
-origins) when the web app and API use different origins.
+in an HttpOnly cookie. A 10-second rotation grace period lets concurrent refresh
+requests finish without revoking the session; reuse after that period revokes it.
+Configure `FRONTEND_URL` (and `CORS_ORIGINS` for additional origins) when the web app
+and API use different origins.

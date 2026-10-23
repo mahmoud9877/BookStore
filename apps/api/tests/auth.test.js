@@ -131,10 +131,15 @@ describe("signup and login", () => {
       return session;
     });
     t.mock.method(server.container.authSessionRepository, "findById", async (id) => sessions.get(id));
-    t.mock.method(server.container.authSessionRepository, "rotate", async (id, currentHash, nextHash, expiresAt) => {
+    t.mock.method(server.container.authSessionRepository, "rotate", async (id, currentHash, nextHash, expiresAt, previousRefreshTokenValidUntil) => {
       const session = sessions.get(id);
       if (!session || session.refreshTokenHash !== currentHash) return null;
-      Object.assign(session, { refreshTokenHash: nextHash, expiresAt });
+      Object.assign(session, {
+        refreshTokenHash: nextHash,
+        previousRefreshTokenHash: currentHash,
+        previousRefreshTokenValidUntil,
+        expiresAt,
+      });
       return session;
     });
     t.mock.method(server.container.authSessionRepository, "deleteById", async (id) => sessions.delete(id));
@@ -158,18 +163,33 @@ describe("signup and login", () => {
     const oldRefreshToken = oldCookie.split(";")[0].slice("refreshToken=".length);
     assert.equal(ok.json.refreshToken, undefined);
 
-    const refreshed = await server.request("POST", "/auth/refresh", {
-      headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
-    });
-    assert.equal(refreshed.status, 200);
-    assert.ok(refreshed.json.accessToken);
-    const newRefreshToken = refreshed.headers.get("set-cookie").split(";")[0].slice("refreshToken=".length);
+    const concurrentRefreshes = await Promise.all([1, 2].map(() =>
+      server.request("POST", "/auth/refresh", {
+        headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
+      })
+    ));
+    assert.deepEqual(concurrentRefreshes.map(({ status }) => status), [200, 200]);
+    assert.ok(concurrentRefreshes.every(({ json }) => json.accessToken));
+    const rotatedResponse = concurrentRefreshes.find(({ headers }) => headers.get("set-cookie"));
+    assert.ok(rotatedResponse);
+    const newRefreshToken = rotatedResponse.headers.get("set-cookie").split(";")[0].slice("refreshToken=".length);
     assert.notEqual(newRefreshToken, oldRefreshToken);
+    assert.equal(sessions.size, 1);
 
     const replay = await server.request("POST", "/auth/refresh", {
       headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
     });
-    assert.equal(replay.status, 401);
+    assert.equal(replay.status, 200);
+    assert.ok(replay.json.accessToken);
+    assert.equal(replay.headers.get("set-cookie"), null);
+    assert.equal(sessions.size, 1);
+
+    const session = [...sessions.values()][0];
+    session.previousRefreshTokenValidUntil = new Date(Date.now() - 1);
+    const expiredReplay = await server.request("POST", "/auth/refresh", {
+      headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
+    });
+    assert.equal(expiredReplay.status, 401);
     assert.equal(sessions.size, 0);
 
     const secondLogin = await login("secret1");

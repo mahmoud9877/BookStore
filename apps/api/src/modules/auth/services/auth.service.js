@@ -4,6 +4,7 @@ import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from 
 
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 export const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
+const REFRESH_ROTATION_GRACE_MS = 10_000;
 
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
 const invalidRefreshToken = () => new UnauthorizedError("Invalid or expired refresh token");
@@ -98,9 +99,11 @@ export class AuthService {
     if (claims.type !== "refresh" || !claims.id || !claims.sid) throw invalidRefreshToken();
 
     const currentHash = hashToken(refreshToken);
-    const session = await this.#authSessions.findById(claims.sid);
+    let session = await this.#authSessions.findById(claims.sid);
     if (!session) throw invalidRefreshToken();
-    if (session.refreshTokenHash !== currentHash) {
+    const isCurrentToken = session.refreshTokenHash === currentHash;
+    const isConcurrentRetry = this.#isConcurrentRetry(session, currentHash);
+    if (!isCurrentToken && !isConcurrentRetry) {
       await this.#authSessions.deleteById(claims.sid);
       throw invalidRefreshToken();
     }
@@ -111,24 +114,31 @@ export class AuthService {
       throw invalidRefreshToken();
     }
 
+    if (isConcurrentRetry) return { accessToken: this.#createAccessToken(user) };
+
     const nextRefreshToken = this.#refreshTokens.sign(
       { id: String(user._id), sid: claims.sid, type: "refresh", jti: randomUUID() },
       REFRESH_TOKEN_TTL_SECONDS
     );
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
+    const previousRefreshTokenValidUntil = new Date(Date.now() + REFRESH_ROTATION_GRACE_MS);
     const rotated = await this.#authSessions.rotate(
       claims.sid,
       currentHash,
       hashToken(nextRefreshToken),
-      expiresAt
+      expiresAt,
+      previousRefreshTokenValidUntil
     );
-    if (!rotated) throw invalidRefreshToken();
+    if (!rotated) {
+      session = await this.#authSessions.findById(claims.sid);
+      if (session && this.#isConcurrentRetry(session, currentHash)) {
+        return { accessToken: this.#createAccessToken(user) };
+      }
+      throw invalidRefreshToken();
+    }
 
     return {
-      accessToken: this.#accessTokens.sign(
-        { id: user._id, userName: user.userName, role: user.role, type: "access" },
-        ACCESS_TOKEN_TTL_SECONDS
-      ),
+      accessToken: this.#createAccessToken(user),
       refreshToken: nextRefreshToken,
     };
   }
@@ -158,11 +168,20 @@ export class AuthService {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
     });
     return {
-      accessToken: this.#accessTokens.sign(
-        { id: user._id, userName: user.userName, role: user.role, type: "access" },
-        ACCESS_TOKEN_TTL_SECONDS
-      ),
+      accessToken: this.#createAccessToken(user),
       refreshToken,
     };
+  }
+
+  #createAccessToken(user) {
+    return this.#accessTokens.sign(
+      { id: user._id, userName: user.userName, role: user.role, type: "access" },
+      ACCESS_TOKEN_TTL_SECONDS
+    );
+  }
+
+  #isConcurrentRetry(session, currentHash) {
+    return session.previousRefreshTokenHash === currentHash
+      && session.previousRefreshTokenValidUntil > new Date();
   }
 }

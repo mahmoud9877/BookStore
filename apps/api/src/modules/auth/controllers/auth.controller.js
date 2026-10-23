@@ -67,7 +67,7 @@ export class AuthController {
   refresh = asyncHandler(async (req, res) => {
     try {
       const { accessToken, refreshToken } = await this.#authService.refresh(refreshTokenFromCookie(req));
-      res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions(this.#config, req));
+      if (refreshToken) res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions(this.#config, req));
       return res.status(200).json({ accessToken, token: accessToken });
     } catch (error) {
       if (error instanceof UnauthorizedError) res.clearCookie(REFRESH_COOKIE, refreshCookieOptions(this.#config, req));

@@ -15,10 +15,17 @@ export class AuthSessionRepository {
     return this.#model.findById(id).lean();
   }
 
-  rotate(id, currentHash, refreshTokenHash, expiresAt) {
+  rotate(id, currentHash, refreshTokenHash, expiresAt, previousRefreshTokenValidUntil) {
     return this.#model.findOneAndUpdate(
       { _id: id, refreshTokenHash: currentHash, expiresAt: { $gt: new Date() } },
-      { $set: { refreshTokenHash, expiresAt } },
+      {
+        $set: {
+          refreshTokenHash,
+          previousRefreshTokenHash: currentHash,
+          previousRefreshTokenValidUntil,
+          expiresAt,
+        },
+      },
       { new: true }
     ).lean();
   }
