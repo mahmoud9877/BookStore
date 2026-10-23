@@ -108,9 +108,9 @@ describe("request DTOs", () => {
     assert.ok(RegisterUserDto.parse({ userName: "reader", email: "r@example.com", password: "secret1", cPassword: "secret1", phone: "12345" }).error);
   });
 
-  test("branch and supplier phones accept landlines", () => {
-    assert.equal(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "02 2345 6789" }).dto.phone, "+20223456789");
-    assert.ok(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "12345" }).error);
+  test("branch phones are mobile numbers too, and optional", () => {
+    assert.equal(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "010 1234 5678" }).dto.phone, "+201012345678");
+    for (const phone of ["02 2345 6789", "12345"]) assert.ok(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone }).error, phone);
     assert.equal(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "" }).dto.phone, "");
   });
 

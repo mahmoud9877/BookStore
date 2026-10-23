@@ -93,7 +93,7 @@ export const messages = {
   "No matching titles.": "لا توجد عناوين مطابقة.",
 
   // Members
-  "Name, email, phone or member number": "الاسم أو البريد الإلكتروني أو الهاتف أو رقم العضوية",
+  "Name, email, mobile or member number": "الاسم أو البريد الإلكتروني أو رقم المحمول أو رقم العضوية",
   "Register member": "تسجيل عضو",
   "No members match": "لا يوجد أعضاء مطابقون",
   "Enter the member's name.": "أدخل اسم العضو.",

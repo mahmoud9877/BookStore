@@ -5,13 +5,13 @@ import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { humanize } from "../../lib/format.js";
 import { useActiveBranches, useLocations } from "./branch.queries.js";
 import { msg, t } from "../../i18n/index.js";
-import { isValidPhone } from "../../lib/phone.js";
+import { isValidMobile } from "../../lib/phone.js";
 
 const BRANCH_FIELDS = [
   { name: "code", label: msg("Code"), required: true, hint: msg("Short and unique, e.g. MAIN. Used in barcodes.") },
   { name: "name", label: msg("Name"), required: true },
   { name: "address", label: msg("Address") },
-  { name: "phone", label: msg("Phone"), type: "tel", validate: (value) => (isValidPhone(value) ? null : msg("Enter a valid phone number.")) },
+  { name: "phone", label: msg("Mobile number"), type: "tel", validate: (value) => (isValidMobile(value) ? null : msg("Enter a valid mobile number.")) },
   { name: "email", label: msg("Email"), type: "email" },
   { name: "isActive", label: msg("Open (accepts pickups and returns)"), type: "checkbox" },
 ];

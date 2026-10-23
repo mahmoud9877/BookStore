@@ -39,7 +39,10 @@ export const messages = {
   "An unexpected error occurred. Please try again.": "حدث خطأ غير متوقع. يُرجى المحاولة مرة أخرى.",
   "Back to the home page": "العودة إلى الصفحة الرئيسية",
 
-  // Phone numbers (checked with libphonenumber-js, see lib/phone.js)
+  // Phone numbers: every phone field takes a mobile number (libphonenumber-js, see lib/phone.js)
+  "Mobile number": "رقم الهاتف المحمول",
+  "Country code": "رمز الدولة",
+  "Choose the country code, then type the mobile number.": "اختر رمز الدولة، ثم اكتب رقم الهاتف المحمول.",
   "Enter a valid mobile number.": "أدخل رقم هاتف محمول صالحًا.",
   "You're offline. Some actions won't work until your connection is back.": "أنت غير متصل بالإنترنت. لن تعمل بعض الإجراءات حتى يعود الاتصال.",
   "Your session has expired. Please sign in again.": "انتهت صلاحية جلستك. يُرجى تسجيل الدخول مرة أخرى.",

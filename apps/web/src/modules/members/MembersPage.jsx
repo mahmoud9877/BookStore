@@ -53,7 +53,7 @@ export default function MembersPage() {
           id="member-search"
           type="search"
           className="form-control form-control-sm"
-          placeholder={t("Name, email, phone or member number")}
+          placeholder={t("Name, email, mobile or member number")}
           value={filters.search}
           onChange={(event) => setFilter("search", event.target.value)}
         />

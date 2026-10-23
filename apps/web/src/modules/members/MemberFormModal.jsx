@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Modal from "../../components/ui/Modal.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
-import FormField from "../../components/ui/FormField.jsx";
+import FormField, { MobileField } from "../../components/ui/FormField.jsx";
 import { apiClient, useApiMutation, useDataQuery } from "../../lib/resource.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
 import { humanize } from "../../lib/format.js";
@@ -122,7 +122,7 @@ export default function MemberFormModal({ member, onClose, onSaved }) {
             <FormField label={t("Email")} type="email" className="" {...field("email")} />
           </div>
           <div className="col-sm-6">
-            <FormField label={t("Phone")} type="tel" className="" {...field("phone")} />
+            <MobileField className="" {...field("phone")} />
           </div>
           <div className="col-sm-6">
             <FormField label={t("Institution")} className="" {...field("institution")} />

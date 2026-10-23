@@ -16,9 +16,9 @@ export const checkoutSchema = Joi.object({
     .trim()
     .required()
     .custom((value, helpers) => (isValidMobile(value) ? value : helpers.error("phone.invalid")))
-    .label("Phone")
+    .label("Mobile number")
     .messages({
-      "string.empty": "Enter a phone number so the courier can reach you.",
+      "string.empty": "Enter a mobile number so the courier can reach you.",
       "phone.invalid": "Enter a valid mobile number.",
     }),
   note: Joi.string().allow("").max(500).label("Note"),

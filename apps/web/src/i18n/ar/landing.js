@@ -217,8 +217,7 @@ export const messages = {
   "Back to cart": "العودة إلى السلة",
   "Enter a delivery address.": "أدخل عنوان التوصيل.",
   "Enter your full delivery address.": "أدخل عنوان التوصيل كاملًا.",
-  "Enter a phone number so the courier can reach you.": "أدخل رقم هاتف ليتمكن مندوب التوصيل من الوصول إليك.",
-  "Enter a valid phone number.": "أدخل رقم هاتف صالحًا.",
+  "Enter a mobile number so the courier can reach you.": "أدخل رقم هاتف محمول ليتمكن مندوب التوصيل من الوصول إليك.",
 };
 
 export const plurals = {

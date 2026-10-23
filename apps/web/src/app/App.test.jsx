@@ -292,14 +292,14 @@ describe("cart and checkout", () => {
     expect(orderService.createOrder).not.toHaveBeenCalled();
 
     userEvent.type(screen.getByLabelText("Delivery address"), "1 Nile Street, Cairo");
-    userEvent.type(screen.getByLabelText("Phone"), "01012345678");
+    userEvent.type(screen.getByLabelText("Mobile number"), "01012345678");
     userEvent.click(screen.getByRole("button", { name: /place order/i }));
 
     expect(await screen.findByText("Thank you — your order is placed!")).toBeInTheDocument();
     expect(screen.getByText(/ABC123/)).toBeInTheDocument();
     expect(orderService.createOrder).toHaveBeenCalledWith({
       address: "1 Nile Street, Cairo",
-      phone: "01012345678",
+      phone: "+201012345678",
       note: "",
       paymentType: "cash",
     });

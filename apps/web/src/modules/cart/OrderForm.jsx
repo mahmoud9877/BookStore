@@ -2,7 +2,7 @@ import React from "react";
 import useForm from "../../hooks/useForm.js";
 import { formatPrice } from "../../lib/format.js";
 import Spinner from "../../components/ui/Spinner.jsx";
-import FormField from "../../components/ui/FormField.jsx";
+import FormField, { MobileField } from "../../components/ui/FormField.jsx";
 import { PAYMENT_METHODS, checkoutSchema } from "./checkout.validation.js";
 import { t } from "../../i18n/index.js";
 
@@ -19,13 +19,7 @@ export default function OrderForm({ total, isSubmitting, onSubmit, onCancel }) {
         {t("Delivery details")}
       </h2>
       <FormField label={t("Delivery address")} autoComplete="street-address" {...field("address")} />
-      <FormField
-        label={t("Phone")}
-        type="tel"
-        autoComplete="tel"
-        hint={t("The courier will call this number.")}
-        {...field("phone")}
-      />
+      <MobileField hint={t("The courier will call this number.")} {...field("phone")} />
       <FormField label={t("Note for the courier (optional)")} as="textarea" rows={2} {...field("note")} />
 
       <fieldset className="mb-3">

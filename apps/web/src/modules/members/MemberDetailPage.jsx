@@ -192,7 +192,7 @@ export default function MemberDetailPage() {
               </dd>
               <dt className="col-4 text-muted fw-normal">{t("Email")}</dt>
               <dd className="col-8">{data.email || "—"}</dd>
-              <dt className="col-4 text-muted fw-normal">{t("Phone")}</dt>
+              <dt className="col-4 text-muted fw-normal">{t("Mobile number")}</dt>
               <dd className="col-8">{data.phone || "—"}</dd>
               <dt className="col-4 text-muted fw-normal">{t("Address")}</dt>
               <dd className="col-8">{data.address || "—"}</dd>

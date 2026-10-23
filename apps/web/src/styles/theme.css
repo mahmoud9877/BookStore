@@ -601,6 +601,30 @@ html {
   color: var(--ink-900);
 }
 
+/* Discounted price: sale price, struck-through list price, "−20%" badge (flex follows dir). */
+.price-sale {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4em;
+}
+
+.price-original {
+  color: var(--ink-500);
+  font-size: 0.8em;
+  font-weight: 400;
+}
+
+.price-badge {
+  align-self: center;
+  background: var(--danger-50);
+  color: var(--danger-600);
+  font-size: 0.7rem;
+  font-weight: 700;
+  unicode-bidi: isolate;
+  direction: ltr;
+}
+
 .stock-note {
   font-size: 0.78rem;
   font-weight: 600;

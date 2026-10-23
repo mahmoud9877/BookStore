@@ -17,7 +17,7 @@ import { apiClient, useApiMutation, useDataQuery, usePagedQuery } from "../../li
 import { formatDate, formatMoney, formatTitle, humanize, pluralize, toMinorUnits } from "../../lib/format.js";
 import { msg, t } from "../../i18n/index.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
-import { isValidPhone } from "../../lib/phone.js";
+import { isValidMobile } from "../../lib/phone.js";
 
 const STATUSES = ["requested", "approved", "ordered", "partially_received", "received", "rejected", "cancelled"];
 const INVALIDATE = [["purchase-orders"], ["copies"], ["reports"]];
@@ -395,7 +395,7 @@ const SUPPLIER_FIELDS = [
   { name: "name", label: msg("Name"), required: true },
   { name: "contactName", label: msg("Contact person") },
   { name: "email", label: msg("Email"), type: "email" },
-  { name: "phone", label: msg("Phone"), type: "tel", validate: (value) => (isValidPhone(value) ? null : msg("Enter a valid phone number.")) },
+  { name: "phone", label: msg("Mobile number"), type: "tel", validate: (value) => (isValidMobile(value) ? null : msg("Enter a valid mobile number.")) },
   { name: "address", label: msg("Address") },
   { name: "notes", label: msg("Notes"), type: "textarea" },
   { name: "isActive", label: msg("Active (can receive new orders)"), type: "checkbox" },

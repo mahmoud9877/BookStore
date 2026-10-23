@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Modal from "../../components/ui/Modal.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import DataTable from "../../components/ui/DataTable.jsx";
-import FormField from "../../components/ui/FormField.jsx";
+import FormField, { MobileField } from "../../components/ui/FormField.jsx";
 import useListState from "../../hooks/useListState.js";
 import { confirm } from "../../components/ui/confirm.store.js";
 import { apiClient, useApiMutation, usePagedQuery } from "../../lib/resource.js";
@@ -171,6 +171,7 @@ function CrudForm({ fields, initial, onSubmit }) {
             </FormField>
           );
         }
+        if (field.type === "tel") return <MobileField key={field.name} {...common} hint={common.hint || undefined} value={values[field.name]} onChange={onChange} />;
         return (
           <FormField
             key={field.name}
