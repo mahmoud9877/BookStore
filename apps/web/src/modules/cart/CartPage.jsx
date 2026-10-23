@@ -147,6 +147,8 @@ export default function CartPage() {
                   <OrderForm
                     total={total}
                     coupon={applied}
+                    onApplyCoupon={(result) => setCoupon({ signature, result })}
+                    onRemoveCoupon={() => setCoupon(null)}
                     isSubmitting={placeOrder.isPending}
                     onSubmit={handlePlaceOrder}
                     onCancel={() => setIsCheckingOut(false)}

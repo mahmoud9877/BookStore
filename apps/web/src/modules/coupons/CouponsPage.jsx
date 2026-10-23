@@ -8,6 +8,16 @@ import { msg, t } from "../../i18n/index.js";
 
 const CODE = /^[A-Z0-9_-]{3,30}$/;
 
+// Letters and digits that can't be mixed up when read aloud or typed (no 0/O, 1/I/L).
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+/** A random code such as "K7QP-X3MZ" (about 10^12 combinations). */
+export function generateCouponCode() {
+  const random = crypto.getRandomValues(new Uint32Array(8));
+  const chars = Array.from(random, (n) => CODE_ALPHABET[n % CODE_ALPHABET.length]).join("");
+  return `${chars.slice(0, 4)}-${chars.slice(4)}`;
+}
+
 /** "20%" or "EGP 50". */
 export const couponDiscount = (coupon) => (coupon.type === "percent" ? `${formatNumber(coupon.value)}%` : formatPrice(coupon.value));
 
@@ -61,7 +71,8 @@ export default function CouponsPage() {
       name: "code",
       label: msg("Code"),
       required: true,
-      hint: msg("3–30 letters, digits, - or _, e.g. SUMMER20. Shoppers type it at checkout."),
+      hint: msg("Type your own (3–30 letters, digits, - or _, e.g. SUMMER20) or press Generate. Shoppers type it at checkout."),
+      generate: { label: msg("Generate"), icon: "magic", make: generateCouponCode },
       validate: (value) => (CODE.test(value.trim().toUpperCase()) ? null : msg("Use 3–30 letters, digits, - or _.")),
     },
     {

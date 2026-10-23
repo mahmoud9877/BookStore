@@ -102,3 +102,21 @@ test("changing the cart clears the applied coupon", async () => {
   await waitFor(() => expect(within(summary).queryByText("Discount (SAVE10)")).not.toBeInTheDocument());
   expect(within(summary).getByLabelText("Coupon code")).toBeInTheDocument();
 });
+
+test("a coupon can also be applied on the payment step, and Enter applies it without placing the order", async () => {
+  renderPage(<CartPage />, { path: "/cart", claims: { role: "User" } });
+  const summary = await screen.findByRole("complementary", { name: "Order summary" });
+  userEvent.click(within(summary).getByRole("button", { name: "Checkout" }));
+  userEvent.click(await screen.findByLabelText(/cash on delivery/i));
+  expect(screen.getByRole("button", { name: /place order · EGP\s576/i })).toBeInTheDocument();
+
+  userEvent.type(screen.getByLabelText("Coupon code"), "SAVE10{enter}");
+  expect(await screen.findByText("Discount (SAVE10)")).toBeInTheDocument();
+  expect(apiClient.post).not.toHaveBeenCalledWith("/order", expect.anything());
+  expect(screen.getByRole("button", { name: /place order · EGP\s518\.4/i })).toBeInTheDocument();
+
+  userEvent.type(screen.getByLabelText("Delivery address"), "1 Nile Street, Cairo");
+  userEvent.type(screen.getByLabelText("Mobile number"), "01012345678");
+  userEvent.click(screen.getByRole("button", { name: /place order · EGP\s518\.4/i }));
+  await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith("/order", expect.objectContaining({ couponCode: "SAVE10" })));
+});

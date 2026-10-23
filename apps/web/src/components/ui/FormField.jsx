@@ -4,9 +4,10 @@ import { cleanMobileInput, isValidMobile, joinMobile, mobileCountries, mobileExa
 
 /**
  * Labelled form control with an inline error. `as` selects the element
- * ("input" | "select" | "textarea"); remaining props go to the control.
+ * ("input" | "select" | "textarea"); `addon` (e.g. a button) sits at the end of the
+ * control; remaining props go to the control.
  */
-export default function FormField({ label, error, hint, as: Control = "input", className = "mb-3", ...props }) {
+export default function FormField({ label, error, hint, addon, as: Control = "input", className = "mb-3", ...props }) {
   const id = useId();
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
   const controlClass = Control === "select" ? "form-select" : "form-control";
@@ -16,20 +17,21 @@ export default function FormField({ label, error, hint, as: Control = "input", c
       <label htmlFor={id} className="form-label">
         {label}
       </label>
-      <Control
-        id={id}
-        className={`${controlClass} ${error ? "is-invalid" : ""}`}
-        aria-invalid={Boolean(error)}
-        aria-describedby={describedBy}
-        {...props}
-      />
+      {addon ? (
+        <div className="input-group">
+          <Control id={id} className={`${controlClass} ${error ? "is-invalid" : ""}`} aria-invalid={Boolean(error)} aria-describedby={describedBy} {...props} />
+          {addon}
+        </div>
+      ) : (
+        <Control id={id} className={`${controlClass} ${error ? "is-invalid" : ""}`} aria-invalid={Boolean(error)} aria-describedby={describedBy} {...props} />
+      )}
       {hint && !error && (
         <div id={`${id}-hint`} className="form-text">
           {hint}
         </div>
       )}
       {error && (
-        <div id={`${id}-error`} className="invalid-feedback">
+        <div id={`${id}-error`} className={`invalid-feedback ${addon ? "d-block" : ""}`}>
           {error}
         </div>
       )}

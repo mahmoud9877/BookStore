@@ -28,17 +28,17 @@ export const ADMIN_GROUPS = [
     ],
   },
   {
+    label: msg("Shop"),
+    sections: [
+      { path: "coupons", label: msg("Coupons"), icon: "ticket-perforated", permissions: [P.OrdersManage] },
+    ],
+  },
+  {
     label: msg("Inventory"),
     sections: [
       { path: "transfers", label: msg("Transfers"), icon: "truck", permissions: [P.InventoryManage] },
       { path: "stocktakes", label: msg("Stocktakes"), icon: "clipboard-check", permissions: [P.InventoryManage] },
       { path: "acquisitions", label: msg("Acquisitions"), icon: "cart-check", permissions: [P.AcquisitionsManage] },
-    ],
-  },
-  {
-    label: msg("Shop"),
-    sections: [
-      { path: "coupons", label: msg("Coupons"), icon: "ticket-perforated", permissions: [P.OrdersManage] },
     ],
   },
   {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Spinner from "../../components/ui/Spinner.jsx";
 import { checkCoupon } from "../coupons/coupon.service.js";
@@ -9,15 +9,17 @@ import { t } from "../../i18n/index.js";
 /**
  * Coupon code + Apply. The API checks the code against the cart
  * (POST /coupons/check); `onApply` receives `{ code, discount, total, … }`.
- * Once applied, shows the code with a Remove button instead.
+ * Once applied, shows the code with a Remove button instead. Not a <form> of its
+ * own, so it also works inside the checkout form (Enter applies the code).
  */
 export default function CouponBox({ applied, onApply, onRemove }) {
+  const id = useId();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const check = useMutation({ mutationFn: checkCoupon });
 
   async function apply(event) {
-    event.preventDefault();
+    event?.preventDefault();
     if (!code.trim()) {
       setError(t("Enter a coupon code."));
       return;
@@ -46,32 +48,33 @@ export default function CouponBox({ applied, onApply, onRemove }) {
   }
 
   return (
-    <form className="coupon-box" onSubmit={apply} noValidate>
-      <label htmlFor="coupon-code" className="form-label small fw-semibold">
+    <div className="coupon-box">
+      <label htmlFor={`${id}-code`} className="form-label small fw-semibold">
         {t("Coupon code")}
       </label>
       <div className="input-group input-group-sm has-validation">
         <input
-          id="coupon-code"
+          id={`${id}-code`}
           className={`form-control text-uppercase ${error ? "is-invalid" : ""}`}
           value={code}
           onChange={(event) => setCode(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && apply(event)}
           autoComplete="off"
           spellCheck={false}
           maxLength={30}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? "coupon-code-error" : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
         />
-        <button type="submit" className="btn btn-outline-primary" disabled={check.isPending}>
+        <button type="button" className="btn btn-outline-primary" onClick={apply} disabled={check.isPending}>
           {check.isPending ? <Spinner label={t("Checking coupon")} /> : t("Apply")}
         </button>
         {error && (
-          <div id="coupon-code-error" className="invalid-feedback" role="alert">
+          <div id={`${id}-error`} className="invalid-feedback" role="alert">
             {error}
           </div>
         )}
       </div>
-    </form>
+    </div>
   );
 }
 

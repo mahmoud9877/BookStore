@@ -45,6 +45,12 @@ function Breadcrumbs() {
 
 function Sidebar({ id, onNavigate }) {
   const { can } = usePermissions();
+  const { pathname } = useLocation();
+  const navRef = useRef(null);
+  // Keep the current section's link in view when the list is taller than the screen.
+  useEffect(() => {
+    navRef.current?.querySelector("a.active")?.scrollIntoView?.({ block: "nearest" });
+  }, [pathname]);
   const groups = ADMIN_GROUPS.map((group) => ({ ...group, sections: group.sections.filter((section) => can(...section.permissions)) })).filter(
     (group) => group.sections.length
   );
@@ -53,7 +59,7 @@ function Sidebar({ id, onNavigate }) {
       <div className="shell-sidebar-brand">
         <Brand to="/dashboard" tone="light" caption={msg("Workspace")} onClick={onNavigate} />
       </div>
-      <nav className="shell-nav" aria-label={t("Workspace sections")}>
+      <nav ref={navRef} className="shell-nav" aria-label={t("Workspace sections")}>
         <NavLink to="/dashboard" end onClick={onNavigate}>
           <i className="bi bi-grid-1x2" aria-hidden="true"></i>
           {t("Overview")}

@@ -3,15 +3,16 @@ import useForm from "../../hooks/useForm.js";
 import { formatPrice } from "../../lib/format.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import FormField, { MobileField } from "../../components/ui/FormField.jsx";
-import { DiscountRow } from "./CouponBox.jsx";
+import CouponBox, { DiscountRow } from "./CouponBox.jsx";
 import { PAYMENT_METHODS, checkoutSchema } from "./checkout.validation.js";
 import { t } from "../../i18n/index.js";
 
 /**
  * Delivery and payment details; `onSubmit` receives `{ address, phone, note, paymentType }`.
- * `total` already has the applied `coupon` (`{ code, discount }`) taken off.
+ * `total` already has the applied `coupon` (`{ code, discount }`) taken off; a coupon
+ * can also be applied or removed here (`onApplyCoupon` / `onRemoveCoupon`).
  */
-export default function OrderForm({ total, coupon, isSubmitting, onSubmit, onCancel }) {
+export default function OrderForm({ total, coupon, onApplyCoupon, onRemoveCoupon, isSubmitting, onSubmit, onCancel }) {
   const { values, handleChange, field, handleSubmit } = useForm(
     { address: "", phone: "", note: "", paymentType: "card" },
     { schema: checkoutSchema }
@@ -48,6 +49,7 @@ export default function OrderForm({ total, coupon, isSubmitting, onSubmit, onCan
         </div>
       </fieldset>
 
+      {onApplyCoupon && <CouponBox applied={coupon} onApply={onApplyCoupon} onRemove={onRemoveCoupon} />}
       {coupon && <DiscountRow coupon={coupon} />}
       <button type="submit" className="btn btn-primary w-100 py-2" disabled={isSubmitting}>
         {isSubmitting ? (

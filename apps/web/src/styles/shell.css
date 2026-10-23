@@ -31,8 +31,18 @@
   flex: 1;
   overflow-y: auto;
   padding: 0.75rem 0.75rem 1rem;
+  /* Visible on the navy background, so it's clear more sections are below. */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.shell-nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shell-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
 }
 
 .shell-nav a,

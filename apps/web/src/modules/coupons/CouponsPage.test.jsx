@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import CouponsPage from "./CouponsPage.jsx";
+import CouponsPage, { generateCouponCode } from "./CouponsPage.jsx";
 import { fakeApi, renderPage } from "../../test-utils/render-page.jsx";
 import { apiClient } from "../../lib/api-client.js";
 
@@ -52,4 +52,8 @@ test("coupons list their discount, uses and status; new ones are created with nu
     expiresAt: null,
     isActive: true,
   });
+});
+
+test("generated coupon codes are readable and valid", () => {
+  for (let i = 0; i < 20; i += 1) expect(generateCouponCode()).toMatch(/^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/);
 });

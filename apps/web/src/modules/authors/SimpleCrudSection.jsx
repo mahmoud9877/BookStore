@@ -14,7 +14,8 @@ import { msg, t } from "../../i18n/index.js";
  *
  * `fields`: [{ name, label, type?: "text"|"textarea"|"select"|"checkbox"|"number"|"email"|"tel",
  *             options?: [{ value, label }], required?, hint?, onlyOnCreate?,
- *             validate?: (value) => msg() error key or null (skipped when empty) }]
+ *             validate?: (value) => msg() error key or null (skipped when empty),
+ *             generate?: { label: msg() key, icon?, make: () => value } — a button that fills the field }]
  * `columns`: DataTable columns (an actions column is appended).
  * `toForm(record)` / `fromForm(values)` convert between records and form values.
  * `entity`, `searchPlaceholder`, field labels/hints and string column headers are
@@ -181,6 +182,22 @@ function CrudForm({ fields, initial, onSubmit }) {
             type={field.type === "textarea" ? undefined : field.type ?? "text"}
             value={values[field.name]}
             onChange={onChange}
+            addon={
+              field.generate && (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    const value = field.generate.make();
+                    setValues((current) => ({ ...current, [field.name]: value }));
+                    setErrors((current) => ({ ...current, [field.name]: undefined }));
+                  }}
+                >
+                  {field.generate.icon && <i className={`bi bi-${field.generate.icon} me-1`} aria-hidden="true"></i>}
+                  {t(field.generate.label)}
+                </button>
+              )
+            }
           />
         );
       })}

@@ -31,8 +31,9 @@ export const messages = {
   "Uses": "مرات الاستخدام",
   "Never": "أبدًا",
   "Used up": "استُنفدت",
-  "3–30 letters, digits, - or _, e.g. SUMMER20. Shoppers type it at checkout.":
-    "من 3 إلى 30 حرفًا أو رقمًا أو - أو _، مثل SUMMER20. يكتبه المتسوقون عند إتمام الشراء.",
+  "Type your own (3–30 letters, digits, - or _, e.g. SUMMER20) or press Generate. Shoppers type it at checkout.":
+    "اكتب رمزًا من عندك (من 3 إلى 30 حرفًا أو رقمًا أو - أو _، مثل SUMMER20) أو اضغط «إنشاء تلقائي». يكتبه المتسوقون عند إتمام الشراء.",
+  "Generate": "إنشاء تلقائي",
   "Use 3–30 letters, digits, - or _.": "استخدم من 3 إلى 30 حرفًا أو رقمًا أو - أو _.",
   "Discount type": "نوع الخصم",
   "Percentage of the order": "نسبة مئوية من الطلب",

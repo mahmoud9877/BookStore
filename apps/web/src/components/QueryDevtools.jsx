@@ -13,7 +13,7 @@ export default function QueryDevtools() {
   if (!Devtools) return null;
   return (
     <Suspense fallback={null}>
-      <Devtools initialIsOpen={false} buttonPosition="bottom-left" />
+      <Devtools initialIsOpen={false} buttonPosition="bottom-right" />
     </Suspense>
   );
 }
