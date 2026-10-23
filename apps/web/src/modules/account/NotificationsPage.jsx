@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import Pagination from "../../components/ui/Pagination.jsx";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 import useListState from "../../hooks/useListState.js";
@@ -6,6 +7,7 @@ import { getErrorMessage } from "../../lib/api-client.js";
 import { apiClient, useApiMutation, usePagedQuery } from "../../lib/resource.js";
 import { formatDateTime } from "../../lib/format.js";
 import { accountKeys } from "./account.queries.js";
+import { notificationText } from "./notification-text.js";
 import { t } from "../../i18n/index.js";
 
 /** The in-app inbox: messages about loans, reservations, fines and payments. */
@@ -48,26 +50,35 @@ export default function NotificationsPage() {
       ) : (
         <div className="card">
           <ul className="list-group list-group-flush">
-            {items.map((item) => (
-              <li key={item._id} className={`list-group-item d-flex gap-3 ${item.readAt ? "" : "bg-body-tertiary"}`}>
-                <i className={`bi bi-${item.readAt ? "envelope-open" : "envelope-fill text-primary"} mt-1`} aria-hidden="true"></i>
-                <div className="flex-grow-1 min-w-0">
-                  <div className={item.readAt ? "" : "fw-semibold"}>
-                    {!item.readAt && <span className="visually-hidden">{t("Unread:")} </span>}
-                    {item.subject}
+            {items.map((item) => {
+              const { title, body, link } = notificationText(item);
+              return (
+                <li key={item._id} className={`list-group-item d-flex gap-3 ${item.readAt ? "" : "bg-body-tertiary"}`}>
+                  <i className={`bi bi-${item.readAt ? "envelope-open" : "envelope-fill text-primary"} mt-1`} aria-hidden="true"></i>
+                  <div className="flex-grow-1 min-w-0">
+                    <div className={item.readAt ? "" : "fw-semibold"}>
+                      {!item.readAt && <span className="visually-hidden">{t("Unread:")} </span>}
+                      {link ? (
+                        <Link to={link} className="text-reset" onClick={() => !item.readAt && markRead.mutate([item._id])}>
+                          {title}
+                        </Link>
+                      ) : (
+                        title
+                      )}
+                    </div>
+                    <p className="small text-muted mb-1" style={{ whiteSpace: "pre-line" }}>
+                      {body}
+                    </p>
+                    <span className="small text-muted">{formatDateTime(item.createdAt)}</span>
                   </div>
-                  <p className="small text-muted mb-1" style={{ whiteSpace: "pre-line" }}>
-                    {item.body}
-                  </p>
-                  <span className="small text-muted">{formatDateTime(item.createdAt)}</span>
-                </div>
-                {!item.readAt && (
-                  <button type="button" className="btn btn-sm btn-ghost align-self-start" onClick={() => markRead.mutate([item._id])} aria-label={t("Mark “{subject}” as read", { subject: item.subject })}>
-                    <i className="bi bi-check2" aria-hidden="true"></i>
-                  </button>
-                )}
-              </li>
-            ))}
+                  {!item.readAt && (
+                    <button type="button" className="btn btn-sm btn-ghost align-self-start" onClick={() => markRead.mutate([item._id])} aria-label={t("Mark “{subject}” as read", { subject: title })}>
+                      <i className="bi bi-check2" aria-hidden="true"></i>
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           <Pagination meta={inbox.data?.meta} onPageChange={setPage} label={t("Notification pages")} />
         </div>

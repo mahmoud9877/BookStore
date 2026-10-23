@@ -7,6 +7,7 @@ import { createQueryClient } from "../lib/query-client.js";
 import QueryDevtools from "../components/QueryDevtools.jsx";
 import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
 import { useForgetCartOnSignOut } from "../modules/cart/cart.queries.js";
+import { NotificationStream } from "../modules/account/useNotificationStream.js";
 import { onSessionExpired } from "../lib/api-client.js";
 import { toast } from "../components/ui/toast.store.js";
 import { useAuthStore } from "../modules/auth/auth.store.js";
@@ -46,6 +47,7 @@ export default function App({ createRouter = createHashRouter, queryClient: prov
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider key={language} router={router} />
+      <NotificationStream />
       <Toaster />
       <ConfirmDialog />
       <QueryDevtools />

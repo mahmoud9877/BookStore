@@ -25,6 +25,7 @@ container.database
       console.warn(`${pending.length} database migration(s) pending — run "npm run migrate": ${pending.map((m) => m.id).join(", ")}`);
     }
   })
+  .then(() => container.notificationChangeStream.start())
   .catch((error) => {
     console.error(`Error connecting to the database: ${error.message}`);
     process.exit(1);
@@ -36,8 +37,13 @@ const server = app.listen(env.port, () => {
 
 function shutdown(signal) {
   console.log(`${signal} received, shutting down.`);
+  // Open notification streams would otherwise keep server.close() waiting.
+  container.notificationHub.closeAll();
   server.close(() => {
-    container.database.disconnect().finally(() => process.exit(0));
+    container.notificationChangeStream
+      .stop()
+      .catch(() => {})
+      .finally(() => container.database.disconnect().finally(() => process.exit(0)));
   });
 }
 process.on("SIGTERM", shutdown);

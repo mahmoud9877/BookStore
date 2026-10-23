@@ -45,6 +45,19 @@ export class RoleService {
     return (await this.accessFor(roleName)).permissions;
   }
 
+  /**
+   * Ids of the active accounts whose role grants `permission`: built-in roles
+   * (Admin holds every permission) plus custom roles from the database.
+   */
+  async userIdsWithPermission(permission) {
+    const custom = await this.#roles.namesGranting(permission);
+    // Built-in role names are matched without case, like accessFor() does.
+    const builtIn = SYSTEM_ROLES.filter((role) => role.permissions.includes(permission)).map(
+      (role) => new RegExp(`^${role.name}$`, "i")
+    );
+    return this.#users.findActiveIdsByRoles([...builtIn, ...custom]);
+  }
+
   /** Resolves true when `roleName` is a built-in or custom role. */
   async roleExists(roleName) {
     return Boolean(findSystemRole(roleName) || (await this.#roles.findByName(roleName)));

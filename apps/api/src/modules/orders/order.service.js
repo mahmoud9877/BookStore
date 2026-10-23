@@ -17,14 +17,19 @@ export class OrderService {
   #books;
   #coupons;
   #payments;
+  #notifier;
 
-  /** `paymentGateway` implements the port described in ./payment-gateway.js. */
-  constructor({ orderRepository, cartRepository, bookRepository, couponRepository, paymentGateway }) {
+  /**
+   * `paymentGateway` implements the port described in ./payment-gateway.js.
+   * `orderNotifier` (optional) sends the in-app notifications; it never throws.
+   */
+  constructor({ orderRepository, cartRepository, bookRepository, couponRepository, paymentGateway, orderNotifier }) {
     this.#orders = orderRepository;
     this.#carts = cartRepository;
     this.#books = bookRepository;
     this.#coupons = couponRepository;
     this.#payments = paymentGateway;
+    this.#notifier = orderNotifier ?? null;
   }
 
   /**
@@ -49,7 +54,7 @@ export class OrderService {
       if (problem) throw new BadRequestError(problem);
     }
 
-    const items = await this.#reserveStock(cart.books);
+    const { items, reserved } = await this.#reserveStock(cart.books);
     const subtotal = round2(items.reduce((sum, item) => sum + item.finalPrice, 0));
     const discount = coupon ? await this.#claimCouponOrReleaseStock(coupon, subtotal, items) : 0;
     // A coupon that covers the whole order leaves nothing to charge: Stripe refuses a
@@ -69,6 +74,10 @@ export class OrderService {
 
     // Only empty the cart once the order (and payment session) definitely exists.
     await this.#carts.clearByUserId(user._id);
+
+    // Card orders are announced once paid (see applyPaymentEvent).
+    if (payBy === "cash") await this.#notifier?.orderPlaced(order, user);
+    await this.#notifier?.stockTaken(order, reserved);
     return {
       order: OrderResponseDto.from(order),
       session: CheckoutSessionResponseDto.from(session),
@@ -88,13 +97,15 @@ export class OrderService {
     if (!orderId || outcome === PAYMENT_OUTCOMES.ignored) return "Ignored";
 
     if (outcome === PAYMENT_OUTCOMES.paid) {
-      await this.#orders.updateStatus(orderId, ORDER_STATUSES.placed);
+      const paid = await this.#orders.updateStatus(orderId, ORDER_STATUSES.placed);
+      if (paid) await this.#notifier?.paymentConfirmed(paid);
       return "Done";
     }
     const rejected = await this.#orders.rejectIfAwaitingPayment(orderId);
     if (rejected) {
       await this.#books.releaseStock(rejected.books);
       await this.#releaseCoupon(rejected);
+      await this.#notifier?.paymentFailed(rejected);
     }
     return "rejected link";
   }
@@ -113,6 +124,7 @@ export class OrderService {
     });
     await this.#books.releaseStock(order.books);
     await this.#releaseCoupon(order);
+    await this.#notifier?.cancelled(canceled ?? order);
     return OrderResponseDto.from(canceled);
   }
 
@@ -125,17 +137,22 @@ export class OrderService {
     const delivered = await this.#orders.updateStatus(orderId, ORDER_STATUSES.delivered, {
       updatedBy: adminId,
     });
-    return OrderResponseDto.from(ensureFound(delivered, "Order not found"));
+    ensureFound(delivered, "Order not found");
+    await this.#notifier?.delivered(delivered);
+    return OrderResponseDto.from(delivered);
   }
 
-  /** Reserves stock for every cart item and returns the priced order lines. */
+  /**
+   * Reserves stock for every cart item. Resolves the priced order lines
+   * (`items`) and the books as they were before the reservation (`reserved`).
+   */
   async #reserveStock(cartItems) {
     const result = await this.#books.reserveStock(cartItems);
     if (result.unavailable) {
       const { bookTitle, bookId } = result.unavailable;
       throw new BadRequestError(`Book unavailable or out of stock: ${bookTitle ?? bookId}`);
     }
-    return result.reserved.map(({ book, quantity }) => {
+    const items = result.reserved.map(({ book, quantity }) => {
       const unitPrice = salePriceOf(book);
       return {
         bookId: book._id,
@@ -145,6 +162,7 @@ export class OrderService {
         finalPrice: round2(unitPrice * quantity),
       };
     });
+    return { items, reserved: result.reserved };
   }
 
   /**

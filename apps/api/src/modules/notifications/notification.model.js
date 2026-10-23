@@ -24,6 +24,8 @@ const notificationSchema = new Schema(
     to: String, // email address (email channel)
     subject: { type: String, required: true },
     body: { type: String, required: true },
+    // Values a client needs to show the message in its own language (template values for library notices).
+    data: { type: Schema.Types.Mixed, default: () => ({}) },
     status: { type: String, enum: Object.values(DELIVERY_STATUSES), required: true },
     attempts: { type: Number, default: 0 },
     nextAttemptAt: { type: Date, default: Date.now },

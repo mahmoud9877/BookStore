@@ -68,6 +68,9 @@ import { TransferRepository } from "./modules/transfers/transfer.repository.js";
 import { NotificationService } from "./modules/notifications/notification.service.js";
 import { NotificationRepository } from "./modules/notifications/notification.repository.js";
 import { ReminderService } from "./modules/notifications/reminder.service.js";
+import { NotificationHub } from "./modules/notifications/notification-hub.js";
+import { NotificationChangeStream } from "./modules/notifications/notification-change-stream.js";
+import { OrderNotifier } from "./modules/orders/order-notifier.js";
 import { PurchaseOrderService, SupplierService } from "./modules/acquisitions/acquisition.service.js";
 import { PurchaseOrderRepository, SupplierRepository } from "./modules/acquisitions/acquisition.repository.js";
 import { StocktakeRepository, StocktakeScanRepository, StocktakeService } from "./modules/inventory/stocktake.service.js";
@@ -150,6 +153,9 @@ export function createContainer(config = env, overrides = {}) {
   add({ auditService: new AuditService(c) });
   add({ settingsService: new SettingsService(c), roleService: new RoleService(c) });
   add({ notificationService: new NotificationService(c) });
+  add({ notificationHub: new NotificationHub(c), orderNotifier: new OrderNotifier(c) });
+  // Started by server.js once connected (needs a replica set).
+  add({ notificationChangeStream: new NotificationChangeStream({ ...c, ...pick(overrides, ["notificationChangeSource"]) }) });
   add({
     emailConfirmationService: new EmailConfirmationService({ ...c, frontendUrl: config.frontendUrl }),
     fineService: new FineService(c),

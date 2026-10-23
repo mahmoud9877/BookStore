@@ -11,6 +11,10 @@ export const accountKeys = {
   fines: () => [...accountKeys.all, "fines"],
   payments: () => [...accountKeys.all, "payments"],
   notifications: () => [...accountKeys.all, "notifications"],
+  /** The bell's unread count (a number); the notification stream writes it directly. */
+  unreadNotifications: () => [...accountKeys.notifications(), "unread"],
+  /** The newest few notifications shown in the bell's dropdown. */
+  latestNotifications: () => [...accountKeys.notifications(), "latest"],
   bookings: () => [...accountKeys.all, "bookings"],
   events: () => [...accountKeys.all, "events"],
 };

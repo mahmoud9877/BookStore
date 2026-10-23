@@ -4,12 +4,19 @@ import { after, before } from "node:test";
 import { createApp } from "../src/app.js";
 import { createContainer } from "../src/container.js";
 
+/** An OrderNotifier that does nothing (HTTP tests have no database to write notifications to). */
+export const silentOrderNotifier = () =>
+  Object.fromEntries(
+    ["orderPlaced", "paymentConfirmed", "paymentFailed", "delivered", "cancelled", "stockTaken"].map((name) => [name, async () => {}])
+  );
+
 /**
- * Starts the app on an ephemeral port with a fresh container.
+ * Starts the app on an ephemeral port with a fresh container (`overrides` as in
+ * createContainer; order notifications are silenced unless overridden).
  * Returns `{ request, close, container }`; stub collaborators on `container`.
  */
-export async function startServer() {
-  const container = createContainer();
+export async function startServer(overrides = {}) {
+  const container = createContainer(undefined, { orderNotifier: silentOrderNotifier(), ...overrides });
   const server = createApp(container).listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -44,9 +51,9 @@ export async function startServer() {
  * Starts a fresh server for the enclosing describe() (or file) and stops it
  * afterwards. Returns a handle whose `request`/`container` are ready inside tests.
  */
-export function useTestServer() {
+export function useTestServer(overrides) {
   const handle = {};
-  before(async () => Object.assign(handle, await startServer()));
+  before(async () => Object.assign(handle, await startServer(overrides)));
   after(() => handle.close());
   return handle;
 }

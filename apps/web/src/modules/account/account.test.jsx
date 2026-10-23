@@ -79,7 +79,6 @@ test("when card payments are not configured, members are told to pay at a desk",
 test("the bell shows how many notifications are unread", async () => {
   use({ "GET /notifications/me": ({ params }) => ({ data: [], meta: {}, unread: params.unreadOnly ? 3 : 0 }) });
   renderPage(<NotificationBell />, { path: "/", ...MEMBER });
-  const bell = await screen.findByRole("link", { name: "Notifications, 3 unread" });
-  expect(bell).toHaveAttribute("href", "/account/notifications");
+  const bell = await screen.findByRole("button", { name: "Notifications, 3 unread" });
   expect(within(bell).getByText("3")).toBeInTheDocument();
 });

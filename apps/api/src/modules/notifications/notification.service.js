@@ -1,5 +1,6 @@
 import { pageOf } from "../../core/pagination.js";
 import { DELIVERY_STATUSES, NOTIFICATION_CHANNELS } from "./notification.model.js";
+import { SHOP_MESSAGES } from "./shop-notifications.js";
 
 const MAX_ATTEMPTS = 5;
 const LEASE_MS = 60_000;
@@ -48,7 +49,7 @@ export class NotificationService {
     const values = { memberName: member.name, ...data };
     const subject = renderTemplate(template.subject, values);
     const body = renderTemplate(template.body, values);
-    const base = { member: member._id, user: member.user ?? null, type, subject, body };
+    const base = { member: member._id, user: member.user ?? null, type, subject, body, data: values };
 
     if (member.user) {
       await this.#notifications.createOnce({
@@ -68,6 +69,40 @@ export class NotificationService {
       nextAttemptAt: new Date(),
       dedupeKey: `${type}:${dedupeKey}:email`,
     });
+  }
+
+  /**
+   * In-app notification of `type` (see shop-notifications.js) for each user,
+   * once per event and user: the stored key is `<type>:<dedupeKey>:<userId>`.
+   * `subject`/`body` are English; clients translate from `type` + `data`.
+   * Resolves the number of notifications created.
+   */
+  async notifyUsers(userIds, type, data, dedupeKey) {
+    const message = SHOP_MESSAGES[type];
+    if (!message) throw new Error(`No in-app message for ${type}`);
+    const { subject, body } = message(data);
+    const unique = [...new Set(userIds.map(String))];
+    const created = await Promise.all(
+      unique.map((userId) =>
+        this.#notifications.createOnce({
+          user: userId,
+          type,
+          channel: NOTIFICATION_CHANNELS.inApp,
+          subject,
+          body,
+          data,
+          status: DELIVERY_STATUSES.sent,
+          sentAt: new Date(),
+          dedupeKey: `${type}:${dedupeKey}:${userId}`,
+        })
+      )
+    );
+    return created.filter(Boolean).length;
+  }
+
+  /** Number of unread in-app notifications for a user. */
+  unreadCount(userId) {
+    return this.#notifications.countWhere(this.#notifications.inboxFilter(userId, true));
   }
 
   /**
@@ -110,9 +145,9 @@ export class NotificationService {
       page,
       limit,
       sort: { createdAt: -1, _id: -1 },
-      select: "type subject body readAt createdAt",
+      select: "type subject body data readAt createdAt",
     });
-    const unread = await this.#notifications.countWhere(this.#notifications.inboxFilter(userId, true));
+    const unread = await this.unreadCount(userId);
     return { ...pageOf(result, { page, limit }), unread };
   }
 

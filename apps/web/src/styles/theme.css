@@ -431,6 +431,45 @@ html {
   background: var(--brand-600);
 }
 
+/* Notification bell dropdown: aligned to the bell's end edge (either direction). */
+.notification-menu-panel {
+  top: 100%;
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  width: min(22rem, calc(100vw - 2rem));
+  overflow: hidden;
+}
+
+.notification-menu-item {
+  white-space: normal;
+  padding: 0.6rem 1rem;
+  border-radius: 0;
+}
+
+.notification-menu-item.is-unread {
+  background: var(--brand-50);
+}
+
+.notification-menu-item:active .text-muted {
+  color: inherit !important;
+}
+
+.notification-menu-body {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+  .notification-menu-panel {
+    position: fixed;
+    top: 4rem;
+    inset-inline: 1rem;
+    width: auto;
+  }
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   background: var(--surface);

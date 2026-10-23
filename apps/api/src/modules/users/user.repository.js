@@ -55,6 +55,16 @@ export class UserRepository extends BaseRepository {
     return this.updateWhere({ _id: id }, { role }, { select: WITHOUT_SECRETS });
   }
 
+  /**
+   * Ids of the active accounts holding any of `roles` (names; a RegExp also
+   * matches, e.g. for case-insensitive built-in role names).
+   */
+  async findActiveIdsByRoles(roles) {
+    if (!roles.length) return [];
+    const users = await this.findMany({ role: { $in: roles }, isActive: { $ne: false } }, { select: "_id" });
+    return users.map((user) => user._id);
+  }
+
   /** Resolves `{ [roleName]: numberOfAccounts }`. */
   async countByRole() {
     const groups = await this.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]);
