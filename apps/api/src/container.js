@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createHmac } from "node:crypto";
 import { env } from "./config/env.js";
 import { Database } from "./infrastructure/database.js";
 import { AuthGuard } from "./middleware/auth-guard.js";
@@ -12,77 +13,82 @@ import { JwtTokenService } from "./security/jwt-token-service.js";
 import { StripePaymentGateway } from "./infrastructure/stripe-payment-gateway.js";
 import { CloudinaryImageStorage } from "./infrastructure/cloudinary-image-storage.js";
 import { LocalFileStorage, LocalImageStorage } from "./infrastructure/local-file-storage.js";
-import { AuthService } from "./modules/auth/auth.service.js";
-import { AuthController } from "./modules/auth/auth.controller.js";
-import { EmailConfirmationService } from "./modules/auth/email-confirmation.service.js";
-import { UserService } from "./modules/users/user.service.js";
-import { UserController } from "./modules/users/user.controller.js";
-import { UserRepository } from "./modules/users/user.repository.js";
-import { BookService } from "./modules/books/book.service.js";
-import { BookController } from "./modules/books/book.controller.js";
-import { BookRepository } from "./modules/books/book.repository.js";
-import { CategoryService } from "./modules/categories/category.service.js";
-import { CategoryController } from "./modules/categories/category.controller.js";
-import { CategoryRepository } from "./modules/categories/category.repository.js";
-import { CartService } from "./modules/cart/cart.service.js";
-import { CartController } from "./modules/cart/cart.controller.js";
-import { CartRepository } from "./modules/cart/cart.repository.js";
-import { OrderService } from "./modules/orders/order.service.js";
-import { OrderController } from "./modules/orders/order.controller.js";
-import { OrderRepository } from "./modules/orders/order.repository.js";
-import { CouponService } from "./modules/coupons/coupon.service.js";
-import { CouponRepository } from "./modules/coupons/coupon.repository.js";
-import { RoleService } from "./modules/roles/role.service.js";
-import { RoleController } from "./modules/roles/role.controller.js";
-import { RoleRepository } from "./modules/roles/role.repository.js";
-import { AuditService } from "./modules/audit/audit.service.js";
-import { AuditController } from "./modules/audit/audit.controller.js";
-import { AuditLogRepository } from "./modules/audit/audit-log.repository.js";
-import { SettingsService } from "./modules/settings/settings.service.js";
-import { SettingsController } from "./modules/settings/settings.controller.js";
-import { SettingRepository } from "./modules/settings/setting.repository.js";
-import { BranchService, LocationService } from "./modules/branches/branch.service.js";
-import { BranchRepository, LocationRepository } from "./modules/branches/branch.repository.js";
-import { AuthorService } from "./modules/authors/author.service.js";
-import { AuthorRepository } from "./modules/authors/author.repository.js";
-import { PublisherService } from "./modules/publishers/publisher.service.js";
-import { PublisherRepository } from "./modules/publishers/publisher.repository.js";
-import { CopyService } from "./modules/copies/copy.service.js";
-import { CopyController } from "./modules/copies/copy.controller.js";
-import { CopyRepository } from "./modules/copies/copy.repository.js";
-import { MemberController } from "./modules/members/member.controller.js";
-import { MemberService, MembershipTypeService } from "./modules/members/member.service.js";
-import { MemberRepository, MembershipEventRepository, MembershipTypeRepository } from "./modules/members/member.repository.js";
-import { LoanRepository } from "./modules/circulation/loan.repository.js";
-import { ReservationRepository } from "./modules/circulation/reservation.repository.js";
-import { CopyAllocator } from "./modules/circulation/copy-allocator.js";
-import { CirculationService } from "./modules/circulation/circulation.service.js";
-import { ReservationService } from "./modules/circulation/reservation.service.js";
-import { FineRepository } from "./modules/finance/fine.repository.js";
-import { PaymentRepository } from "./modules/finance/payment.repository.js";
-import { FineService } from "./modules/finance/fine.service.js";
-import { PaymentService } from "./modules/finance/payment.service.js";
-import { PaymentWebhookService } from "./modules/finance/payment-webhook.service.js";
-import { TransferService } from "./modules/transfers/transfer.service.js";
-import { TransferRepository } from "./modules/transfers/transfer.repository.js";
-import { NotificationService } from "./modules/notifications/notification.service.js";
-import { NotificationRepository } from "./modules/notifications/notification.repository.js";
-import { ReminderService } from "./modules/notifications/reminder.service.js";
-import { NotificationHub } from "./modules/notifications/notification-hub.js";
-import { NotificationChangeStream } from "./modules/notifications/notification-change-stream.js";
-import { OrderNotifier } from "./modules/orders/order-notifier.js";
-import { PurchaseOrderService, SupplierService } from "./modules/acquisitions/acquisition.service.js";
-import { PurchaseOrderRepository, SupplierRepository } from "./modules/acquisitions/acquisition.repository.js";
-import { StocktakeRepository, StocktakeScanRepository, StocktakeService } from "./modules/inventory/stocktake.service.js";
-import { ReportService } from "./modules/reports/report.service.js";
+import { AuthService } from "./modules/auth/services/auth.service.js";
+import { AuthController } from "./modules/auth/controllers/auth.controller.js";
+import { EmailConfirmationService } from "./modules/auth/services/email-confirmation.service.js";
+import { AuthSessionRepository } from "./modules/auth/repositories/auth-session.repository.js";
+import { UserService } from "./modules/users/services/user.service.js";
+import { UserController } from "./modules/users/controllers/user.controller.js";
+import { UserRepository } from "./modules/users/repositories/user.repository.js";
+import { BookService } from "./modules/books/services/book.service.js";
+import { BookController } from "./modules/books/controllers/book.controller.js";
+import { BookRepository } from "./modules/books/repositories/book.repository.js";
+import { CategoryService } from "./modules/categories/services/category.service.js";
+import { CategoryController } from "./modules/categories/controllers/category.controller.js";
+import { CategoryRepository } from "./modules/categories/repositories/category.repository.js";
+import { CartService } from "./modules/cart/services/cart.service.js";
+import { CartController } from "./modules/cart/controllers/cart.controller.js";
+import { CartRepository } from "./modules/cart/repositories/cart.repository.js";
+import { OrderService } from "./modules/orders/services/order.service.js";
+import { OrderController } from "./modules/orders/controllers/order.controller.js";
+import { OrderRepository } from "./modules/orders/repositories/order.repository.js";
+import { CouponService } from "./modules/coupons/services/coupon.service.js";
+import { CouponRepository } from "./modules/coupons/repositories/coupon.repository.js";
+import { RoleService } from "./modules/roles/services/role.service.js";
+import { RoleController } from "./modules/roles/controllers/role.controller.js";
+import { RoleRepository } from "./modules/roles/repositories/role.repository.js";
+import { AuditService } from "./modules/audit/services/audit.service.js";
+import { AuditController } from "./modules/audit/controllers/audit.controller.js";
+import { AuditLogRepository } from "./modules/audit/repositories/audit-log.repository.js";
+import { SettingsService } from "./modules/settings/services/settings.service.js";
+import { SettingsController } from "./modules/settings/controllers/settings.controller.js";
+import { SettingRepository } from "./modules/settings/repositories/setting.repository.js";
+import { BranchService, LocationService } from "./modules/branches/services/branch.service.js";
+import { BranchRepository, LocationRepository } from "./modules/branches/repositories/branch.repository.js";
+import { AuthorService } from "./modules/authors/services/author.service.js";
+import { AuthorRepository } from "./modules/authors/repositories/author.repository.js";
+import { PublisherService } from "./modules/publishers/services/publisher.service.js";
+import { PublisherRepository } from "./modules/publishers/repositories/publisher.repository.js";
+import { CopyService } from "./modules/copies/services/copy.service.js";
+import { CopyController } from "./modules/copies/controllers/copy.controller.js";
+import { CopyRepository } from "./modules/copies/repositories/copy.repository.js";
+import { MemberController } from "./modules/members/controllers/member.controller.js";
+import { MemberService, MembershipTypeService } from "./modules/members/services/member.service.js";
+import { MemberRepository, MembershipEventRepository, MembershipTypeRepository } from "./modules/members/repositories/member.repository.js";
+import { LoanRepository } from "./modules/circulation/repositories/loan.repository.js";
+import { ReservationRepository } from "./modules/circulation/repositories/reservation.repository.js";
+import { CopyAllocator } from "./modules/circulation/services/copy-allocator.js";
+import { CirculationService } from "./modules/circulation/services/circulation.service.js";
+import { ReservationService } from "./modules/circulation/services/reservation.service.js";
+import { FineRepository } from "./modules/finance/repositories/fine.repository.js";
+import { PaymentRepository } from "./modules/finance/repositories/payment.repository.js";
+import { FineService } from "./modules/finance/services/fine.service.js";
+import { PaymentService } from "./modules/finance/services/payment.service.js";
+import { PaymentWebhookService } from "./modules/finance/services/payment-webhook.service.js";
+import { TransferService } from "./modules/transfers/services/transfer.service.js";
+import { TransferRepository } from "./modules/transfers/repositories/transfer.repository.js";
+import { NotificationService } from "./modules/notifications/services/notification.service.js";
+import { NotificationRepository } from "./modules/notifications/repositories/notification.repository.js";
+import { ReminderService } from "./modules/notifications/services/reminder.service.js";
+import { NotificationHub } from "./modules/notifications/services/notification-hub.js";
+import { NotificationChangeStream } from "./modules/notifications/services/notification-change-stream.js";
+import { OrderNotifier } from "./modules/orders/services/order-notifier.js";
+import { PurchaseOrderService, SupplierService } from "./modules/acquisitions/services/acquisition.service.js";
+import { PurchaseOrderRepository, SupplierRepository } from "./modules/acquisitions/repositories/acquisition.repository.js";
+import { InventoryController } from "./modules/inventory/controllers/inventory.controller.js";
+import { StocktakeRepository, StocktakeScanRepository } from "./modules/inventory/repositories/stocktake.repository.js";
+import { StocktakeService } from "./modules/inventory/services/stocktake.service.js";
+import { ReportService } from "./modules/reports/services/report.service.js";
 import {
-  EventRegistrationRepository, EventRepository, EventService, RoomBookingRepository, RoomBookingService, RoomRepository, RoomService,
-} from "./modules/facilities/facility.service.js";
-import { DigitalAccessLogRepository, DigitalLibraryService, DigitalPublicationRepository } from "./modules/digital/digital.service.js";
-import { MongoCatalogSearch } from "./modules/discovery/mongo-catalog-search.js";
-import { CatalogService } from "./modules/discovery/catalog.service.js";
-import { CatalogAssistantService } from "./modules/assistant/assistant.service.js";
-import { ClaudeCatalogModel } from "./modules/assistant/claude-catalog-model.js";
+  EventService, RoomBookingService, RoomService,
+} from "./modules/facilities/services/facility.service.js";
+import { EventRegistrationRepository, EventRepository, RoomBookingRepository, RoomRepository } from "./modules/facilities/repositories/facility.repository.js";
+import { DigitalLibraryService } from "./modules/digital/services/digital.service.js";
+import { DigitalAccessLogRepository, DigitalPublicationRepository } from "./modules/digital/repositories/digital.repository.js";
+import { MongoCatalogSearch } from "./modules/discovery/providers/mongo-catalog-search.js";
+import { CatalogService } from "./modules/discovery/services/catalog.service.js";
+import { CatalogAssistantService } from "./modules/assistant/services/assistant.service.js";
+import { ClaudeCatalogModel } from "./modules/assistant/providers/claude-catalog-model.js";
 
 /**
  * Composition root: builds the whole object graph once. This is the only place
@@ -109,12 +115,16 @@ export function createContainer(config = env, overrides = {}) {
     mailer: config.mail.transport === "gmail" ? new GmailMailer(config.mail) : new LogMailer(),
     passwordHasher: new PasswordHasher(config.saltRounds),
     accessTokens: new JwtTokenService(config.tokenSignature),
+    refreshTokens: new JwtTokenService(
+      createHmac("sha256", config.tokenSignature).update("bookstore:refresh:v1").digest("hex")
+    ),
     emailTokens: new JwtTokenService(config.emailToken),
   });
 
   // ---------- Repositories
   add({
     userRepository: new UserRepository(),
+    authSessionRepository: new AuthSessionRepository(),
     bookRepository: new BookRepository(),
     categoryRepository: new CategoryRepository(),
     cartRepository: new CartRepository(),
@@ -166,6 +176,7 @@ export function createContainer(config = env, overrides = {}) {
     authService: new AuthService({
       ...c,
       emailConfirmation: c.emailConfirmationService,
+      authSessionRepository: c.authSessionRepository,
       requireEmailConfirmation: config.requireEmailConfirmation,
     }),
     userService: new UserService(c),
@@ -212,7 +223,7 @@ export function createContainer(config = env, overrides = {}) {
     // Brute-force protection for credentials, and a cap on assistant questions.
     authRateLimiter: rateLimit({ windowMs: 15 * 60_000, max: 50 }),
     assistantRateLimiter: rateLimit({ windowMs: 60_000, max: 10 }),
-    authController: new AuthController(c.authService, c.emailConfirmationService),
+    authController: new AuthController(c.authService, c.emailConfirmationService, config),
     userController: new UserController(c.userService),
     bookController: new BookController(c.bookService),
     categoryController: new CategoryController(c.categoryService),
@@ -223,6 +234,7 @@ export function createContainer(config = env, overrides = {}) {
     settingsController: new SettingsController(c.settingsService),
     copyController: new CopyController(c.copyService),
     memberController: new MemberController(c.memberService),
+    inventoryController: new InventoryController(c.stocktakeService),
   });
 
   return c;

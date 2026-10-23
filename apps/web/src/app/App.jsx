@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createHashRouter, RouterProvider } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { routes } from "./routes.jsx";
 import Toaster from "../components/ui/Toaster.jsx";
 import { createQueryClient } from "../lib/query-client.js";
 import QueryDevtools from "../components/QueryDevtools.jsx";
 import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
-import { useForgetCartOnSignOut } from "../modules/cart/cart.queries.js";
-import { NotificationStream } from "../modules/account/useNotificationStream.js";
+import { useForgetCartOnSignOut } from "../modules/cart/queries/cart.queries.js";
+import { restoreSession } from "../modules/auth/services/auth.service.js";
+import { NotificationStream } from "../modules/account/hooks/useNotificationStream.js";
 import { onSessionExpired } from "../lib/api-client.js";
 import { toast } from "../components/ui/toast.store.js";
-import { useAuthStore } from "../modules/auth/auth.store.js";
+import { useAuthStore } from "../modules/auth/stores/auth.store.js";
 import { t, useLanguage } from "../i18n/index.js";
+import PageLoader from "../components/ui/PageLoader.jsx";
 
 /**
  * A signed-in request answered 401: the token expired or the account was
@@ -38,19 +41,41 @@ function useSessionExpiry(queryClient) {
 export default function App({ createRouter = createHashRouter, queryClient: providedClient }) {
   const [router] = useState(() => createRouter(routes));
   const [queryClient] = useState(() => providedClient ?? createQueryClient());
+  const [sessionReady, setSessionReady] = useState(() => Boolean(useAuthStore.getState().user));
   useForgetCartOnSignOut(queryClient);
   useSessionExpiry(queryClient);
   // Re-render everything in the new language (and direction) when it changes;
   // the router, its location and the data cache are kept.
   const { language } = useLanguage();
 
+  useEffect(() => {
+    if (useAuthStore.getState().user) return undefined;
+    let mounted = true;
+    Promise.resolve()
+      .then(restoreSession)
+      .then((token) => {
+        if (mounted && token) useAuthStore.getState().signIn(token);
+      })
+      .catch((error) => {
+        console.error(`[auth] session restore failed: ${error.message}`);
+      })
+      .finally(() => {
+        if (mounted) setSessionReady(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider key={language} router={router} />
-      <NotificationStream />
-      <Toaster />
-      <ConfirmDialog />
-      <QueryDevtools />
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        {sessionReady ? <RouterProvider key={language} router={router} /> : <PageLoader />}
+        <NotificationStream />
+        <Toaster />
+        <ConfirmDialog />
+        <QueryDevtools />
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }

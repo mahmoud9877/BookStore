@@ -1,9 +1,26 @@
 import axios from "axios";
-import { getAuthToken } from "./auth-token.js";
+import { getAuthToken, setAuthToken } from "./auth-token.js";
 import { currentLanguage, t } from "../i18n/index.js";
 import { API_BASE_URL, BEARER_KEY } from "../config/api.js";
 
 export const apiClient = axios.create({ baseURL: API_BASE_URL });
+let refreshRequest = null;
+
+export function refreshAccessToken() {
+  refreshRequest ??= axios
+    .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+    .then(({ data }) => {
+      const token = data.accessToken ?? data.token;
+      if (!token) throw new Error("Token refresh response did not include an access token");
+      setAuthToken(token);
+      window.dispatchEvent(new CustomEvent("auth-token-refreshed", { detail: token }));
+      return token;
+    })
+    .finally(() => {
+      refreshRequest = null;
+    });
+  return refreshRequest;
+}
 
 apiClient.interceptors.request.use((config) => {
   const token = getAuthToken();
@@ -26,7 +43,31 @@ export const onSessionExpired = (handler) => {
 };
 
 apiClient.interceptors.response.use(undefined, (error) => {
-  const sentToken = Boolean(error?.config?.headers?.authorization);
+  const config = error?.config;
+  const sentToken = Boolean(config?.headers?.authorization);
+  const shouldRefresh =
+    error?.response?.status === 401 &&
+    sentToken &&
+    !config._retry &&
+    !config.url?.includes("/auth/refresh") &&
+    !config.url?.includes("/auth/login");
+
+  if (shouldRefresh) {
+    config._retry = true;
+    return refreshAccessToken().then(
+      (token) => {
+        config.headers.authorization = `${BEARER_KEY}${token}`;
+        return apiClient(config);
+      },
+      (refreshError) => {
+        if ([401, 403].includes(refreshError?.response?.status) && unauthorizedHandler) {
+          unauthorizedHandler(refreshError.response.data?.message);
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
   if (error?.response?.status === 401 && sentToken && unauthorizedHandler) {
     unauthorizedHandler(error.response.data?.message);
   }

@@ -5,21 +5,21 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { makeToken } from "./make-token.js";
 import { resetStores } from "./reset-stores.js";
 import { createQueryClient } from "../lib/query-client.js";
-import { useAuthStore } from "../modules/auth/auth.store.js";
+import { useAuthStore } from "../modules/auth/stores/auth.store.js";
 import Toaster from "../components/ui/Toaster.jsx";
 import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
 
 /**
  * Renders one page with the app's providers, signed in (`claims` go into the
- * token) at `path`. Pair with `jest.mock("../../lib/api-client.js", ...)` or a
+ * token) at `path`. Pair with `jest.mock("../lib/api-client.js", ...)` or a
  * mocked service module to control API responses.
  * `route` is the route pattern (e.g. "/dashboard/members/:memberId").
  */
 export function renderPage(element, { path = "/", route = path, claims = { role: "Admin", userName: "Staff" } } = {}) {
   localStorage.clear();
   resetStores();
-  if (claims) localStorage.setItem("userToken", makeToken(claims));
-  useAuthStore.getState().syncFromStorage();
+  if (claims) useAuthStore.getState().signIn(makeToken(claims));
+  else useAuthStore.getState().syncSession();
   const queryClient = createQueryClient({ queries: { retry: false } });
   return render(
     <QueryClientProvider client={queryClient}>

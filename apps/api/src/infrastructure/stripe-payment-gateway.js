@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { PAYMENT_OUTCOMES } from "../modules/orders/payment-gateway.js";
+import { PAYMENT_OUTCOMES } from "../modules/orders/providers/payment-gateway.js";
 import { BadRequestError, ServiceUnavailableError } from "../core/http-errors.js";
 
 const OUTCOME_BY_EVENT_TYPE = {

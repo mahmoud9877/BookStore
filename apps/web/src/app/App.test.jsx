@@ -3,31 +3,38 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router-dom";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App.jsx";
-import { useAuthStore } from "../modules/auth/auth.store.js";
+import { useAuthStore } from "../modules/auth/stores/auth.store.js";
 import { makeToken } from "../test-utils/make-token.js";
 import { resetStores } from "../test-utils/reset-stores.js";
+import { getAuthToken } from "../lib/auth-token.js";
 import { createQueryClient } from "../lib/query-client.js";
-import * as authService from "../modules/auth/auth.service.js";
-import * as bookService from "../modules/books/book.service.js";
-import * as cartService from "../modules/cart/cart.service.js";
-import * as orderService from "../modules/orders/order.service.js";
-import * as categoryService from "../modules/categories/category.service.js";
-import * as userService from "../modules/users/user.service.js";
-import * as roleService from "../modules/roles/role.service.js";
+import * as authService from "../modules/auth/services/auth.service.js";
+import * as bookService from "../modules/books/services/book.service.js";
+import * as cartService from "../modules/cart/services/cart.service.js";
+import * as orderService from "../modules/orders/services/order.service.js";
+import * as categoryService from "../modules/categories/services/category.service.js";
+import * as userService from "../modules/users/services/user.service.js";
+import * as roleService from "../modules/roles/services/role.service.js";
 
 jest.mock("react-detect-offline", () => ({ Offline: () => null }));
-jest.mock("../modules/auth/auth.service.js");
-jest.mock("../modules/books/book.service.js");
-jest.mock("../modules/cart/cart.service.js");
-jest.mock("../modules/orders/order.service.js");
-jest.mock("../modules/categories/category.service.js");
-jest.mock("../modules/users/user.service.js");
-jest.mock("../modules/roles/role.service.js");
-jest.mock("../modules/assistant/assistant.service.js", () => ({
+jest.mock("../modules/auth/services/auth.service.js", () => ({
+  getCurrentUser: jest.fn(),
+  login: jest.fn(),
+  logout: jest.fn(),
+  restoreSession: jest.fn().mockResolvedValue(null),
+  signup: jest.fn(),
+}));
+jest.mock("../modules/books/services/book.service.js");
+jest.mock("../modules/cart/services/cart.service.js");
+jest.mock("../modules/orders/services/order.service.js");
+jest.mock("../modules/categories/services/category.service.js");
+jest.mock("../modules/users/services/user.service.js");
+jest.mock("../modules/roles/services/role.service.js");
+jest.mock("../modules/assistant/services/assistant.service.js", () => ({
   getAssistantStatus: async () => ({ ai: false }),
   askAssistant: jest.fn(),
 }));
-jest.mock("../modules/branches/branch.queries.js", () => ({
+jest.mock("../modules/branches/queries/branch.queries.js", () => ({
   useActiveBranches: () => ({ data: [{ _id: "br1", code: "MAIN", name: "Main Library" }], isLoading: false }),
 }));
 
@@ -47,8 +54,8 @@ const BOOKS = [
 const CART_ITEM = { bookId: "b1", bookTitle: "dune", price: 320, quantity: 2, image: "" };
 
 function renderAt(path, { token } = {}) {
-  if (token) localStorage.setItem("userToken", token);
-  useAuthStore.getState().syncFromStorage(); // the store read localStorage when the module loaded
+  if (token) useAuthStore.getState().signIn(token);
+  else useAuthStore.getState().syncSession();
   const createRouter = (routes) => createMemoryRouter(routes, { initialEntries: [path] });
   // A fresh cache per test, without retries, so tests are isolated and fail fast.
   const queryClient = createQueryClient({ queries: { retry: false } });
@@ -67,6 +74,7 @@ const signInHeading = () => screen.findByRole("heading", { name: "Sign in" });
 beforeEach(() => {
   localStorage.clear();
   resetStores();
+  authService.restoreSession.mockResolvedValue(null);
   bookService.listBooks.mockResolvedValue(BOOKS);
   // The home page searches on the server; emulate its text and category filters.
   bookService.searchCatalog.mockImplementation(async ({ q = "", category } = {}) => {
@@ -88,6 +96,7 @@ beforeEach(() => {
     const { role } = useAuthStore.getState().user ?? {};
     return { role, permissions: role === "Admin" ? ALL_PERMISSIONS : [] };
   });
+  authService.logout.mockResolvedValue({ message: "Done" });
 });
 
 describe("landing page", () => {
@@ -199,7 +208,7 @@ describe("accounts", () => {
 
     expect(await screen.findByRole("button", { name: "Account menu for reader" })).toBeInTheDocument();
     expect(authService.login).toHaveBeenCalledWith({ email: "reader@example.com", password: "secret1" });
-    expect(localStorage.getItem("userToken")).toBeTruthy();
+    expect(getAuthToken()).toBeTruthy();
   });
 
   test("staff land in the workspace after signing in", async () => {
@@ -239,10 +248,10 @@ describe("accounts", () => {
     );
   });
 
-  test("expired sessions are discarded and protected pages ask to sign in", async () => {
+  test("expired access tokens remain available for refresh when a protected page loads", async () => {
     renderAt("/cart", { token: makeToken({ exp: Date.now() / 1000 - 60 }) });
-    expect(await signInHeading()).toBeInTheDocument();
-    expect(localStorage.getItem("userToken")).toBeNull();
+    expect(await screen.findByText("Your cart is empty")).toBeInTheDocument();
+    expect(getAuthToken()).toBeTruthy();
   });
 
   test("signing out from the account menu confirms it and clears the session", async () => {
@@ -252,7 +261,7 @@ describe("accounts", () => {
 
     expect(await signInHeading()).toBeInTheDocument();
     expect(screen.getByText("You've been signed out.")).toBeInTheDocument();
-    expect(localStorage.getItem("userToken")).toBeNull();
+    expect(getAuthToken()).toBeNull();
   });
 
   test("the profile shows the account and relevant links", async () => {

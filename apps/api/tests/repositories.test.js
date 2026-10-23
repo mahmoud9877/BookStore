@@ -5,8 +5,8 @@ import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
 import { BaseRepository } from "../src/core/base-repository.js";
-import { CartRepository } from "../src/modules/cart/cart.repository.js";
-import { BookRepository } from "../src/modules/books/book.repository.js";
+import { CartRepository } from "../src/modules/cart/repositories/cart.repository.js";
+import { BookRepository } from "../src/modules/books/repositories/book.repository.js";
 
 /** A query stand-in: chainable, and `.lean()` resolves `result`. */
 const query = (result) => {

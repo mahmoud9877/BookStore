@@ -3,21 +3,21 @@
 import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { RegisterUserDto } from "../src/modules/auth/auth.dto.js";
-import { UserResponseDto } from "../src/modules/users/user.dto.js";
-import { AddToCartDto, CartResponseDto } from "../src/modules/cart/cart.dto.js";
+import { RegisterUserDto } from "../src/modules/auth/dtos/auth.dto.js";
+import { UserResponseDto } from "../src/modules/users/dtos/user.dto.js";
+import { AddToCartDto, CartResponseDto } from "../src/modules/cart/dtos/cart.dto.js";
 import {
   BookResponseDto,
   CreateBookDto,
   ListBooksQueryDto,
   UpdateBookDto,
-} from "../src/modules/books/book.dto.js";
+} from "../src/modules/books/dtos/book.dto.js";
 import {
   CheckoutSessionResponseDto,
   CreateOrderDto,
   OrderResponseDto,
-} from "../src/modules/orders/order.dto.js";
-import { BranchDtos } from "../src/modules/branches/branch.dto.js";
+} from "../src/modules/orders/dtos/order.dto.js";
+import { BranchDtos } from "../src/modules/branches/dtos/branch.dto.js";
 
 const id = () => new Types.ObjectId().toString();
 

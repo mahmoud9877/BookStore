@@ -1,5 +1,5 @@
 import React from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 /** Page title (document + heading), an optional description and actions on the right. */
 export default function PageHeader({ title, description, actions, documentTitle }) {

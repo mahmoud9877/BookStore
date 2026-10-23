@@ -1,13 +1,17 @@
 import { BEARER_KEY } from "../config/api.js";
 import { apiClient, getErrorMessage } from "./api-client.js";
+import { clearAuthToken, setAuthToken } from "./auth-token.js";
 
 const runRequestInterceptors = (config) =>
   apiClient.interceptors.request.handlers.reduce((current, { fulfilled }) => fulfilled(current), config);
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  clearAuthToken();
+});
 
-test("prefixes the stored token with the bearer key and no space", () => {
-  localStorage.setItem("userToken", "abc.def.ghi");
+test("prefixes the in-memory token with the bearer key and no space", () => {
+  setAuthToken("abc.def.ghi");
   const config = runRequestInterceptors({ headers: {} });
   expect(config.headers.authorization).toBe(`${BEARER_KEY}abc.def.ghi`);
 });

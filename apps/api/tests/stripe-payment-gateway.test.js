@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { PAYMENT_OUTCOMES } from "../src/modules/orders/payment-gateway.js";
+import { PAYMENT_OUTCOMES } from "../src/modules/orders/providers/payment-gateway.js";
 import { StripePaymentGateway } from "../src/infrastructure/stripe-payment-gateway.js";
 
 const webhookSecret = "whsec_unit_test";

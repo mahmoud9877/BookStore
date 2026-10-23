@@ -1,6 +1,6 @@
 # Bookstore web app
 
-React 18 single-page app (Create React App). See the [root README](../../README.md) for
+React 19 single-page app (Create React App). See the [root README](../../README.md) for
 setup and Docker and [docs/architecture.md](../../docs/architecture.md) for structure.
 
 ```bash

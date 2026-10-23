@@ -80,8 +80,8 @@ export const env = Object.freeze({
     // "gmail" sends real email; "log" only logs (the default outside production).
     transport: process.env.MAIL_TRANSPORT || (nodeEnv === "production" ? "gmail" : "log"),
   }),
-  // Browser origins allowed to call the API (comma-separated). Unset: any origin —
-  // acceptable because auth is a bearer header, never a cookie.
+  // Browser origins allowed to call the API (comma-separated). Refresh cookies
+  // still require a trusted Origin, even when the CORS list is unset.
   corsOrigins: process.env.CORS_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? null,
   // Files on disk: public covers (served at /uploads) and private documents.
   uploadDir: process.env.UPLOAD_DIR || path.join(apiRoot, "uploads"),

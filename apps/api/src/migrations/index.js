@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
-import { couponModel } from "../modules/coupons/coupon.model.js";
-import { linkLegacyBookCategories } from "../modules/books/link-legacy-categories.js";
-import { workKeyOf } from "../modules/books/book.model.js";
-import { DEFAULT_STAFF_ROLES } from "../modules/roles/permissions.js";
-import { findSystemRole } from "../modules/roles/system-roles.js";
+import { couponModel } from "../modules/coupons/models/coupon.model.js";
+import { linkLegacyBookCategories } from "../modules/books/utils/link-legacy-categories.js";
+import { workKeyOf } from "../modules/books/models/book.model.js";
+import { DEFAULT_STAFF_ROLES } from "../modules/roles/constants/permissions.js";
+import { findSystemRole } from "../modules/roles/constants/system-roles.js";
+import { authSessionModel } from "../modules/auth/models/auth-session.model.js";
 
 /**
  * Ordered, idempotent migrations (`npm run migrate`). They only add data or
@@ -96,6 +97,14 @@ export const MIGRATIONS = [
     async up() {
       // Production does not auto-create indexes, and the first index migration ran before coupons existed.
       await couponModel.createIndexes();
+      return { created: true };
+    },
+  },
+  {
+    id: "2026-10-23-02-auth-session-indexes",
+    description: "Create indexes for rotating and expiring refresh-token sessions",
+    async up() {
+      await authSessionModel.createIndexes();
       return { created: true };
     },
   },

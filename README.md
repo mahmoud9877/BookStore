@@ -10,9 +10,9 @@ log — with role-based, branch-scoped permissions and a member self-service por
 
 | App | Path | Stack |
 | --- | --- | --- |
-| API | [`apps/api`](apps/api) | Node.js 20, Express 4, MongoDB 7 replica set (Mongoose 6, transactions), Joi, JWT, Stripe, Nodemailer, optional Cloudinary and Claude (`@anthropic-ai/sdk`) |
+| API | [`apps/api`](apps/api) | Node.js 24, Express 5, MongoDB 7 replica set (Mongoose 6, transactions), Joi, JWT, Stripe, Nodemailer, optional Cloudinary and Claude (`@anthropic-ai/sdk`) |
 | Worker | [`apps/api/src/worker.js`](apps/api/src/worker.js) | Same code base: email delivery and scheduled jobs |
-| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), TanStack Query, Zustand, Bootstrap 5, Axios, English/Arabic interface with RTL support |
+| Web | [`apps/web`](apps/web) | React 19 (Create React App), React Router 6 (hash routing), TanStack Query, Zustand, Bootstrap 5, Axios, English/Arabic interface with RTL support |
 
 Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 [API reference](docs/api.md).
@@ -50,8 +50,9 @@ Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 │   │   │   ├── infrastructure/  Database, TransactionRunner, SequenceGenerator, JobScheduler,
 │   │   │   │                    LocalFileStorage, Cloudinary, Stripe, Gmail/Log mailers
 │   │   │   ├── middleware/      AuthGuard (permissions + branch scope), validate, upload, rate limit, errors
-│   │   │   ├── modules/         one folder per module: routes → controller → service →
-│   │   │   │                    repository → model, DTOs in <entity>.dto.js
+│   │   │   ├── modules/         one folder per feature; layer folders (controllers/, dtos/,
+│   │   │   │                    models/, repositories/, routes/, services/) plus helpers
+│   │   │   │                    (constants/, policies/, providers/, templates/, utils/) as needed
 │   │   │   ├── migrations/      ordered, idempotent data/index migrations + runner
 │   │   │   ├── container.js     composition root
 │   │   │   ├── app.js           createApp(container)
@@ -67,11 +68,8 @@ Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 │           ├── app/             App.jsx, routes.jsx
 │           ├── lib/             api-client, resource hooks (paged queries, mutations), formatting
 │           ├── components/ui/   DataTable, Pagination, PageHeader, StatusBadge, Modal, forms, toasts…
-│           ├── modules/         admin (dashboard shell), circulation, members, finance, books,
-│           │                    cart, coupons, orders, copies, authors, digital, transfers,
-│           │                    inventory, acquisitions,
-│           │                    branches, facilities, reports, audit, settings, users, roles,
-│           │                    account (member portal), assistant, auth, profile
+│           ├── modules/         feature folders; pages/, components/, queries/, services/,
+│           │                    hooks/, utilities and __tests__ grouped by feature
 │           └── layouts/, hooks/, styles/
 ├── docs/                        architecture.md, api.md
 ├── scripts/                     seed-dev-data.sh, smoke-test.sh
@@ -219,7 +217,10 @@ All variables are documented in [`.env.example`](.env.example).
 
 ## Authentication and permissions
 
-`POST /auth/login` returns a JWT; requests send `Authorization: <BEARER_KEY><token>`.
+`POST /auth/login` returns a 15-minute access token and sets a rotating seven-day
+refresh token in an HttpOnly cookie. The web client refreshes access tokens automatically;
+configure `FRONTEND_URL` and `CORS_ORIGINS` when hosting the API and web app on separate origins.
+Requests send `Authorization: <BEARER_KEY><access-token>`.
 Permissions are checked on the server for every request and come from the account's
 role (looked up per request, so changes and deactivations apply immediately). Roles
 have a branch scope (`all` or the account's assigned branches). Built in: **Admin**

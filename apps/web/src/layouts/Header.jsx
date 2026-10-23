@@ -2,11 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import UserMenu from "./UserMenu.jsx";
 import Brand from "../components/ui/Brand.jsx";
-import { useCartCount } from "../modules/cart/cart.queries.js";
-import { selectUser, useAuthStore } from "../modules/auth/auth.store.js";
-import { useAdminSections } from "../modules/admin/useAdminSections.js";
-import useSignOut from "../modules/auth/useSignOut.js";
-import NotificationBell from "../modules/account/NotificationBell.jsx";
+import { useCartCount } from "../modules/cart/queries/cart.queries.js";
+import { selectUser, useAuthStore } from "../modules/auth/stores/auth.store.js";
+import { useAdminSections } from "../modules/admin/hooks/useAdminSections.js";
+import useSignOut from "../modules/auth/hooks/useSignOut.js";
+import NotificationBell from "../modules/account/components/NotificationBell.jsx";
 import LanguageSwitch from "../components/ui/LanguageSwitch.jsx";
 import { t, tp } from "../i18n/index.js";
 

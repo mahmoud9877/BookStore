@@ -1,5 +1,5 @@
 import { cleanMobileInput, isValidMobile, joinMobile, mobileCountries, splitMobile } from "./phone.js";
-import { checkoutSchema } from "../modules/cart/checkout.validation.js";
+import { checkoutSchema } from "../modules/cart/utils/checkout.validation.js";
 
 test("mobile numbers: local Egyptian and international forms", () => {
   for (const phone of ["01012345678", "010 1234 5678", "+20 10 1234 5678", "+44 7911 123456"]) expect(isValidMobile(phone)).toBe(true);

@@ -1,17 +1,17 @@
 // Pure library rules and helpers: no database, no HTTP.
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
-import { daysLate, lostItemFee, overdueFine } from "../src/modules/finance/fine-policy.js";
-import { MemberPolicy, addMonths } from "../src/modules/members/member-policy.js";
-import { canAdjust } from "../src/modules/copies/copy-statuses.js";
-import { isValidIsbn } from "../src/modules/books/isbn.js";
-import { toCsv } from "../src/modules/reports/csv.js";
-import { sanitize } from "../src/modules/audit/audit.service.js";
+import { daysLate, lostItemFee, overdueFine } from "../src/modules/finance/policies/fine-policy.js";
+import { MemberPolicy, addMonths } from "../src/modules/members/policies/member-policy.js";
+import { canAdjust } from "../src/modules/copies/constants/copy-statuses.js";
+import { isValidIsbn } from "../src/modules/books/utils/isbn.js";
+import { toCsv } from "../src/modules/reports/utils/csv.js";
+import { sanitize } from "../src/modules/audit/services/audit.service.js";
 import { rateLimit } from "../src/middleware/rate-limit.js";
-import { renderTemplate } from "../src/modules/notifications/notification.service.js";
-import { withDefaults } from "../src/modules/settings/library-settings.js";
+import { renderTemplate } from "../src/modules/notifications/services/notification.service.js";
+import { withDefaults } from "../src/modules/settings/constants/library-settings.js";
 import { AccessContext } from "../src/core/access-context.js";
-import { CatalogAssistantService, keywordsOf } from "../src/modules/assistant/assistant.service.js";
+import { CatalogAssistantService, keywordsOf } from "../src/modules/assistant/services/assistant.service.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 

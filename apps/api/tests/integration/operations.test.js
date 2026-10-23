@@ -1,7 +1,7 @@
 // Finance, inventory, acquisitions and rooms on a real MongoDB replica set.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { PAYMENT_OUTCOMES } from "../../src/modules/orders/payment-gateway.js";
+import { PAYMENT_OUTCOMES } from "../../src/modules/orders/providers/payment-gateway.js";
 import { ADMIN, DAY, seedLibrary, staffAt, useDatabase } from "./harness.js";
 
 const rejects = (promise, status, message) =>

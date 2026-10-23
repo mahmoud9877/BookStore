@@ -5,7 +5,7 @@
 import { env } from "./config/env.js";
 import { createContainer } from "./container.js";
 import { AccessContext } from "./core/access-context.js";
-import { ALL_PERMISSIONS } from "./modules/roles/permissions.js";
+import { ALL_PERMISSIONS } from "./modules/roles/constants/permissions.js";
 
 if (env.isProduction) {
   console.error("Refusing to seed demo data in production.");

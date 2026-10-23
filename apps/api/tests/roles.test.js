@@ -4,10 +4,10 @@ import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
 import { HttpError } from "../src/core/http-errors.js";
-import { RoleService } from "../src/modules/roles/role.service.js";
-import { UserService } from "../src/modules/users/user.service.js";
-import { PERMISSIONS, ALL_PERMISSIONS } from "../src/modules/roles/permissions.js";
-import { linkLegacyBookCategories } from "../src/modules/books/link-legacy-categories.js";
+import { RoleService } from "../src/modules/roles/services/role.service.js";
+import { UserService } from "../src/modules/users/services/user.service.js";
+import { PERMISSIONS, ALL_PERMISSIONS } from "../src/modules/roles/constants/permissions.js";
+import { linkLegacyBookCategories } from "../src/modules/books/utils/link-legacy-categories.js";
 import { authenticateAs, expectValidationError, makeUser, useTestServer } from "./helpers.js";
 
 const fake = (methods) =>

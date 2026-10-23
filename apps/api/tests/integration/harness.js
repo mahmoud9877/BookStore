@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { after, before } from "node:test";
 import { createContainer } from "../../src/container.js";
 import { AccessContext } from "../../src/core/access-context.js";
-import { ALL_PERMISSIONS } from "../../src/modules/roles/permissions.js";
+import { ALL_PERMISSIONS } from "../../src/modules/roles/constants/permissions.js";
 import { MIGRATIONS } from "../../src/migrations/index.js";
 
 /** Full access, like an Admin at every branch. */

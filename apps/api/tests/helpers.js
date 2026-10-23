@@ -37,7 +37,7 @@ export async function startServer(overrides = {}) {
     } catch {
       json = undefined;
     }
-    return { status: response.status, json, text };
+    return { status: response.status, json, text, headers: response.headers };
   };
 
   return {

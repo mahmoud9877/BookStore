@@ -36,18 +36,20 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 
 | Layer | Files | Responsibility | May depend on |
 | --- | --- | --- | --- |
-| Routes | `<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, `validate(XDto)`, upload) → controller method | controller, `AuthGuard`, request DTOs |
-| DTOs | `<entity>.dto.js` | Request DTOs: Joi schema + typed, whitelisted input. Response DTOs: the fields that leave the API | `core/dto.js` |
-| Controller | `<entity>.controller.js` (`class XController`) | Pass `req.dto` to one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
-| Service | `<entity>.service.js` (`class XService`) | Business rules, multi-step workflows; takes request DTOs, returns response DTOs; throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
-| Repository | `<entity>.repository.js` (`class XRepository extends BaseRepository`) | **Every** database read and write for one model, including multi-step operations such as all-or-nothing stock reservation; returns plain objects | its Mongoose model |
+| Routes | `modules/<feature>/routes/<entity>.routes.js` (`createXRouter({ xController, authGuard })`) | URL → middleware chain (auth, `validate(XDto)`, upload) → controller method | controller, `AuthGuard`, request DTOs |
+| DTOs | `modules/<feature>/dtos/<entity>.dto.js` | Request DTOs: Joi schema + typed, whitelisted input. Response DTOs: the fields that leave the API | `core/dto.js` |
+| Controller | `modules/<feature>/controllers/<entity>.controller.js` (`class XController`) | Pass `req.dto` to one service method, choose status code and response shape — no business rules, validation, coercion or configuration | its service |
+| Service | `modules/<feature>/services/<entity>.service.js` (`class XService`) | Business rules, multi-step workflows; takes request DTOs, returns response DTOs; throws `HttpError` subclasses | repositories and infrastructure **passed to its constructor** |
+| Repository | `modules/<feature>/repositories/<entity>.repository.js` (`class XRepository extends BaseRepository`) | **Every** database read and write for one model, including multi-step operations such as all-or-nothing stock reservation; returns plain objects | its Mongoose model |
+| Model | `modules/<feature>/models/<entity>.model.js` | Mongoose schema and model definition | Mongoose |
+| Module support | `constants/`, `policies/`, `providers/`, `templates/`, `utils/` | Feature-specific constants, business rules, adapter implementations, templates and pure helpers | shared core or infrastructure |
 
 - **SOLID in practice:**
   - *Single responsibility* — `AuthService` (register, login), `EmailConfirmationService`
     (confirmation tokens, email, confirm/resend) and `UserService` (user administration)
-    are separate; order status rules live in `OrderPolicy` (`modules/orders/order-policy.js`).
+    are separate; order status rules live in `OrderPolicy` (`modules/orders/policies/order-policy.js`).
   - *Dependency inversion / open–closed* — `OrderService` depends on a payment **port**
-    (`modules/orders/payment-gateway.js`: `createCheckout`, `parseWebhookEvent` →
+    (`modules/orders/providers/payment-gateway.js`: `createCheckout`, `parseWebhookEvent` →
     `PAYMENT_OUTCOMES`). `StripePaymentGateway` is one adapter; it alone knows Stripe's
     line-item format, minor units and event types. Another provider is a new adapter
     wired in `container.js`, with no change to the order domain.
@@ -68,7 +70,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   To swap an implementation (e.g. another payment provider), change it there.
 - **Encapsulation:** collaborators are stored in private `#fields`; controller handlers are
   arrow-function class fields, so they can be passed to Express without `bind`.
-- **DTOs** (`src/core/dto.js`, `modules/*/<entity>.dto.js`):
+- **DTOs** (`src/core/dto.js`, `modules/*/dtos/<entity>.dto.js`):
   - *Request DTOs* (`CreateBookDto`, `AddToCartDto`, …) extend `RequestDto`: a static Joi
     `schema` plus a constructor that copies only the declared fields. `validate(XDto)`
     validates the merged body/params/query, applies Joi conversion and defaults
@@ -87,7 +89,8 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   short) and `releaseStock` (one `bulkWrite`). Services decide *what* should happen and
   coordinate across repositories (e.g. release reserved stock if creating the order
   fails); repositories decide *how* it is done in MongoDB. Shared constants live in
-  `order-statuses.js` and `roles/permissions.js`, so services never import model files.
+  `modules/orders/constants/order-statuses.js` and `modules/roles/constants/permissions.js`,
+  so services never import model files.
 - **Thin controllers:** a controller method extracts input from `req`, awaits exactly one
   service call and maps the result to a response. The only branches left choose the
   response form from facts the service reports (redirect vs JSON after email confirmation,
@@ -101,7 +104,7 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
 - **Authorization (RBAC):** routes declare the permission they need,
   `authGuard.requirePermission(PERMISSIONS.BooksManage)`; the guard resolves the user's role
   through `RoleService.permissionsFor()` on every request. The built-in `Admin` (all
-  permissions) and `User` (none) roles live in code (`roles/system-roles.js`) and never
+  permissions) and `User` (none) roles live in code (`roles/constants/system-roles.js`) and never
   touch the database; custom roles are documents in `roles` and users reference a role by
   name. `RoleService.assertCanGrant()` stops privilege escalation: nobody grants or removes
   a permission they lack, whether by editing a role or by changing an account's role.
@@ -111,8 +114,9 @@ routes ──► Controller ──► Service ──► Repository ──► Mon
   cannot be deleted. Books saved when the category was a name are re-linked at startup by
   `linkLegacyBookCategories()` (idempotent; creates a missing category instead of
   orphaning a book).
-- **Security helpers** are classes too: `PasswordHasher` and `JwtTokenService` (two
-  instances: login tokens signed with `TOKEN_SIGNATURE`, email tokens with `EMAIL_TOKEN`).
+- **Security helpers** are classes too: `PasswordHasher` and `JwtTokenService` (access
+  tokens use `TOKEN_SIGNATURE`, the refresh-token key is derived separately and sessions
+  store only refresh-token hashes, and email tokens use `EMAIL_TOKEN`).
 - **Stock:** `book.quantity` is stock. `OrderService` reserves it atomically per item
   (`BookRepository.decrementStock`, a conditional `$inc`) and releases it on failure,
   cancellation and expired checkouts.
@@ -147,8 +151,10 @@ Branch 1─* Room 1─* RoomBooking ; Event *─1 Room? ; Event 1─* EventRegis
 AuditLog, Setting, Notification (outbox, dedupe key unique), Counter, JobLock, Migration
 ```
 
-**State machines** live next to the models (`copy-statuses.js`, `circulation-statuses.js`,
-`finance-statuses.js`, `transfer.model.js`, `acquisition.model.js`) and every transition is
+**State machines** live next to their modules (`copies/constants/copy-statuses.js`,
+`circulation/constants/circulation-statuses.js`, `finance/constants/finance-statuses.js`,
+`transfers/models/transfer.model.js`,
+`acquisitions/models/acquisition.model.js`) and every transition is
 a *guarded* update (`updateWhere({ _id, status: <expected> }, …)`): if another request got
 there first, nothing changes and the service answers `409`.
 
@@ -201,10 +207,12 @@ start-up when migrations are pending; it never runs them by itself.
 
 ### Web (`apps/web`)
 
-- **Feature modules** (`src/modules/<feature>/`) hold pages (`*Page.jsx`), their child
-  components (e.g. `BookForm`, `BookList`, `CartItemCard`, `OrderForm`), the feature's API
-  calls (`*.service.js`) and validation. Pages coordinate; components render; services
-  talk to the API. Pages never call axios directly.
+- **Feature modules** (`src/modules/<feature>/`) group code by UI responsibility:
+  `pages/` for route-level screens, `components/` for feature UI, `queries/` for TanStack
+  Query hooks, `services/` for API calls, `hooks/` for feature hooks, and `utils/` for
+  validation and pure helpers. `stores/`, `constants/`, and `__tests__/` are used when
+  needed. Pages coordinate; components render; services talk to the API. Pages never call
+  axios directly.
 - **Design system** (`src/styles/theme.css`): brand tokens on `:root` (burgundy `#630E2B`,
   shared with the confirmation email; warm paper background; serif headings) mapped onto
   Bootstrap's CSS variables, so stock Bootstrap components are on-brand. No other global
@@ -229,7 +237,7 @@ start-up when migrations are pending; it never runs them by itself.
 - **`lib/api-client.js`** is the single axios instance; it attaches
   `Authorization: <BEARER_KEY><token>` and `getErrorMessage()` turns API errors into UI text.
 - **State management** is split by where the truth lives:
-  - **Server state → TanStack Query** (`lib/query-client.js`, `modules/*/*.queries.js`).
+  - **Server state → TanStack Query** (`lib/query-client.js`, `modules/*/queries/*.queries.js`).
     Books, a book's details, categories, users, roles, the current user's permissions and the cart are cached queries; every
     write is a mutation that updates or invalidates the cache.
 
@@ -250,7 +258,7 @@ start-up when migrations are pending; it never runs them by itself.
     `useForgetCartOnSignOut` drops the previous user's cart from the cache (also when
     signing out in another tab). Devtools load only in development.
   - **Client state → Zustand**: `auth.store.js` (the session, mirrored from the stored
-    JWT and synced across tabs), `toast.store.js` (`toast.success()` + `<Toaster />`) and
+    in-memory access token, refreshed from an HttpOnly cookie), `toast.store.js` (`toast.success()` + `<Toaster />`) and
     `confirm.store.js` (`await confirm()` + `<ConfirmDialog />`). Components subscribe via
     selectors (`selectUser`, `selectIsSignedIn`) so they re-render only for their slice.
 
@@ -274,12 +282,12 @@ start-up when migrations are pending; it never runs them by itself.
   | `/` | Product (landing) page | `modules/landing` — own header/footer |
   | `/catalog`, `/book/:id`, `/digital`, `/events`, `/login`, `/signup`, `/cart` | Public catalogue and shop | `layouts/RootLayout` (site header/footer) |
   | `/account/*` | Member portal (loans, reservations, fines, notifications, bookings) | `RootLayout` + `AccountLayout` (library-card header) |
-  | `/dashboard/*` | Staff workspace | `modules/admin/AppShell` (navy sidebar, top bar, breadcrumbs) |
+  | `/dashboard/*` | Staff workspace | `modules/admin/components/AppShell` (navy sidebar, top bar, breadcrumbs) |
 
   Old catalogue links (`/?category=…`, `/?q=…`) redirect to `/catalog`. After sign-in,
   members go to `/account` and staff to `/dashboard` (unless they were sent to sign in
   from a specific page). Every page is a lazily loaded chunk (`app/routes.jsx`).
-- **Navigation follows permissions:** `modules/admin/admin-sections.js` maps each
+- **Navigation follows permissions:** `modules/admin/constants/admin-sections.js` maps each
   workspace section to the permissions of its API endpoints; the sidebar, the routes and
   the header links show only what the role grants. The API enforces the same rules.
 - **Design tokens** (`styles/theme.css`, `:root`): navy brand scale (`--brand-900…50`,
@@ -320,11 +328,11 @@ comment instead.
 
 | Thing | Convention | Example |
 | --- | --- | --- |
-| Folders | lowercase, kebab-case, plural for collections of entities | `modules/books`, `middleware` |
-| API module files | `<entity>.<role>.js` | `book.routes.js`, `order.service.js`, `user.repository.js` |
+| Folders | lowercase, kebab-case, plural for collections of entities | `modules/books`, `modules/inventory/controllers`, `middleware` |
+| API module files | `<entity>.<role>.js`, grouped by role folder | `books/routes/book.routes.js`, `orders/services/order.service.js`, `inventory/controllers/inventory.controller.js` |
 | API classes | PascalCase, named after their role | `OrderService`, `BookRepository`, `StripePaymentGateway` |
 | DTO classes | `<Action><Entity>Dto` for requests, `<Entity>ResponseDto` for responses | `CreateOrderDto`, `CartResponseDto` |
-| Other API files | kebab-case | `error-handler.js`, `confirmation-email.template.js` |
+| Other API files | kebab-case, grouped by purpose | `error-handler.js`, `auth/templates/confirmation-email.template.js` |
 | React components / pages | PascalCase file = component name; pages end in `Page` | `CartPage.jsx`, `RootLayout.jsx` |
 | Hooks | `useX.js` | `useBooks.js` |
 | Web services / utilities | `<feature>.service.js`, kebab-case | `cart.service.js`, `api-client.js` |
@@ -347,13 +355,13 @@ depend on them.
 | `bookStore_/` (repo) | `apps/web/` |
 | `book_Store/index.js` | `apps/api/src/server.js` |
 | `src/app.router.js` (`initApp`) | `src/app.js` (`createApp`) |
-| `DB/modules/*Model.js` | `src/modules/<domain>/<entity>.model.js` |
+| `DB/modules/*Model.js` | `src/modules/<domain>/models/<entity>.model.js` |
 | `src/utils/{cloudinary,email,payment}.js` | `src/infrastructure/{cloudinary-image-storage,gmail-mailer,stripe-payment-gateway}.js` (classes) |
 | `src/utils/errorHandling.js` | `src/middleware/error-handler.js` |
 | `src/utils/multer.js` | `src/middleware/upload.js` |
 | `src/middleware/auth.js` (`auth`) | `src/middleware/auth-guard.js` (`class AuthGuard`) |
 | `src/middleware/validation.js` | `src/middleware/validate.js` (`validate(Dto)`) |
-| `*.validation.js` / `BookValidation.js` (Joi schemas) | `<entity>.dto.js` (request + response DTO classes) |
+| `*.validation.js` / `BookValidation.js` (Joi schemas) | `dtos/<entity>.dto.js` (request + response DTO classes) |
 | `src/utils/HashAndCompare.js` | `src/security/password-hasher.js` (`class PasswordHasher`) |
 | `src/utils/GenerateAndVerifyToken.js` | `src/security/jwt-token-service.js` (`class JwtTokenService`) |
 | `DB/connection.js` (`connectDB`) | `src/infrastructure/database.js` (`class Database`) |
@@ -362,12 +370,12 @@ depend on them.
 | `*Router.js` / `*.router.js` | `*.routes.js` |
 | `*.endpoint.js` / `*.endPoint.js` | removed (role lists inlined in routes) |
 | `BookSaw.postman_collection.json` | `docs/bookstore-api.postman_collection.json` |
-| `Components/<Name>/<Name>.jsx` | `modules/<feature>/<Name>Page.jsx`, `layouts/`, `components/` |
+| `Components/<Name>/<Name>.jsx` | `modules/<feature>/pages/<Name>Page.jsx`, `layouts/`, `components/` |
 | `Components/Rootlayout/` | `layouts/RootLayout.jsx` |
-| `Components/Dashboard/Dashboard.jsx` (`BooksManager`) | `modules/books/BooksDashboardPage.jsx` |
+| `Components/Dashboard/Dashboard.jsx` (`BooksManager`) | `modules/books/pages/BooksDashboardPage.jsx` |
 | `Components/ErrorElement`, `Components/Offline` | `components/ErrorPage.jsx`, `components/OfflineWarning.jsx` |
-| `Context/UserContext.jsx`, `Utils/Validation.js` | `modules/auth/auth.store.js` (Zustand), `modules/auth/auth.validation.js` |
-| `Hooks/useRoute.js` | `modules/books/useBooks.js` |
+| `Context/UserContext.jsx`, `Utils/Validation.js` | `modules/auth/stores/auth.store.js` (Zustand), `modules/auth/utils/auth.validation.js` |
+| `Hooks/useRoute.js` | `modules/books/hooks/useBooks.js` |
 | `css/normalize.module.css` | `styles/normalize.css` (no class selectors, so identical output) |
 | `images/` | `assets/images/` |
 

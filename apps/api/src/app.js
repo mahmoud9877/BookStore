@@ -3,31 +3,31 @@ import morgan from "morgan";
 import express from "express";
 import { createContainer } from "./container.js";
 import { asyncHandler } from "./middleware/error-handler.js";
-import { createAuthRouter } from "./modules/auth/auth.routes.js";
-import { createUserRouter } from "./modules/users/user.routes.js";
-import { createBookRouter } from "./modules/books/book.routes.js";
-import { createCartRouter } from "./modules/cart/cart.routes.js";
-import { createOrderRouter } from "./modules/orders/order.routes.js";
-import { createCouponRouter } from "./modules/coupons/coupon.routes.js";
-import { createCategoryRouter } from "./modules/categories/category.routes.js";
-import { createRoleRouter } from "./modules/roles/role.routes.js";
-import { createAuditRouter } from "./modules/audit/audit.routes.js";
-import { createSettingsRouter } from "./modules/settings/settings.routes.js";
-import { createBranchRouter, createLocationRouter } from "./modules/branches/branch.routes.js";
-import { createAuthorRouter, createPublisherRouter } from "./modules/authors/author.routes.js";
-import { createCopyRouter } from "./modules/copies/copy.routes.js";
-import { createMemberRouter, createMembershipTypeRouter } from "./modules/members/member.routes.js";
-import { createLoanRouter, createReservationRouter } from "./modules/circulation/circulation.routes.js";
-import { createFineRouter, createPaymentRouter } from "./modules/finance/finance.routes.js";
-import { createTransferRouter } from "./modules/transfers/transfer.routes.js";
-import { createNotificationRouter } from "./modules/notifications/notification.routes.js";
-import { createPurchaseOrderRouter, createSupplierRouter } from "./modules/acquisitions/acquisition.routes.js";
-import { createStocktakeRouter } from "./modules/inventory/inventory.routes.js";
-import { createReportRouter } from "./modules/reports/report.routes.js";
-import { createEventRouter, createRoomRouter } from "./modules/facilities/facility.routes.js";
-import { createDigitalRouter } from "./modules/digital/digital.routes.js";
-import { createCatalogRouter } from "./modules/discovery/catalog.routes.js";
-import { createAssistantRouter } from "./modules/assistant/assistant.routes.js";
+import { createAuthRouter } from "./modules/auth/routes/auth.routes.js";
+import { createUserRouter } from "./modules/users/routes/user.routes.js";
+import { createBookRouter } from "./modules/books/routes/book.routes.js";
+import { createCartRouter } from "./modules/cart/routes/cart.routes.js";
+import { createOrderRouter } from "./modules/orders/routes/order.routes.js";
+import { createCouponRouter } from "./modules/coupons/routes/coupon.routes.js";
+import { createCategoryRouter } from "./modules/categories/routes/category.routes.js";
+import { createRoleRouter } from "./modules/roles/routes/role.routes.js";
+import { createAuditRouter } from "./modules/audit/routes/audit.routes.js";
+import { createSettingsRouter } from "./modules/settings/routes/settings.routes.js";
+import { createBranchRouter, createLocationRouter } from "./modules/branches/routes/branch.routes.js";
+import { createAuthorRouter, createPublisherRouter } from "./modules/authors/routes/author.routes.js";
+import { createCopyRouter } from "./modules/copies/routes/copy.routes.js";
+import { createMemberRouter, createMembershipTypeRouter } from "./modules/members/routes/member.routes.js";
+import { createLoanRouter, createReservationRouter } from "./modules/circulation/routes/circulation.routes.js";
+import { createFineRouter, createPaymentRouter } from "./modules/finance/routes/finance.routes.js";
+import { createTransferRouter } from "./modules/transfers/routes/transfer.routes.js";
+import { createNotificationRouter } from "./modules/notifications/routes/notification.routes.js";
+import { createPurchaseOrderRouter, createSupplierRouter } from "./modules/acquisitions/routes/acquisition.routes.js";
+import { createStocktakeRouter } from "./modules/inventory/routes/inventory.routes.js";
+import { createReportRouter } from "./modules/reports/routes/report.routes.js";
+import { createEventRouter, createRoomRouter } from "./modules/facilities/routes/facility.routes.js";
+import { createDigitalRouter } from "./modules/digital/routes/digital.routes.js";
+import { createCatalogRouter } from "./modules/discovery/routes/catalog.routes.js";
+import { createAssistantRouter } from "./modules/assistant/routes/assistant.routes.js";
 import { createErrorHandler, notFoundHandler } from "./middleware/error-handler.js";
 
 /**
@@ -40,7 +40,7 @@ export function createApp(container = createContainer()) {
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
-  app.use(cors(config.corsOrigins ? { origin: config.corsOrigins } : undefined));
+  app.use(cors({ origin: config.corsOrigins ?? true, credentials: true }));
   app.use((req, res, next) => {
     res.set({ "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" });
     next();
@@ -78,6 +78,7 @@ export function createApp(container = createContainer()) {
 
   app.use("/auth/login", container.authRateLimiter);
   app.use("/auth/signup", container.authRateLimiter);
+  app.use("/auth/refresh", container.authRateLimiter);
   app.use("/auth", createAuthRouter(container));
   app.use("/auth", createUserRouter(container));
   app.use("/book", createBookRouter(container));

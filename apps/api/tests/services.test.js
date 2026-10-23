@@ -4,18 +4,18 @@ import { Types } from "mongoose";
 import assert from "node:assert/strict";
 import { describe, mock, test } from "node:test";
 import { BadRequestError, HttpError } from "../src/core/http-errors.js";
-import { CartService } from "../src/modules/cart/cart.service.js";
-import { BookService } from "../src/modules/books/book.service.js";
-import { AuthService } from "../src/modules/auth/auth.service.js";
-import { EmailConfirmationService } from "../src/modules/auth/email-confirmation.service.js";
-import { OrderPolicy } from "../src/modules/orders/order-policy.js";
-import { PAYMENT_OUTCOMES } from "../src/modules/orders/payment-gateway.js";
-import { OrderService } from "../src/modules/orders/order.service.js";
+import { CartService } from "../src/modules/cart/services/cart.service.js";
+import { BookService } from "../src/modules/books/services/book.service.js";
+import { AuthService } from "../src/modules/auth/services/auth.service.js";
+import { EmailConfirmationService } from "../src/modules/auth/services/email-confirmation.service.js";
+import { OrderPolicy } from "../src/modules/orders/policies/order-policy.js";
+import { PAYMENT_OUTCOMES } from "../src/modules/orders/providers/payment-gateway.js";
+import { OrderService } from "../src/modules/orders/services/order.service.js";
 import { PasswordHasher } from "../src/security/password-hasher.js";
 import { JwtTokenService } from "../src/security/jwt-token-service.js";
-import { CategoryService } from "../src/modules/categories/category.service.js";
-import { AddToCartDto } from "../src/modules/cart/cart.dto.js";
-import { CreateBookDto, ListBooksQueryDto, UpdateBookDto } from "../src/modules/books/book.dto.js";
+import { CategoryService } from "../src/modules/categories/services/category.service.js";
+import { AddToCartDto } from "../src/modules/cart/dtos/cart.dto.js";
+import { CreateBookDto, ListBooksQueryDto, UpdateBookDto } from "../src/modules/books/dtos/book.dto.js";
 
 /** Parses raw input into a DTO exactly as the validate middleware does. */
 const parse = (Dto, input) => {
@@ -509,6 +509,8 @@ describe("AuthService", () => {
       userRepository: fake({ findByEmail: null, findByPhone: null, create: { _id: "u1" } }),
       passwordHasher: new PasswordHasher(4),
       accessTokens: new JwtTokenService("access-secret"),
+      refreshTokens: new JwtTokenService("refresh-secret"),
+      authSessionRepository: fake({ create: undefined, findById: null, rotate: null, deleteById: null }),
       emailConfirmation: fake({
         sendConfirmation: undefined,
         issueTokens: () => ({ token: "t", refreshToken: "r" }),
@@ -556,8 +558,9 @@ describe("AuthService", () => {
     const { service } = makeService({ userRepository: fake({ findByAnyEmail: user }), passwordHasher, accessTokens });
 
     await rejectsWithStatus(service.login({ email: "a@b.com", password: "wrong" }), 401);
-    const { token, role } = await service.login({ email: "a@b.com", password: "secret1" });
+    const { accessToken, refreshToken, role } = await service.login({ email: "a@b.com", password: "secret1" });
     assert.equal(role, "Admin");
-    assert.equal(accessTokens.verify(token).id, "u1");
+    assert.equal(accessTokens.verify(accessToken).id, "u1");
+    assert.equal(refreshToken.length > 0, true);
   });
 });

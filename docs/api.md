@@ -3,8 +3,10 @@
 Base URL: `http://localhost:4000` (Docker development), `/api` behind the production
 nginx proxy, or the Vercel deployment.
 
-Authenticated requests send `Authorization: <BEARER_KEY><jwt>` (the configured prefix
-directly followed by the token from `POST /auth/login`).
+Authenticated requests send `Authorization: <BEARER_KEY><access-token>` (the configured
+prefix directly followed by the short-lived access token from `POST /auth/login`).
+The login response also sets a rotating refresh token in an HttpOnly cookie; browsers
+must send credentials for `/auth/login`, `/auth/refresh` and `/auth/logout`.
 
 Access levels: **public**, **user** (any signed-in account), or a **permission** such as
 `books:manage` (the account's role must grant it; see [Roles and permissions](#roles-and-permissions)).
@@ -53,8 +55,10 @@ The library modules (everything below [Library](#library) — plural paths) use 
 
 | Method | Path | Access | Body / response |
 | --- | --- | --- | --- |
-| POST | `/auth/signup` | public | `{userName (3–30), email, password (≥6), cPassword?, phone?}` → `201 {message:"Done", _id, token, refreshToken}` |
-| POST | `/auth/login` | public | `{email, password}` → `{message:"Done", token, role}`. `404` unknown email, `403` email not confirmed, `401` wrong password |
+| POST | `/auth/signup` | public | `{userName (3–30), email, password (≥6), cPassword?, phone?}` → `201 {message:"Done", _id, token, refreshToken}` (these are email-confirmation tokens, not a signed-in session) |
+| POST | `/auth/login` | public | `{email, password}` → `{message:"Done", accessToken, token, role}` plus HttpOnly refresh cookie. Access token expires in 15 minutes; cookie refresh token expires in 7 days |
+| POST | `/auth/refresh` | public | Rotates the HttpOnly refresh cookie and returns `{accessToken, token}`. Requires a trusted `Origin`; invalid, expired, or reused refresh tokens return `401` |
+| POST | `/auth/logout` | public | Revokes the refresh session and clears its cookie |
 | GET | `/auth/confirmEmail/:token` | public | Link from the confirmation email. Redirects to `FRONTEND_URL/#/login` when set |
 | GET | `/auth/NewConfirmEmail/:token` | public | Long-lived link: confirms, or re-sends a fresh confirmation email |
 | GET | `/auth/me` | user | `{user}`: the signed-in account plus `permissions` (what its role grants right now) |

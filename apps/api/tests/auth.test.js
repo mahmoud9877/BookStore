@@ -119,10 +119,25 @@ describe("signup and login", () => {
       _id: "id-1",
       userName: "reader",
       role: "User",
+      isActive: true,
       confirmEmail: false,
       password: new PasswordHasher(4).hash("secret1"),
     };
     t.mock.method(server.container.userRepository, "findByAnyEmail", async () => stored);
+    t.mock.method(server.container.userRepository, "findAuthUserById", async () => stored);
+    const sessions = new Map();
+    t.mock.method(server.container.authSessionRepository, "create", async (session) => {
+      sessions.set(session._id, session);
+      return session;
+    });
+    t.mock.method(server.container.authSessionRepository, "findById", async (id) => sessions.get(id));
+    t.mock.method(server.container.authSessionRepository, "rotate", async (id, currentHash, nextHash, expiresAt) => {
+      const session = sessions.get(id);
+      if (!session || session.refreshTokenHash !== currentHash) return null;
+      Object.assign(session, { refreshTokenHash: nextHash, expiresAt });
+      return session;
+    });
+    t.mock.method(server.container.authSessionRepository, "deleteById", async (id) => sessions.delete(id));
     const login = (password) =>
       server.request("POST", "/auth/login", { body: { email: "reader@example.com", password } });
 
@@ -134,5 +149,36 @@ describe("signup and login", () => {
     assert.equal(ok.json.message, "Done");
     assert.equal(ok.json.role, "User");
     assert.ok(ok.json.token);
+    assert.equal(ok.json.token, ok.json.accessToken);
+    const claims = server.container.accessTokens.verify(ok.json.accessToken);
+    assert.ok(claims.exp - claims.iat <= 15 * 60);
+    const oldCookie = ok.headers.get("set-cookie");
+    assert.match(oldCookie, /HttpOnly/i);
+    assert.match(oldCookie, /SameSite=None/i);
+    const oldRefreshToken = oldCookie.split(";")[0].slice("refreshToken=".length);
+    assert.equal(ok.json.refreshToken, undefined);
+
+    const refreshed = await server.request("POST", "/auth/refresh", {
+      headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
+    });
+    assert.equal(refreshed.status, 200);
+    assert.ok(refreshed.json.accessToken);
+    const newRefreshToken = refreshed.headers.get("set-cookie").split(";")[0].slice("refreshToken=".length);
+    assert.notEqual(newRefreshToken, oldRefreshToken);
+
+    const replay = await server.request("POST", "/auth/refresh", {
+      headers: { cookie: `refreshToken=${oldRefreshToken}`, origin: "http://localhost:8080" },
+    });
+    assert.equal(replay.status, 401);
+    assert.equal(sessions.size, 0);
+
+    const secondLogin = await login("secret1");
+    const secondRefreshToken = secondLogin.headers.get("set-cookie").split(";")[0].slice("refreshToken=".length);
+    const loggedOut = await server.request("POST", "/auth/logout", {
+      headers: { cookie: `refreshToken=${secondRefreshToken}`, origin: "http://localhost:8080" },
+    });
+    assert.equal(loggedOut.status, 200);
+    assert.equal(sessions.size, 0);
+    assert.match(loggedOut.headers.get("set-cookie"), /Expires=Thu, 01 Jan 1970/i);
   });
 });
