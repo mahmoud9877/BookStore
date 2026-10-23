@@ -12,7 +12,7 @@ log — with role-based, branch-scoped permissions and a member self-service por
 | --- | --- | --- |
 | API | [`apps/api`](apps/api) | Node.js 20, Express 4, MongoDB 7 replica set (Mongoose 6, transactions), Joi, JWT, Stripe, Nodemailer, optional Cloudinary and Claude (`@anthropic-ai/sdk`) |
 | Worker | [`apps/api/src/worker.js`](apps/api/src/worker.js) | Same code base: email delivery and scheduled jobs |
-| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), TanStack Query, Zustand, Bootstrap 5, Axios |
+| Web | [`apps/web`](apps/web) | React 18 (Create React App), React Router 6 (hash routing), TanStack Query, Zustand, Bootstrap 5, Axios, English/Arabic interface with RTL support |
 
 Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 [API reference](docs/api.md).
@@ -24,14 +24,15 @@ Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 | Catalogue | Books are editions (ISBN validated and unique, editions of a title grouped); authors, publishers, categories, subjects, keywords; covers (Cloudinary or local storage); full-text search with availability, filters, sorting, pagination; related titles from catalogue data only |
 | Copies | Physical items with generated or scanned barcodes, branch, shelf, condition, cost; status changes only through workflows or audited adjustments |
 | Circulation | Desk checkout/return by barcode, renewals, lost/damaged; limits and loan periods per membership type; staff overrides with a reason; reservation queues with holds, pickup expiry and cross-branch pickup |
-| Members | Individuals, students, researchers, institutions; registration, renewal, suspension, cancellation, history; optional link to a sign-in account for self-service |
+| Members | Individuals, students, researchers, institutions; registration with mobile-number validation, renewal, suspension, cancellation, history; optional link to a sign-in account for self-service |
 | Finance | Overdue/lost/damaged/manual fines from configurable policy, cash payments with receipts and idempotency, card payments via Stripe Checkout with verified webhooks, refunds, waivers |
+| Shop | Customer cart and cash or Stripe Checkout orders; percentage and fixed-amount coupons with minimum-order, expiry and usage limits; staff can manage and generate discount codes |
 | Inventory | Counts by branch and status, manual adjustments with reasons, stocktakes with reconciliation, transfers between branches with history |
 | Acquisitions | Suppliers, purchase requests → approval → purchase orders → deliveries that add costed copies, purchase documents |
 | Branches | Branches, rooms and shelves; staff assigned to branches |
 | Rooms & events | Bookable rooms with conflict prevention and booking policy; events with capacity-limited registration |
 | Digital library | Uploaded publications in private storage, access by membership and licence, every open logged |
-| Notifications | In-app inbox and email (due soon, overdue, reservation ready/expired, membership expiring, fines, payments), configurable templates, retries, no duplicates |
+| Notifications | Live Server-Sent Events for unread counts and new-message updates; in-app inbox and email for library reminders, fines, payments, shop orders and low stock; configurable templates, retries, no duplicates |
 | Reports | Most/least borrowed, inventory, overdue, fines and collections, memberships, reservations, acquisitions, branch comparison, staff activity; date ranges, pagination, CSV |
 | Administration | Roles with granular permissions and branch scope, users, settings (policies), audit log |
 | Assistant | Optional natural-language catalogue search (Claude), grounded in catalogue records; keyword search without a key |
@@ -67,9 +68,10 @@ Further reading: [architecture, data model & decisions](docs/architecture.md) ·
 │           ├── lib/             api-client, resource hooks (paged queries, mutations), formatting
 │           ├── components/ui/   DataTable, Pagination, PageHeader, StatusBadge, Modal, forms, toasts…
 │           ├── modules/         admin (dashboard shell), circulation, members, finance, books,
-│           │                    copies, authors, digital, transfers, inventory, acquisitions,
+│           │                    cart, coupons, orders, copies, authors, digital, transfers,
+│           │                    inventory, acquisitions,
 │           │                    branches, facilities, reports, audit, settings, users, roles,
-│           │                    account (member portal), assistant, auth, cart, orders, profile
+│           │                    account (member portal), assistant, auth, profile
 │           └── layouts/, hooks/, styles/
 ├── docs/                        architecture.md, api.md
 ├── scripts/                     seed-dev-data.sh, smoke-test.sh
