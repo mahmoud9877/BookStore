@@ -12,10 +12,11 @@ import AssistantPanel from "../assistant/AssistantPanel.jsx";
 import { useActiveBranches } from "../branches/branch.queries.js";
 import { useCategoriesQuery } from "../categories/category.queries.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
+import { msg, t } from "../../i18n/index.js";
 
 const GRID = "row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 g-md-4";
 const PAGE_SIZE = 24;
-const BOOKS_ERROR = "Failed to fetch books. Please try again later.";
+const BOOKS_ERROR = msg("Failed to fetch books. Please try again later.");
 const FILTER_KEYS = ["q", "category", "available", "branch", "language", "sort", "page"];
 
 /** Keeps a text input responsive while only committing it after a short pause. */
@@ -71,20 +72,20 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>Browse books · BookSaw</title>
+        <title>{t("Browse books · BookSaw")}</title>
       </Helmet>
 
       <div className="container pt-4">
         <section className="hero mb-4" aria-labelledby="hero-title">
-          <h1 id="hero-title">Find your next great read</h1>
-          <p className="mb-4">Borrow from any of our branches, reserve what's out, or buy your own copy.</p>
+          <h1 id="hero-title">{t("Find your next great read")}</h1>
+          <p className="mb-4">{t("Borrow from any of our branches, reserve what's out, or buy your own copy.")}</p>
           <form role="search" className="search-field" onSubmit={(event) => event.preventDefault()}>
             <i className="bi bi-search" aria-hidden="true"></i>
             <input
               type="search"
               className="form-control"
-              placeholder="Search by title, author, subject or ISBN"
-              aria-label="Search books by title, author, subject or ISBN"
+              placeholder={t("Search by title, author, subject or ISBN")}
+              aria-label={t("Search books by title, author, subject or ISBN")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -93,8 +94,8 @@ export default function HomePage() {
 
         <AssistantPanel onAddToCart={addToCart} pendingId={pendingId} />
 
-        <div className="chip-row mb-3" role="group" aria-label="Filter by category">
-          {[{ _id: "", name: "All books" }, ...categories].map((category) => (
+        <div className="chip-row mb-3" role="group" aria-label={t("Filter by category")}>
+          {[{ _id: "", name: t("All books") }, ...categories].map((category) => (
             <button
               key={category._id || "all"}
               type="button"
@@ -119,16 +120,16 @@ export default function HomePage() {
                 onChange={(event) => updateFilter("available", event.target.checked ? "1" : "")}
               />
               <label className="form-check-label" htmlFor="available-now">
-                Available now
+                {t("Available now")}
               </label>
             </div>
             <select
               className="form-select form-select-sm w-auto"
-              aria-label="Branch"
+              aria-label={t("Branch")}
               value={filters.branch}
               onChange={(event) => updateFilter("branch", event.target.value)}
             >
-              <option value="">All branches</option>
+              <option value="">{t("All branches")}</option>
               {branches.map((branch) => (
                 <option key={branch._id} value={branch._id}>
                   {branch.name}
@@ -138,8 +139,8 @@ export default function HomePage() {
             <input
               className="form-control form-control-sm w-auto"
               style={{ maxWidth: 140 }}
-              placeholder="Language"
-              aria-label="Language"
+              placeholder={t("Language")}
+              aria-label={t("Language")}
               defaultValue={filters.language}
               onBlur={(event) => updateFilter("language", event.target.value.trim())}
               onKeyDown={(event) => event.key === "Enter" && updateFilter("language", event.currentTarget.value.trim())}
@@ -147,7 +148,7 @@ export default function HomePage() {
           </div>
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
             <label htmlFor="sort" className="small text-muted text-nowrap">
-              Sort by
+              {t("Sort by")}
             </label>
             <select
               id="sort"
@@ -157,7 +158,7 @@ export default function HomePage() {
             >
               {CATALOG_SORT_OPTIONS.map(({ value, label }) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
@@ -165,7 +166,7 @@ export default function HomePage() {
         </div>
 
         {search.isLoading ? (
-          <div className={GRID} aria-busy="true" aria-label="Loading books">
+          <div className={GRID} aria-busy="true" aria-label={t("Loading books")}>
             {Array.from({ length: 8 }, (_, index) => (
               <div className="col" key={index}>
                 <BookCardSkeleton />
@@ -173,28 +174,27 @@ export default function HomePage() {
             ))}
           </div>
         ) : search.error ? (
-          <ErrorState message={getErrorMessage(search.error, BOOKS_ERROR)} onRetry={search.refetch} />
+          <ErrorState message={getErrorMessage(search.error, t(BOOKS_ERROR))} onRetry={search.refetch} />
         ) : books.length === 0 ? (
           isFiltered ? (
             <StatePanel
               icon="search"
-              title="No books match your search"
-              message="Try a different title, author, subject or branch."
+              title={t("No books match your search")}
+              message={t("Try a different title, author, subject or branch.")}
               action={
                 <button type="button" className="btn btn-outline-primary" onClick={clearFilters}>
-                  Clear filters
+                  {t("Clear filters")}
                 </button>
               }
             />
           ) : (
-            <StatePanel icon="book" title="No books yet" message="New titles are on their way. Check back soon." />
+            <StatePanel icon="book" title={t("No books yet")} message={t("New titles are on their way. Check back soon.")} />
           )
         ) : (
           <>
-            <h2 className="visually-hidden">Books</h2>
+            <h2 className="visually-hidden">{t("Books")}</h2>
             <p className="text-muted small mb-3" aria-live="polite">
-              {pluralize(meta?.total ?? books.length, "book")}
-              {isFiltered && " found"}
+              {isFiltered ? t("{books} found", { books: pluralize(meta?.total ?? books.length, "book") }) : pluralize(meta?.total ?? books.length, "book")}
             </p>
             <div className={GRID} aria-busy={search.isFetching ? "true" : undefined}>
               {books.map((book) => (
@@ -204,7 +204,7 @@ export default function HomePage() {
               ))}
             </div>
             <div className="mt-3">
-              <Pagination meta={meta} onPageChange={(page) => updateFilter("page", String(page))} label="Catalogue pages" />
+              <Pagination meta={meta} onPageChange={(page) => updateFilter("page", String(page))} label={t("Catalogue pages")} />
             </div>
           </>
         )}

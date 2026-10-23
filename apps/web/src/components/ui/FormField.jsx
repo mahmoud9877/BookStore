@@ -60,7 +60,7 @@ export function PasswordField({ label, error, hint, className = "mb-3", ...props
           type="button"
           className="btn btn-sm btn-ghost password-toggle"
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? t("Hide {field}", { field: label }) : t("Show {field}", { field: label })}
+          aria-label={visible ? t("Hide {field}", { field: label.toLowerCase() }) : t("Show {field}", { field: label.toLowerCase() })}
           aria-pressed={visible}
         >
           <i className={`bi bi-${visible ? "eye-slash" : "eye"}`} aria-hidden="true"></i>

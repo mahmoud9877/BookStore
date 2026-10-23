@@ -32,8 +32,11 @@ function findAll(regex) {
   return hits;
 }
 
-// Words that are the same in both languages (brand, codes, formats).
-const UNTRANSLATED_OK = /^(BookSaw|ISBN|CSV|PDF|EPUB|MP3|MP4|PO|EGP|ID|URL|API|AI|JSON|OK|×|—|·|\/|:|\(|\)|[\d\s.,:·/()+–—%#-]*)$/;
+// Words that are the same in both languages (brands, codes, formats), and sample
+// codes such as member numbers and barcodes ("M-0000001", "MAIN-0001874").
+const UNTRANSLATED_OK = /^(BookSaw|TemplatesJungle|ISBN|CSV|PDF|EPUB|MP3|MP4|PO|EGP|ID|URL|API|AI|JSON|OK|×|—|·|\/|:|\(|\)|[A-Z]+-\d+|[\d\s.,:·/()+–—%#-]*)$/;
+// Identifiers such as icon names ("check-circle-fill") are never shown as text.
+const IDENTIFIER = /^[a-z0-9]+(-[a-z0-9]+)+$/;
 
 const KEY = /\b(?:t|msg)\(\s*"((?:[^"\\]|\\.)*)"/g;
 // Joi schemas' custom messages ({ "string.empty": "Enter a title." }) are shown through t().
@@ -44,6 +47,16 @@ test("every translated text has an Arabic entry", () => {
     .map(({ where, match }) => ({ where, key: JSON.parse(`"${match[1]}"`) }))
     .filter(({ key }) => !(key in AR));
   expect(missing.map(({ where, key }) => `${where}  ${JSON.stringify(key)}`)).toEqual([]);
+});
+
+test("an English text has one Arabic translation across the area files", () => {
+  const dir = path.join(SRC, "i18n", "ar");
+  const seen = {};
+  for (const name of fs.readdirSync(dir).filter((file) => file !== "index.js")) {
+    for (const [en, ar] of Object.entries(require(path.join(dir, name)).messages ?? {})) (seen[en] ??= new Set()).add(ar);
+  }
+  // Two meanings need two English texts ("Book" / "Book room"); the later file would win everywhere.
+  expect(Object.keys(seen).filter((en) => seen[en].size > 1)).toEqual([]);
 });
 
 test("Arabic entries keep the same {placeholders}", () => {
@@ -62,8 +75,9 @@ test("no English text is left in JSX", () => {
   const hits = FILES.filter(({ file }) => file.endsWith(".jsx")).flatMap(({ file, code }) =>
     [...code.matchAll(/>([^<>{}]*[A-Za-z][^<>{}]*)</g)]
       .filter((m) => !UNTRANSLATED_OK.test(m[1].trim()))
-      // Code between `/>` or `)>` and the next `<` is not JSX text (`a > b && c < d`, `<X />), y(<Z`).
-      .filter((m) => !/[=&|;"`]|\breturn\b|=>|\)\s*[,:)]|\?\s*\(/.test(m[1]))
+      // Code between `/>` or `)>` and the next `<` is not JSX text (`a > b && c < d`, `<X />), y(<Z`,
+      // `element: <X />, errorElement: <Y />`).
+      .filter((m) => !/[=&|;"`]|\breturn\b|=>|\)\s*[,:)]|\?\s*\(|^\s*,\s*\w+:\s*$/.test(m[1]))
       .map((m) => `${file}:${lineOf(code, m.index)}  ${JSON.stringify(m[1].trim())}`)
   );
   expect(hits).toEqual([]);
@@ -72,9 +86,13 @@ test("no English text is left in JSX", () => {
 test("text props, toasts and error fallbacks go through t()", () => {
   const PROP = /\b(aria-label|placeholder|title|label|alt|description|message|confirmLabel|documentTitle|hint|caption|empty)="([^"]*[A-Za-z][^"]*)"/g;
   const OBJECT_TEXT = /\b(title|message|confirmLabel|label|success|failure|description|text|placeholder|heading|note|empty|header|ariaLabel):\s*"([^"]*[A-Za-z][^"]*)"/g;
-  const CALL = /\b(?:toast\.\w+|getErrorMessage\([^,()]+(?:\([^()]*\))?,|window\.alert|alert|pluralize\([^,]+,\s*"[^"]+",)\(?\s*"([^"]*[A-Za-z][^"]*)"/g;
+  const CALL = /\b(?:toast\.\w+|getErrorMessage\([^,()]+(?:\([^()]*\))?,|window\.alert(?=\()|(?<!")alert(?=\()|pluralize\([^,]+,\s*"[^"]+",)\(?\s*"([^"]*[A-Za-z][^"]*)"/g;
+  // A template literal in a text prop whose fixed parts hold words or punctuation: `${a}, ${b}.`
+  const TEMPLATE = /\b(?:title|message|confirmLabel|success|failure|description|text|placeholder|heading|note|ariaLabel):\s*`((?:[^`\\]|\\.)*)`/g;
+  const templates = findAll(TEMPLATE).filter(({ match }) => /[A-Za-z,.;:?!]/.test(match[1].replace(/\$\{[^}]*\}/g, "")));
   const hits = [...findAll(PROP), ...findAll(OBJECT_TEXT), ...findAll(CALL)]
-    .filter(({ match }) => !UNTRANSLATED_OK.test(match[match.length - 1].trim()))
+    .filter(({ match }) => !UNTRANSLATED_OK.test(match[match.length - 1].trim()) && !IDENTIFIER.test(match[match.length - 1].trim()))
+    .concat(templates)
     .map(({ where, match }) => `${where}  ${match[0].slice(0, 90)}`);
   expect(hits).toEqual([]);
 });

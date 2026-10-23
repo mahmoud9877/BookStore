@@ -8,7 +8,7 @@ export const SupplierDtos = crudDtos({
     name: joi.string().trim().max(150),
     contactName: joi.string().trim().max(150).allow(""),
     email: joi.string().email({ tlds: { allow: false } }).allow(""),
-    phone: joi.string().trim().max(40).allow(""),
+    phone: fields.phone().allow(""),
     address: joi.string().trim().max(300).allow(""),
     notes: joi.string().trim().max(1000).allow(""),
     isActive: joi.boolean(),

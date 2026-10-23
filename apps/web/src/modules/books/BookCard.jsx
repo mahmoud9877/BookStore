@@ -5,6 +5,7 @@ import { availabilityLabel } from "./catalogue.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import BookCover from "../../components/ui/BookCover.jsx";
 import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
+import { t } from "../../i18n/index.js";
 
 /** Lending availability under a title: green when a copy is on a shelf. */
 export function AvailabilityNote({ availability, className = "" }) {
@@ -47,11 +48,11 @@ export default function BookCard({ book, onAddToCart, isAdding, badge }) {
               className="btn btn-primary btn-sm w-100 mt-2"
               onClick={() => onAddToCart(book)}
               disabled={isSoldOut || isAdding}
-              aria-label={`Add ${title} to cart`}
+              aria-label={t("Add {title} to cart", { title })}
             >
-              {isAdding ? <Spinner label="Adding" /> : isSoldOut ? "Sold out" : (
+              {isAdding ? <Spinner label={t("Adding")} /> : isSoldOut ? t("Sold out") : (
                 <>
-                  <i className="bi bi-bag-plus me-1" aria-hidden="true"></i>Add to cart
+                  <i className="bi bi-bag-plus me-1" aria-hidden="true"></i>{t("Add to cart")}
                 </>
               )}
             </button>
@@ -59,7 +60,7 @@ export default function BookCard({ book, onAddToCart, isAdding, badge }) {
         )}
         {!forSale && (
           <Link to={`/book/${book._id}`} className="btn btn-outline-primary btn-sm w-100 mt-auto">
-            Borrow or reserve
+            {t("Borrow or reserve")}
           </Link>
         )}
       </div>

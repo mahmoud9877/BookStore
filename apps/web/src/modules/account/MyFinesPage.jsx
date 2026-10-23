@@ -8,6 +8,7 @@ import { getErrorMessage } from "../../lib/api-client.js";
 import { formatDate, formatMoney, humanize } from "../../lib/format.js";
 import { accountKeys } from "./account.queries.js";
 import { goToCheckout, startFinePayment } from "./account.service.js";
+import { t } from "../../i18n/index.js";
 
 /** Fines, the balance, paying online, and the payment history. */
 export default function MyFinesPage() {
@@ -19,18 +20,18 @@ export default function MyFinesPage() {
   const unavailable = pay.error?.response?.status === 503;
 
   const fineColumns = [
-    { key: "createdAt", header: "Date", render: (fine) => formatDate(fine.createdAt) },
-    { key: "type", header: "Reason", render: (fine) => <>{humanize(fine.type)}{fine.reason && <div className="small text-muted">{fine.reason}</div>}</> },
-    { key: "amount", header: "Amount", className: "text-end", render: (fine) => formatMoney(fine.amount, fine.currency) },
-    { key: "balance", header: "Still owed", className: "text-end", render: (fine) => formatMoney(fine.balance, fine.currency) },
-    { key: "status", header: "Status", hideBelow: "sm", render: (fine) => <StatusBadge status={fine.status} /> },
+    { key: "createdAt", header: t("Date"), render: (fine) => formatDate(fine.createdAt) },
+    { key: "type", header: t("Reason"), render: (fine) => <>{humanize(fine.type)}{fine.reason && <div className="small text-muted">{fine.reason}</div>}</> },
+    { key: "amount", header: t("Amount"), className: "text-end", render: (fine) => formatMoney(fine.amount, fine.currency) },
+    { key: "balance", header: t("Still owed"), className: "text-end", render: (fine) => formatMoney(fine.balance, fine.currency) },
+    { key: "status", header: t("Status"), hideBelow: "sm", render: (fine) => <StatusBadge status={fine.status} /> },
   ];
   const paymentColumns = [
-    { key: "paidAt", header: "Date", render: (payment) => formatDate(payment.paidAt ?? payment.createdAt) },
-    { key: "method", header: "Method", render: (payment) => humanize(payment.method) },
-    { key: "receipt", header: "Receipt", hideBelow: "sm", render: (payment) => payment.receiptNumber ?? "—" },
-    { key: "amount", header: "Amount", className: "text-end", render: (payment) => formatMoney(payment.amount, payment.currency) },
-    { key: "status", header: "Status", render: (payment) => <StatusBadge status={payment.status} /> },
+    { key: "paidAt", header: t("Date"), render: (payment) => formatDate(payment.paidAt ?? payment.createdAt) },
+    { key: "method", header: t("Method"), render: (payment) => humanize(payment.method) },
+    { key: "receipt", header: t("Receipt"), hideBelow: "sm", render: (payment) => payment.receiptNumber ?? "—" },
+    { key: "amount", header: t("Amount"), className: "text-end", render: (payment) => formatMoney(payment.amount, payment.currency) },
+    { key: "status", header: t("Status"), render: (payment) => <StatusBadge status={payment.status} /> },
   ];
 
   return (
@@ -38,14 +39,15 @@ export default function MyFinesPage() {
       <div className="card mb-4">
         <div className="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
           <div>
-            <div className="stat-label">Balance</div>
+            <div className="stat-label">{t("Balance")}</div>
             <div className={`stat-value ${balance ? "text-danger" : ""}`}>{fines.isLoading ? "…" : formatMoney(balance, currency)}</div>
           </div>
           {balance > 0 && (
             <button type="button" className="btn btn-primary" onClick={() => pay.mutate()} disabled={pay.isPending}>
-              {pay.isPending ? <Spinner label="Opening checkout" /> : (
+              {pay.isPending ? <Spinner label={t("Opening checkout")} /> : (
                 <>
-                  <i className="bi bi-credit-card me-2" aria-hidden="true"></i>Pay {formatMoney(balance, currency)} online
+                  <i className="bi bi-credit-card me-2" aria-hidden="true"></i>
+                  {t("Pay {amount} online", { amount: formatMoney(balance, currency) })}
                 </>
               )}
             </button>
@@ -54,15 +56,15 @@ export default function MyFinesPage() {
         {pay.error && (
           <div className="alert alert-warning m-3 mt-0" role="alert">
             {unavailable
-              ? "Online payment isn't available right now. You can pay at any branch desk."
-              : getErrorMessage(pay.error, "Couldn't start the payment. Please try again.")}
+              ? t("Online payment isn't available right now. You can pay at any branch desk.")
+              : getErrorMessage(pay.error, t("Couldn't start the payment. Please try again."))}
           </div>
         )}
       </div>
-      <h2 className="h5">Fines</h2>
-      <DataTable caption="Fines" columns={fineColumns} query={fines} rows={fines.data?.fines ?? []} empty={{ icon: "emoji-smile", title: "No fines — thank you!" }} />
-      <h2 className="h5 mt-4">Payments</h2>
-      <DataTable caption="Payments" columns={paymentColumns} query={payments} rows={payments.data ?? []} empty={{ icon: "receipt", title: "No payments yet" }} />
+      <h2 className="h5">{t("Fines")}</h2>
+      <DataTable caption={t("Fines")} columns={fineColumns} query={fines} rows={fines.data?.fines ?? []} empty={{ icon: "emoji-smile", title: t("No fines — thank you!") }} />
+      <h2 className="h5 mt-4">{t("Payments")}</h2>
+      <DataTable caption={t("Payments")} columns={paymentColumns} query={payments} rows={payments.data ?? []} empty={{ icon: "receipt", title: t("No payments yet") }} />
     </>
   );
 }

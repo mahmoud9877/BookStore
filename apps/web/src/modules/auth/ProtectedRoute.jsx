@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { usePermissions } from "./auth.queries.js";
 import { selectUser, useAuthStore } from "./auth.store.js";
+import { t } from "../../i18n/index.js";
 
 /**
  * Renders children for signed-in users. With `permissions`, the user's role
@@ -18,7 +19,7 @@ export default function ProtectedRoute({ children, permissions }) {
     if (isLoading) {
       return (
         <p className="container text-muted" aria-busy="true">
-          Checking your access…
+          {t("Checking your access…")}
         </p>
       );
     }

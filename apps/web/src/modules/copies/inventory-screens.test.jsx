@@ -75,7 +75,7 @@ describe("copies", () => {
     renderPage(<CopiesPage />, { path: "/dashboard/copies" });
     userEvent.click(await screen.findByRole("button", { name: "Change status of MAIN-0000001" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/changes status only through its loan/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/changes only through its loan/)).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Change status" })).not.toBeInTheDocument();
   });
 });

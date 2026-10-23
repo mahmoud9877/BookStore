@@ -72,6 +72,22 @@ services:
       api:
         condition: service_healthy
 
+  web:
+    build:
+      target: development
+    environment:
+      # Read by the browser, so it must be the host-published API port.
+      REACT_APP_API_URL: http://localhost:${DEV_API_PORT:-4000}
+      REACT_APP_BEARER_KEY: ${BEARER_KEY:-}
+      WATCHPACK_POLLING: "true"
+      WDS_SOCKET_PORT: ${DEV_WEB_PORT:-3000}
+      BROWSER: none
+    volumes:
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
+    ports:
+      - "127.0.0.1:${DEV_WEB_PORT:-3000}:3000"
+
 volumes:
   mongo-data:
   uploads:

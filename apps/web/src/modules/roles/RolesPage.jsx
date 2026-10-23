@@ -11,6 +11,8 @@ import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
 import { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { useDeleteRole, usePermissionCatalogue, useRolesQuery, useSaveRole } from "./role.queries.js";
+import { roleDescription, roleName } from "./role-labels.js";
+import { msg, t } from "../../i18n/index.js";
 
 const NEW_ROLE = Symbol("new role");
 const NO_ROLES = [];
@@ -27,7 +29,7 @@ const roleSchema = Joi.object({
   branchScope: Joi.string().valid("all", "assigned"),
 });
 
-const SCOPE_LABELS = { all: "All branches", assigned: "Assigned branches only" };
+const SCOPE_LABELS = { all: msg("All branches"), assigned: msg("Assigned branches only") };
 
 /** The catalogue grouped by its `group` field, keeping catalogue order. */
 const groupPermissions = (catalogue) =>
@@ -53,15 +55,15 @@ function RoleForm({ role, catalogue, onSubmit }) {
     <form id="role-form" onSubmit={handleSubmit((value) => onSubmit({ ...value, permissions, branchScope }))} noValidate>
       {isEditing ? (
         <p className="mb-3">
-          <span className="form-label d-block">Name</span>
-          <strong>{role.name}</strong> <span className="small text-muted">(can't be changed)</span>
+          <span className="form-label d-block">{t("Name")}</span>
+          <strong>{roleName(role.name)}</strong> <span className="small text-muted">{t("(can't be changed)")}</span>
         </p>
       ) : (
-        <FormField label="Name" autoComplete="off" {...field("name")} />
+        <FormField label={t("Name")} autoComplete="off" {...field("name")} />
       )}
-      <FormField label="Description" hint="Optional. Who is this role for?" {...field("description")} />
+      <FormField label={t("Description")} hint={t("Optional. Who is this role for?")} {...field("description")} />
       <fieldset className="mb-3">
-        <legend className="form-label">Where it applies</legend>
+        <legend className="form-label">{t("Where it applies")}</legend>
         {Object.entries(SCOPE_LABELS).map(([scope, label]) => (
           <div className="form-check" key={scope}>
             <input
@@ -73,9 +75,9 @@ function RoleForm({ role, catalogue, onSubmit }) {
               onChange={() => setBranchScope(scope)}
             />
             <label className="form-check-label" htmlFor={`scope-${scope}`}>
-              {label}
+              {t(label)}
               <span className="d-block small text-muted">
-                {scope === "all" ? "Branch-specific permissions work at every branch." : "Only at the branches assigned to each account (Users page)."}
+                {scope === "all" ? t("Branch-specific permissions work at every branch.") : t("Only at the branches assigned to each account (Users page).")}
               </span>
             </label>
           </div>
@@ -83,7 +85,7 @@ function RoleForm({ role, catalogue, onSubmit }) {
       </fieldset>
       {groupPermissions(catalogue).map((group) => (
         <fieldset key={group.name} className="mb-2">
-          <legend className="form-label small text-uppercase text-muted mb-1">{group.name}</legend>
+          <legend className="form-label small text-uppercase text-muted mb-1">{t(group.name)}</legend>
           {group.items.map(({ key, label, description }) => (
             <div className="form-check mb-2" key={key}>
               <input
@@ -94,8 +96,8 @@ function RoleForm({ role, catalogue, onSubmit }) {
                 onChange={() => toggle(key)}
               />
               <label className="form-check-label" htmlFor={`permission-${key}`}>
-                {label}
-                <span className="d-block small text-muted">{description}</span>
+                {t(label)}
+                <span className="d-block small text-muted">{t(description)}</span>
               </label>
             </div>
           ))}
@@ -110,36 +112,36 @@ function RoleCard({ role, labels, onEdit, onDelete }) {
     <div className="card h-100">
       <div className="card-body d-flex flex-column">
         <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-          <h2 className="h5 mb-0">{role.name}</h2>
-          {role.isSystem && <span className="badge text-bg-light border">Built-in</span>}
+          <h2 className="h5 mb-0">{roleName(role.name)}</h2>
+          {role.isSystem && <span className="badge text-bg-light border">{t("Built-in")}</span>}
         </div>
-        <p className="small text-muted mb-2">{role.description || "No description."}</p>
+        <p className="small text-muted mb-2">{role.description ? roleDescription(role.description) : t("No description.")}</p>
         <p className="small mb-2">
-          {pluralize(role.userCount, "account")} · {SCOPE_LABELS[role.branchScope] ?? SCOPE_LABELS.assigned}
+          {pluralize(role.userCount, "account")} · {t(SCOPE_LABELS[role.branchScope] ?? SCOPE_LABELS.assigned)}
         </p>
         <div className="d-flex flex-wrap gap-1 mb-3">
           {role.permissions.length ? (
             role.permissions.map((key) => (
               <span key={key} className="badge badge-soft">
-                {labels[key] ?? key}
+                {labels[key] ? t(labels[key]) : key}
               </span>
             ))
           ) : (
-            <span className="small text-muted">No administration permissions</span>
+            <span className="small text-muted">{t("No administration permissions")}</span>
           )}
         </div>
         {!role.isSystem && (
           <div className="mt-auto d-flex gap-2">
             <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => onEdit(role)}>
-              <i className="bi bi-pencil me-1" aria-hidden="true"></i>Edit
+              <i className="bi bi-pencil me-1" aria-hidden="true"></i>{t("Edit")}
             </button>
             <button
               type="button"
               className="btn btn-sm btn-ghost-danger"
               onClick={() => onDelete(role)}
               disabled={role.userCount > 0}
-              title={role.userCount > 0 ? "Reassign its accounts first" : undefined}
-              aria-label={`Delete ${role.name}`}
+              title={role.userCount > 0 ? t("Reassign its accounts first") : undefined}
+              aria-label={t("Delete {name}", { name: roleName(role.name) })}
             >
               <i className="bi bi-trash3" aria-hidden="true"></i>
             </button>
@@ -165,49 +167,49 @@ export default function RolesPage() {
   async function handleSave(role) {
     try {
       await saveRole.mutateAsync({ roleId: editedRole?._id, role });
-      toast.success(editedRole ? `Saved the “${editedRole.name}” role.` : `Created the “${role.name}” role.`);
+      toast.success(editedRole ? t("Saved the “{name}” role.", { name: roleName(editedRole.name) }) : t("Created the “{name}” role.", { name: role.name }));
       setEditing(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't save this role."));
+      toast.error(getErrorMessage(err, t("Couldn't save this role.")));
     }
   }
 
   async function handleDelete(role) {
     const confirmed = await confirm({
-      title: "Delete this role?",
-      message: `“${role.name}” will be removed. This can't be undone.`,
-      confirmLabel: "Delete role",
+      title: t("Delete this role?"),
+      message: t("“{name}” will be removed. This can't be undone.", { name: roleName(role.name) }),
+      confirmLabel: t("Delete role"),
     });
     if (!confirmed) return;
     try {
       await removeRole.mutateAsync(role._id);
-      toast.success(`Deleted “${role.name}”.`);
+      toast.success(t("Deleted “{name}”.", { name: roleName(role.name) }));
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't delete this role."));
+      toast.error(getErrorMessage(err, t("Couldn't delete this role.")));
     }
   }
 
   return (
     <div className="container">
       <Helmet>
-        <title>Roles & permissions · BookSaw</title>
+        <title>{`${t("Roles & permissions")} · BookSaw`}</title>
       </Helmet>
       <header className="page-header d-flex flex-wrap gap-3 align-items-end justify-content-between">
         <div>
-          <h1>Roles &amp; permissions</h1>
-          <p className="text-muted mb-0">Give staff only the access they need. You can't grant permissions you don't have.</p>
+          <h1>{t("Roles & permissions")}</h1>
+          <p className="text-muted mb-0">{t("Give staff only the access they need. You can't grant permissions you don't have.")}</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setEditing(NEW_ROLE)}>
-          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>New role
+          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>{t("New role")}
         </button>
       </header>
 
       {isLoading ? (
         <p className="text-muted" aria-busy="true">
-          Loading roles…
+          {t("Loading roles…")}
         </p>
       ) : error ? (
-        <ErrorState message={getErrorMessage(error, "Failed to fetch roles.")} onRetry={refetch} />
+        <ErrorState message={getErrorMessage(error, t("Failed to fetch roles."))} onRetry={refetch} />
       ) : (
         <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
           {roles.map((role) => (
@@ -220,15 +222,15 @@ export default function RolesPage() {
 
       {editing && (
         <Modal
-          title={editedRole ? "Edit role" : "New role"}
+          title={editedRole ? t("Edit role") : t("New role")}
           onClose={closeEditor}
           footer={
             <>
               <button type="button" className="btn btn-light" onClick={closeEditor} disabled={isSaving}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button type="submit" form="role-form" className="btn btn-primary" disabled={isSaving}>
-                {isSaving ? <Spinner label="Saving" /> : editedRole ? "Save role" : "Create role"}
+                {isSaving ? <Spinner label={t("Saving")} /> : editedRole ? t("Save role") : t("Create role")}
               </button>
             </>
           }

@@ -10,7 +10,7 @@ export class CreateOrderDto extends RequestDto {
       address: joi.string().trim().required(),
       phone: joi
         .alternatives()
-        .try(joi.string().trim(), joi.array().items(joi.string().trim()).min(1).max(3))
+        .try(fields.mobile(), joi.array().items(fields.mobile()).min(1).max(3))
         .required(),
       note: joi.string().allow(""),
       paymentType: joi.string().valid("cash", "card").default("cash"),

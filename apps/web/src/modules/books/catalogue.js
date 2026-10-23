@@ -1,10 +1,11 @@
 /** Pure catalogue filtering/sorting, kept separate from rendering so it is easy to test. */
+import { msg, t, tp } from "../../i18n/index.js";
 
 export const SORT_OPTIONS = [
-  { value: "newest", label: "Newest" },
-  { value: "price-asc", label: "Price: low to high" },
-  { value: "price-desc", label: "Price: high to low" },
-  { value: "title", label: "Title A–Z" },
+  { value: "newest", label: msg("Newest") },
+  { value: "price-asc", label: msg("Price: low to high") },
+  { value: "price-desc", label: msg("Price: high to low") },
+  { value: "title", label: msg("Title A–Z") },
 ];
 
 const COMPARATORS = {
@@ -31,11 +32,11 @@ export function filterBooks(books, { query = "", category = "", sort = "newest" 
 
 /** Sort orders of the server-side catalogue search (GET /catalog/search). */
 export const CATALOG_SORT_OPTIONS = [
-  { value: "relevance", label: "Best match" },
-  { value: "title", label: "Title A–Z" },
-  { value: "newest", label: "Recently added" },
-  { value: "year", label: "Publication year" },
-  { value: "available", label: "Most available" },
+  { value: "relevance", label: msg("Best match") },
+  { value: "title", label: msg("Title A–Z") },
+  { value: "newest", label: msg("Recently added") },
+  { value: "year", label: msg("Publication year") },
+  { value: "available", label: msg("Most available") },
 ];
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
@@ -53,6 +54,6 @@ export function resolveCategory(value, categories) {
 /** "3 of 5 available", "All 2 copies on loan", or null when the library holds no copy. */
 export function availabilityLabel(availability) {
   if (!availability?.total) return null;
-  if (availability.available > 0) return `${availability.available} of ${availability.total} available to borrow`;
-  return `All ${availability.total} ${availability.total === 1 ? "copy is" : "copies are"} out`;
+  if (availability.available > 0) return t("{available} of {total} available to borrow", { available: availability.available, total: availability.total });
+  return tp("copies.allOut", availability.total);
 }

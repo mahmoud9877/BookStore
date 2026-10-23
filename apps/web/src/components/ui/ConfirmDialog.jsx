@@ -20,7 +20,7 @@ export default function ConfirmDialog() {
             {t("Cancel")}
           </button>
           <button type="button" className={`btn btn-${request.tone}`} onClick={() => settle(true)}>
-            {t(request.confirmLabel)}
+            {request.confirmLabel}
           </button>
         </>
       }

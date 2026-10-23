@@ -7,8 +7,9 @@ import * as catalog from "./catalog.js";
 import * as circulation from "./circulation.js";
 import * as inventory from "./inventory.js";
 import * as administration from "./administration.js";
+import * as reports from "./reports.js";
 
-const AREAS = [common, landing, catalog, circulation, inventory, administration];
+const AREAS = [common, landing, catalog, circulation, inventory, administration, reports];
 
 export const AR = Object.assign({}, ...AREAS.map((area) => area.messages ?? {}));
 export const EN_PLURAL_TABLE = {};

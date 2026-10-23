@@ -55,6 +55,9 @@ export const formatDate = (value) => (value ? formatter("date", { dateStyle: "me
 /** "Oct 22, 2026, 4:30 PM" */
 export const formatDateTime = (value) => (value ? formatter("date", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "");
 
+/** "4:30 PM" */
+export const formatTime = (value) => (value ? formatter("date", { timeStyle: "short" }).format(new Date(value)) : "");
+
 /**
  * Library amounts are integers in the currency's minor unit (piastres/cents):
  * 1250 -> "EGP 12.50".

@@ -7,9 +7,10 @@ import { initials, pluralize } from "../../lib/format.js";
 import { selectUser, useAuthStore } from "../auth/auth.store.js";
 import { useCurrentUserQuery } from "../auth/auth.queries.js";
 import { useAdminSections } from "../admin/useAdminSections.js";
+import { msg, t } from "../../i18n/index.js";
 
 // The built-in roles get friendlier names; custom roles show as named.
-const ROLE_LABELS = { Admin: "Administrator", User: "Customer" };
+const ROLE_LABELS = { Admin: msg("Administrator"), User: msg("Customer") };
 
 function ProfileLink({ to, icon, title, detail }) {
   return (
@@ -35,10 +36,10 @@ export default function ProfilePage() {
   return (
     <div className="container" style={{ maxWidth: 640 }}>
       <Helmet>
-        <title>Your account · BookSaw</title>
+        <title>{t("Your account · BookSaw")}</title>
       </Helmet>
       <header className="page-header">
-        <h1>Your account</h1>
+        <h1>{t("Your account")}</h1>
       </header>
 
       <div className="card mb-3">
@@ -48,7 +49,7 @@ export default function ProfilePage() {
           </span>
           <div>
             <h2 className="h4 mb-1">{user.userName}</h2>
-            <span className="badge badge-soft">{ROLE_LABELS[role] ?? role}</span>
+            <span className="badge badge-soft">{ROLE_LABELS[role] ? t(ROLE_LABELS[role]) : role}</span>
           </div>
         </div>
       </div>
@@ -57,18 +58,18 @@ export default function ProfilePage() {
         <ProfileLink
           to="/cart"
           icon="bag"
-          title="Your cart"
-          detail={count ? `${pluralize(count, "book")} waiting for checkout` : "Your cart is empty"}
+          title={t("Your cart")}
+          detail={count ? t("{books} waiting for checkout", { books: pluralize(count, "book") }) : t("Your cart is empty")}
         />
-        <ProfileLink to="/account" icon="person-vcard" title="My library" detail="Loans, reservations, fines and notifications" />
-        <ProfileLink to="/catalog" icon="book" title="Browse books" detail="Discover your next read" />
+        <ProfileLink to="/account" icon="person-vcard" title={t("My library")} detail={t("Loans, reservations, fines and notifications")} />
+        <ProfileLink to="/catalog" icon="book" title={t("Browse books")} detail={t("Discover your next read")} />
         {canAdminister && (
-          <ProfileLink to="/dashboard" icon="speedometer2" title="Dashboard" detail="Run the library: circulation, catalogue, members and more" />
+          <ProfileLink to="/dashboard" icon="speedometer2" title={t("Dashboard")} detail={t("Run the library: circulation, catalogue, members and more")} />
         )}
       </div>
 
       <button type="button" className="btn btn-outline-primary" onClick={signOut}>
-        <i className="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sign out
+        <i className="bi bi-box-arrow-right me-2" aria-hidden="true"></i>{t("Sign out")}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import joi from "joi";
 import { Types } from "mongoose";
 import { paginationKeys } from "./pagination.js";
+import { phoneField } from "./phone.js";
 
 /** Joi fields shared by request DTOs. */
 export const fields = {
@@ -13,6 +14,10 @@ export const fields = {
       .required(),
   /** An optional reference to another document (24 hex characters). */
   ref: () => joi.string().hex().length(24),
+  /** A mobile number for a person (member, customer), stored as E.164: "01012345678" -> "+201012345678". */
+  mobile: () => phoneField({ mobile: true }),
+  /** Any valid phone number, landlines included (branches, suppliers), stored as E.164. */
+  phone: () => phoneField({ mobile: false }),
 };
 
 const schemaKeysCache = new WeakMap();

@@ -1,5 +1,5 @@
 import joi from "joi";
-import { RequestDto } from "../../core/dto.js";
+import { RequestDto, fields } from "../../core/dto.js";
 
 // ---------- Requests (rules mirror apps/web/src/modules/auth/auth.validation.js)
 
@@ -12,7 +12,7 @@ export class RegisterUserDto extends RequestDto {
       cPassword: joi.valid(joi.ref("password")).messages({
         "any.only": "Passwords do not match.",
       }),
-      phone: joi.string().trim(),
+      phone: fields.mobile(),
     })
     .unknown(true);
 

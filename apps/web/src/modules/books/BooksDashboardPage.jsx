@@ -13,6 +13,7 @@ import { confirm } from "../../components/ui/confirm.store.js";
 import { useBooksQuery, useDeleteBook, useSaveBook } from "./book.queries.js";
 import { useCategoriesQuery } from "../categories/category.queries.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
+import { t } from "../../i18n/index.js";
 
 const NEW_BOOK = Symbol("new book");
 const NO_BOOKS = [];
@@ -35,44 +36,44 @@ export default function BooksDashboardPage() {
     try {
       await saveBook.mutateAsync({ bookId: editedBook?._id, formData });
       const title = formData.get("bookTitle");
-      toast.success(editedBook ? `Saved changes to “${title}”.` : `Added “${title}” to the catalogue.`);
+      toast.success(editedBook ? t("Saved changes to “{title}”.", { title }) : t("Added “{title}” to the catalogue.", { title }));
       setEditing(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't save this book. Please try again."));
+      toast.error(getErrorMessage(err, t("Couldn't save this book. Please try again.")));
     }
   }
 
   async function handleDelete(book) {
     const title = formatTitle(book.bookTitle);
     const confirmed = await confirm({
-      title: "Delete this book?",
-      message: `“${title}” will be removed from the catalogue. This can't be undone.`,
-      confirmLabel: "Delete book",
+      title: t("Delete this book?"),
+      message: t("“{title}” will be removed from the catalogue. This can't be undone.", { title }),
+      confirmLabel: t("Delete book"),
     });
     if (!confirmed) return;
     try {
       await removeBook.mutateAsync(book._id);
-      toast.success(`Deleted “${title}”.`);
+      toast.success(t("Deleted “{name}”.", { name: title }));
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't delete this book."));
+      toast.error(getErrorMessage(err, t("Couldn't delete this book.")));
     }
   }
 
   return (
     <div className="container">
       <Helmet>
-        <title>Manage catalogue · BookSaw</title>
+        <title>{t("Manage catalogue · BookSaw")}</title>
       </Helmet>
       <header className="page-header d-flex flex-wrap gap-3 align-items-end justify-content-between">
         <div>
-          <h1>Catalogue</h1>
+          <h1>{t("Catalogue")}</h1>
           <p className="text-muted mb-0">
-            {isLoading ? "Loading…" : pluralize(books.length, "record")} · one per edition; physical copies are managed under{" "}
-            <Link to="/dashboard/copies">Copies</Link>.
+            {isLoading ? t("Loading…") : pluralize(books.length, "record")} · {t("one per edition; physical copies are managed under")}{" "}
+            <Link to="/dashboard/copies">{t("Copies")}</Link>.
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setEditing(NEW_BOOK)}>
-          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>Add book
+          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>{t("Add book")}
         </button>
       </header>
 
@@ -83,26 +84,26 @@ export default function BooksDashboardPage() {
               type="search"
               className="form-control"
               style={{ maxWidth: 360 }}
-              placeholder="Search by title or author"
-              aria-label="Search the catalogue"
+              placeholder={t("Search by title or author")}
+              aria-label={t("Search the catalogue")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
           {isLoading ? (
             <p className="text-muted p-4 mb-0" aria-busy="true">
-              Loading the catalogue…
+              {t("Loading the catalogue…")}
             </p>
           ) : error ? (
             <div className="p-3">
-              <ErrorState message={getErrorMessage(error, "Failed to fetch books.")} onRetry={refetch} />
+              <ErrorState message={getErrorMessage(error, t("Failed to fetch books."))} onRetry={refetch} />
             </div>
           ) : visibleBooks.length === 0 ? (
             <div className="p-3">
               <StatePanel
                 icon={query ? "search" : "journal-plus"}
-                title={query ? "No books match your search" : "Your catalogue is empty"}
-                message={query ? "Try a different title or author." : "Add your first book to start selling."}
+                title={query ? t("No books match your search") : t("Your catalogue is empty")}
+                message={query ? t("Try a different title or author.") : t("Add your first book to start selling.")}
               />
             </div>
           ) : (
@@ -113,15 +114,15 @@ export default function BooksDashboardPage() {
 
       {editing && (
         <Modal
-          title={editedBook ? "Edit book" : "Add a book"}
+          title={editedBook ? t("Edit book") : t("Add a book")}
           onClose={closeEditor}
           footer={
             <>
               <button type="button" className="btn btn-light" onClick={closeEditor} disabled={isSaving}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button type="submit" form="book-form" className="btn btn-primary" disabled={isSaving}>
-                {isSaving ? <Spinner label="Saving" /> : editedBook ? "Save changes" : "Add book"}
+                {isSaving ? <Spinner label={t("Saving")} /> : editedBook ? t("Save changes") : t("Add book")}
               </button>
             </>
           }

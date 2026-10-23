@@ -30,9 +30,10 @@ const use = (routes) =>
   );
 
 test("registering requires a name, type and home branch, and checks emails", async () => {
-  expect(validateMember({ name: "", email: "x", userEmail: "", membershipType: "", homeBranch: "" }, { isNew: true })).toEqual({
+  expect(validateMember({ name: "", email: "x", phone: "12345", userEmail: "", membershipType: "", homeBranch: "" }, { isNew: true })).toEqual({
     name: "Enter the member's name.",
     email: "Enter a valid email address.",
+    phone: "Enter a valid mobile number.",
     membershipType: "Choose a membership type.",
     homeBranch: "Choose the home branch.",
   });

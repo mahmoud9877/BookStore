@@ -11,6 +11,7 @@ import { usePermissions } from "../auth/auth.queries.js";
 import { PERMISSIONS as P } from "../auth/permissions.js";
 import { useAdminSections } from "./useAdminSections.js";
 import { selectUser, useAuthStore } from "../auth/auth.store.js";
+import { msg, t, tp } from "../../i18n/index.js";
 
 // Copy statuses in the order the inventory bar shows them.
 const STATUS_ORDER = ["available", "on_loan", "on_hold", "in_transit", "damaged", "missing", "lost"];
@@ -43,7 +44,7 @@ function PanelBody({ query, empty, children }) {
   if (query.error) {
     return (
       <div className="p-3">
-        <ErrorState message={getErrorMessage(query.error, "Couldn't load this.")} onRetry={query.refetch} />
+        <ErrorState message={getErrorMessage(query.error, t("Couldn't load this."))} onRetry={query.refetch} />
       </div>
     );
   }
@@ -54,8 +55,8 @@ function RecentCirculation() {
   const loans = usePagedQuery(["loans", "recent"], "/loans", { sort: "-checkedOutAt", limit: 6 });
   const rows = loans.data?.data ?? [];
   return (
-    <Panel title="Recent circulation" action={<Link to="loans" className="small">All loans</Link>}>
-      <PanelBody query={{ ...loans, isEmpty: !rows.length }} empty="No loans yet.">
+    <Panel title={t("Recent circulation")} action={<Link to="loans" className="small">{t("All loans")}</Link>}>
+      <PanelBody query={{ ...loans, isEmpty: !rows.length }} empty={t("No loans yet.")}>
         <ul className="list-group list-group-flush">
           {rows.map((loan) => {
             const overdue = loan.status === "active" && new Date(loan.dueAt) < new Date();
@@ -81,8 +82,8 @@ function OverdueLoans() {
   const overdue = usePagedQuery(["reports", "overdue", "preview"], "/reports/overdue", { limit: 5 });
   const rows = overdue.data?.data ?? [];
   return (
-    <Panel title="Most overdue" action={<Link to="loans" className="small">Review loans</Link>}>
-      <PanelBody query={{ ...overdue, isEmpty: !rows.length }} empty="Nothing is overdue.">
+    <Panel title={t("Most overdue")} action={<Link to="loans" className="small">{t("Review loans")}</Link>}>
+      <PanelBody query={{ ...overdue, isEmpty: !rows.length }} empty={t("Nothing is overdue.")}>
         <ul className="list-group list-group-flush">
           {rows.map((row) => (
             <li key={row.loanId} className="list-group-item d-flex align-items-center gap-3">
@@ -94,7 +95,7 @@ function OverdueLoans() {
               </div>
               <span className="badge status-badge status-danger">
                 <i className="bi bi-clock-history me-1" aria-hidden="true"></i>
-                {row.daysOverdue} {row.daysOverdue === 1 ? "day" : "days"}
+                {tp("day", row.daysOverdue)}
               </span>
             </li>
           ))}
@@ -106,7 +107,7 @@ function OverdueLoans() {
 
 function InventoryBar({ copies }) {
   const total = Object.values(copies).reduce((sum, count) => sum + count, 0);
-  if (!total) return <p className="text-muted p-3 mb-0">No copies yet.</p>;
+  if (!total) return <p className="text-muted p-3 mb-0">{t("No copies yet.")}</p>;
   const parts = STATUS_ORDER.filter((status) => copies[status]).map((status) => ({ status, count: copies[status] }));
   return (
     <div className="p-3">
@@ -132,19 +133,19 @@ function BranchComparison() {
   const rows = branches.data ?? [];
   const maxLoans = Math.max(1, ...rows.map((row) => row.loans));
   return (
-    <Panel title="Branches" action={<Link to="reports" className="small">Reports</Link>}>
-      <PanelBody query={{ ...branches, isEmpty: !rows.length }} empty="No branches yet.">
+    <Panel title={t("Branches")} action={<Link to="reports" className="small">{t("Reports")}</Link>}>
+      <PanelBody query={{ ...branches, isEmpty: !rows.length }} empty={t("No branches yet.")}>
         {/* Focusable so keyboard users can scroll it horizontally on small screens. */}
-        <div className="table-responsive" tabIndex={0} role="region" aria-label="Branch comparison">
+        <div className="table-responsive" tabIndex={0} role="region" aria-label={t("Branch comparison")}>
           <table className="table data-table align-middle mb-0">
-            <caption className="visually-hidden">Copies, loans, overdue loans and active members per branch</caption>
+            <caption className="visually-hidden">{t("Copies, loans, overdue loans and active members per branch")}</caption>
             <thead>
               <tr>
-                <th scope="col">Branch</th>
-                <th scope="col" className="text-end">Copies</th>
-                <th scope="col">Loans</th>
-                <th scope="col" className="text-end">Overdue</th>
-                <th scope="col" className="text-end d-none d-sm-table-cell">Members</th>
+                <th scope="col">{t("Branch")}</th>
+                <th scope="col" className="text-end">{t("Copies")}</th>
+                <th scope="col">{t("Loans")}</th>
+                <th scope="col" className="text-end">{t("Overdue")}</th>
+                <th scope="col" className="text-end d-none d-sm-table-cell">{t("Members")}</th>
               </tr>
             </thead>
             <tbody>
@@ -173,10 +174,10 @@ function BranchComparison() {
 }
 
 const QUICK_ACTIONS = [
-  { to: "desk", label: "Check out or return", icon: "upc-scan", permissions: [P.CirculationManage] },
-  { to: "members", label: "Find or register a member", icon: "person-plus", permissions: [P.MembersManage, P.MembersRead] },
-  { to: "reservations", label: "Reservations", icon: "bookmark-star", permissions: [P.ReservationsManage] },
-  { to: "copies", label: "Add copies", icon: "plus-square", permissions: [P.CopiesManage] },
+  { to: "desk", label: msg("Check out or return"), icon: "upc-scan", permissions: [P.CirculationManage] },
+  { to: "members", label: msg("Find or register a member"), icon: "person-plus", permissions: [P.MembersManage, P.MembersRead] },
+  { to: "reservations", label: msg("Reservations"), icon: "bookmark-star", permissions: [P.ReservationsManage] },
+  { to: "copies", label: msg("Add copies"), icon: "plus-square", permissions: [P.CopiesManage] },
 ];
 
 /**
@@ -196,15 +197,15 @@ export default function OverviewPage() {
   return (
     <>
       <PageHeader
-        title={`Welcome, ${user?.userName ?? ""}`}
-        documentTitle="Dashboard"
-        description={canReport ? "Today across the branches you can see." : "Your workspace."}
+        title={t("Welcome, {name}", { name: user?.userName ?? "" })}
+        documentTitle={t("Dashboard")}
+        description={canReport ? t("Today across the branches you can see.") : t("Your workspace.")}
         actions={
           actions.length > 0 &&
           actions.slice(0, 2).map((action, index) => (
             <Link key={action.to} to={action.to} className={`btn ${index === 0 ? "btn-primary" : "btn-outline-primary"}`}>
               <i className={`bi bi-${action.icon} me-2`} aria-hidden="true"></i>
-              {action.label}
+              {t(action.label)}
             </Link>
           ))
         }
@@ -212,7 +213,7 @@ export default function OverviewPage() {
 
       {canReport &&
         (summary.isLoading ? (
-          <div className="row g-3 mb-4" aria-busy="true" aria-label="Loading figures">
+          <div className="row g-3 mb-4" aria-busy="true" aria-label={t("Loading figures")}>
             {Array.from({ length: 8 }, (_, index) => (
               <div className="col-6 col-xl-3" key={index}>
                 <div className="stat-tile">
@@ -224,18 +225,18 @@ export default function OverviewPage() {
           </div>
         ) : summary.error ? (
           <div className="mb-4">
-            <ErrorState message={getErrorMessage(summary.error, "Couldn't load the summary.")} onRetry={summary.refetch} />
+            <ErrorState message={getErrorMessage(summary.error, t("Couldn't load the summary."))} onRetry={summary.refetch} />
           </div>
         ) : (
           <div className="row g-3 mb-4">
-            <Stat label="On loan" value={data.activeLoans} note={`${data.overdueLoans} overdue`} to="loans" tone={data.overdueLoans ? "alert" : undefined} />
-            <Stat label="Available copies" value={data.copies.available ?? 0} note={`of ${Object.values(data.copies).reduce((a, b) => a + b, 0)} copies · ${data.titles} titles`} to="copies" />
-            <Stat label="Active members" value={data.members.active} note={`${data.members.expired} expired · ${data.members.suspended} suspended`} to="members" />
-            <Stat label="Open reservations" value={data.openReservations} to="reservations" />
-            <Stat label="Fines outstanding" value={formatMoney(data.outstandingFines)} to="fines" />
-            <Stat label="Collected this month" value={formatMoney(data.collectedThisMonth)} to="reports" />
-            <Stat label="In transit" value={data.copies.in_transit ?? 0} note="between branches" to="transfers" />
-            <Stat label="Lost or missing" value={(data.copies.lost ?? 0) + (data.copies.missing ?? 0)} to="copies" />
+            <Stat label={t("On loan")} value={data.activeLoans} note={t("{count} overdue", { count: data.overdueLoans })} to="loans" tone={data.overdueLoans ? "alert" : undefined} />
+            <Stat label={t("Available copies")} value={data.copies.available ?? 0} note={t("of {total} copies · {titles} titles", { total: Object.values(data.copies).reduce((a, b) => a + b, 0), titles: data.titles })} to="copies" />
+            <Stat label={t("Active members")} value={data.members.active} note={t("{expired} expired · {suspended} suspended", { expired: data.members.expired, suspended: data.members.suspended })} to="members" />
+            <Stat label={t("Open reservations")} value={data.openReservations} to="reservations" />
+            <Stat label={t("Fines outstanding")} value={formatMoney(data.outstandingFines)} to="fines" />
+            <Stat label={t("Collected this month")} value={formatMoney(data.collectedThisMonth)} to="reports" />
+            <Stat label={t("In transit")} value={data.copies.in_transit ?? 0} note={t("between branches")} to="transfers" />
+            <Stat label={t("Lost or missing")} value={(data.copies.lost ?? 0) + (data.copies.missing ?? 0)} to="copies" />
           </div>
         ))}
 
@@ -257,7 +258,7 @@ export default function OverviewPage() {
       {canReport && data && (
         <div className="row g-3 mb-4">
           <div className="col-lg-5">
-            <Panel title="Copies by status" action={<Link to="copies" className="small">Copies</Link>}>
+            <Panel title={t("Copies by status")} action={<Link to="copies" className="small">{t("Copies")}</Link>}>
               <InventoryBar copies={data.copies} />
             </Panel>
           </div>
@@ -267,13 +268,13 @@ export default function OverviewPage() {
         </div>
       )}
 
-      <h2 className="h6 text-muted text-uppercase small fw-bold mb-3">Your sections</h2>
+      <h2 className="h6 text-muted text-uppercase small fw-bold mb-3">{t("Your sections")}</h2>
       <div className="row g-2">
         {sections.map(({ path, label, icon }) => (
           <div className="col-6 col-md-4 col-xl-3" key={path}>
             <Link to={path} className="section-link">
               <i className={`bi bi-${icon}`} aria-hidden="true"></i>
-              <span>{label}</span>
+              <span>{t(label)}</span>
             </Link>
           </div>
         ))}

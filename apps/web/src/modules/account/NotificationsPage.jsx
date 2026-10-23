@@ -6,6 +6,7 @@ import { getErrorMessage } from "../../lib/api-client.js";
 import { apiClient, useApiMutation, usePagedQuery } from "../../lib/resource.js";
 import { formatDateTime } from "../../lib/format.js";
 import { accountKeys } from "./account.queries.js";
+import { t } from "../../i18n/index.js";
 
 /** The in-app inbox: messages about loans, reservations, fines and payments. */
 export default function NotificationsPage() {
@@ -22,28 +23,28 @@ export default function NotificationsPage() {
     <section aria-labelledby="inbox-title">
       <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
         <h2 id="inbox-title" className="h5 mb-0">
-          Notifications {unread > 0 && <span className="badge text-bg-danger ms-1">{unread} unread</span>}
+          {t("Notifications")} {unread > 0 && <span className="badge text-bg-danger ms-1">{t("{count} unread", { count: unread })}</span>}
         </h2>
         <div className="d-flex gap-2 align-items-center">
           <div className="form-check form-switch mb-0">
             <input id="unread-only" className="form-check-input" type="checkbox" role="switch" checked={filters.unreadOnly} onChange={(event) => setFilter("unreadOnly", event.target.checked)} />
             <label className="form-check-label" htmlFor="unread-only">
-              Unread only
+              {t("Unread only")}
             </label>
           </div>
           <button type="button" className="btn btn-sm btn-light" onClick={markAll} disabled={!unread || markRead.isPending}>
-            Mark all as read
+            {t("Mark all as read")}
           </button>
         </div>
       </div>
       {inbox.isLoading ? (
         <p className="text-muted" aria-busy="true">
-          Loading…
+          {t("Loading…")}
         </p>
       ) : inbox.error ? (
-        <ErrorState message={getErrorMessage(inbox.error, "Couldn't load your notifications.")} onRetry={inbox.refetch} />
+        <ErrorState message={getErrorMessage(inbox.error, t("Couldn't load your notifications."))} onRetry={inbox.refetch} />
       ) : items.length === 0 ? (
-        <StatePanel icon="bell" title={filters.unreadOnly ? "You're all caught up" : "No notifications yet"} />
+        <StatePanel icon="bell" title={filters.unreadOnly ? t("You're all caught up") : t("No notifications yet")} />
       ) : (
         <div className="card">
           <ul className="list-group list-group-flush">
@@ -52,7 +53,7 @@ export default function NotificationsPage() {
                 <i className={`bi bi-${item.readAt ? "envelope-open" : "envelope-fill text-primary"} mt-1`} aria-hidden="true"></i>
                 <div className="flex-grow-1 min-w-0">
                   <div className={item.readAt ? "" : "fw-semibold"}>
-                    {!item.readAt && <span className="visually-hidden">Unread: </span>}
+                    {!item.readAt && <span className="visually-hidden">{t("Unread:")} </span>}
                     {item.subject}
                   </div>
                   <p className="small text-muted mb-1" style={{ whiteSpace: "pre-line" }}>
@@ -61,14 +62,14 @@ export default function NotificationsPage() {
                   <span className="small text-muted">{formatDateTime(item.createdAt)}</span>
                 </div>
                 {!item.readAt && (
-                  <button type="button" className="btn btn-sm btn-ghost align-self-start" onClick={() => markRead.mutate([item._id])} aria-label={`Mark “${item.subject}” as read`}>
+                  <button type="button" className="btn btn-sm btn-ghost align-self-start" onClick={() => markRead.mutate([item._id])} aria-label={t("Mark “{subject}” as read", { subject: item.subject })}>
                     <i className="bi bi-check2" aria-hidden="true"></i>
                   </button>
                 )}
               </li>
             ))}
           </ul>
-          <Pagination meta={inbox.data?.meta} onPageChange={setPage} label="Notification pages" />
+          <Pagination meta={inbox.data?.meta} onPageChange={setPage} label={t("Notification pages")} />
         </div>
       )}
     </section>

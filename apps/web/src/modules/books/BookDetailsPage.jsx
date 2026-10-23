@@ -15,15 +15,16 @@ import { formatName, formatPrice, formatTitle } from "../../lib/format.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
 import { accountKeys, useOwnMembership } from "../account/account.queries.js";
 import { selectIsSignedIn, useAuthStore } from "../auth/auth.store.js";
+import { msg, t } from "../../i18n/index.js";
 
 function QuantityStepper({ value, max, onChange }) {
   return (
-    <div className="quantity-stepper" role="group" aria-label="Quantity">
-      <button type="button" onClick={() => onChange(value - 1)} disabled={value <= 1} aria-label="Decrease quantity">
+    <div className="quantity-stepper" role="group" aria-label={t("Quantity")}>
+      <button type="button" onClick={() => onChange(value - 1)} disabled={value <= 1} aria-label={t("Decrease quantity")}>
         <i className="bi bi-dash" aria-hidden="true"></i>
       </button>
       <output aria-live="polite">{value}</output>
-      <button type="button" onClick={() => onChange(value + 1)} disabled={value >= max} aria-label="Increase quantity">
+      <button type="button" onClick={() => onChange(value + 1)} disabled={value >= max} aria-label={t("Increase quantity")}>
         <i className="bi bi-plus" aria-hidden="true"></i>
       </button>
     </div>
@@ -32,7 +33,7 @@ function QuantityStepper({ value, max, onChange }) {
 
 function DetailsSkeleton() {
   return (
-    <div className="row g-4 g-lg-5" aria-busy="true" aria-label="Loading book">
+    <div className="row g-4 g-lg-5" aria-busy="true" aria-label={t("Loading book")}>
       <div className="col-md-5 col-lg-4">
         <div className="skeleton" style={{ aspectRatio: "2 / 3", maxWidth: 360 }}></div>
       </div>
@@ -50,16 +51,16 @@ function DetailsSkeleton() {
 function BranchAvailability({ availability, branches }) {
   const rows = Object.entries(availability?.byBranch ?? {});
   if (!rows.length) {
-    return <p className="text-muted small">The library has no copies of this edition to lend yet.</p>;
+    return <p className="text-muted small">{t("The library has no copies of this edition to lend yet.")}</p>;
   }
-  const nameOf = (id) => branches.find((branch) => branch._id === id)?.name ?? "Another branch";
+  const nameOf = (id) => branches.find((branch) => branch._id === id)?.name ?? t("Another branch");
   return (
     <ul className="list-group mb-3">
       {rows.map(([branchId, counts]) => (
         <li key={branchId} className="list-group-item d-flex justify-content-between align-items-center">
           <span>{nameOf(branchId)}</span>
           <span className={counts.available ? "text-success small fw-semibold" : "text-muted small"}>
-            {counts.available ? `${counts.available} of ${counts.total} on the shelf` : `All ${counts.total} out`}
+            {counts.available ? t("{available} of {total} on the shelf", { available: counts.available, total: counts.total }) : t("All {total} out", { total: counts.total })}
           </span>
         </li>
       ))}
@@ -85,16 +86,16 @@ function ReservePanel({ book, branches }) {
     onSuccess: (reservation) => {
       queryClient.invalidateQueries({ queryKey: accountKeys.all });
       queryClient.invalidateQueries({ queryKey: bookKeys.detail(book._id) });
-      const where = branches.find((branch) => branch._id === pickupBranch)?.name ?? "your branch";
+      const where = branches.find((branch) => branch._id === pickupBranch)?.name ?? t("your branch");
       toast.success(
         reservation?.status === "ready"
-          ? `Reserved: a copy is waiting for you at ${where}.`
+          ? t("Reserved: a copy is waiting for you at {branch}.", { branch: where })
           : reservation?.status === "in_transit"
-            ? `Reserved: a copy is on its way to ${where}.`
-            : `Reserved: you are number ${reservation?.queuePosition ?? "?"} in the queue.`
+            ? t("Reserved: a copy is on its way to {branch}.", { branch: where })
+            : t("Reserved: you are number {position} in the queue.", { position: reservation?.queuePosition ?? "?" })
       );
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Couldn't place the reservation.")),
+    onError: (error) => toast.error(getErrorMessage(error, t("Couldn't place the reservation."))),
   });
 
   if (!book.availability?.total) return null;
@@ -103,16 +104,16 @@ function ReservePanel({ book, branches }) {
       <button
         type="button"
         className="btn btn-outline-primary"
-        onClick={() => navigate("/login", { state: { from: location.pathname, notice: "Sign in to reserve books." } })}
+        onClick={() => navigate("/login", { state: { from: location.pathname, notice: msg("Sign in to reserve books.") } })}
       >
-        <i className="bi bi-bookmark-plus me-2" aria-hidden="true"></i>Sign in to reserve
+        <i className="bi bi-bookmark-plus me-2" aria-hidden="true"></i>{t("Sign in to reserve")}
       </button>
     );
   }
   if (membership.isSuccess && !membership.data) {
     return (
       <p className="small text-muted mb-0">
-        To borrow or reserve, ask at any branch to link a library card to your account.
+        {t("To borrow or reserve, ask at any branch to link a library card to your account.")}
       </p>
     );
   }
@@ -126,7 +127,7 @@ function ReservePanel({ book, branches }) {
     >
       <div>
         <label htmlFor="pickup-branch" className="form-label small mb-1">
-          Pick up at
+          {t("Pick up at")}
         </label>
         <select
           id="pickup-branch"
@@ -135,7 +136,7 @@ function ReservePanel({ book, branches }) {
           onChange={(event) => setPickupBranch(event.target.value)}
           required
         >
-          <option value="">Choose a branch…</option>
+          <option value="">{t("Choose a branch…")}</option>
           {branches.map((branch) => (
             <option key={branch._id} value={branch._id}>
               {branch.name}
@@ -145,10 +146,10 @@ function ReservePanel({ book, branches }) {
       </div>
       <button type="submit" className="btn btn-outline-primary btn-sm" disabled={!pickupBranch || reserve.isPending}>
         {reserve.isPending ? (
-          <Spinner label="Reserving" />
+          <Spinner label={t("Reserving")} />
         ) : (
           <>
-            <i className="bi bi-bookmark-plus me-1" aria-hidden="true"></i>Reserve
+            <i className="bi bi-bookmark-plus me-1" aria-hidden="true"></i>{t("Reserve")}
           </>
         )}
       </button>
@@ -159,26 +160,26 @@ function ReservePanel({ book, branches }) {
 function Metadata({ book }) {
   const rows = [
     ["ISBN", book.isbn],
-    ["Edition", book.edition],
-    ["Publisher", book.publisher?.name],
-    ["Published", book.publicationYear],
-    ["Language", book.language],
-    ["Pages", book.pageCount],
+    [msg("Edition"), book.edition],
+    [msg("Publisher"), book.publisher?.name],
+    [msg("Published"), book.publicationYear],
+    [msg("Language"), book.language],
+    [msg("Pages"), book.pageCount],
   ].filter(([, value]) => value);
   if (!rows.length && !book.subjects?.length) return null;
   return (
     <>
-      <h2 className="h5 mt-4">Details</h2>
+      <h2 className="h5 mt-4">{t("Details")}</h2>
       <dl className="row small mb-2" style={{ maxWidth: 520 }}>
         {rows.map(([label, value]) => (
           <React.Fragment key={label}>
-            <dt className="col-4 text-muted fw-normal">{label}</dt>
+            <dt className="col-4 text-muted fw-normal">{t(label)}</dt>
             <dd className="col-8 mb-1 text-capitalize">{value}</dd>
           </React.Fragment>
         ))}
       </dl>
       {book.subjects?.length > 0 && (
-        <div className="d-flex flex-wrap gap-1 mb-2" aria-label="Subjects">
+        <div className="d-flex flex-wrap gap-1 mb-2" aria-label={t("Subjects")}>
           {book.subjects.map((subject) => (
             <Link key={subject} to={`/?q=${encodeURIComponent(subject)}`} className="badge badge-soft text-decoration-none">
               {subject}
@@ -215,7 +216,7 @@ export default function BookDetailsPage() {
   const { addToCart, pendingId } = useAddToCart();
   const [quantity, setQuantity] = useState(1);
 
-  const title = book ? formatTitle(book.bookTitle) : "Book";
+  const title = book ? formatTitle(book.bookTitle) : t("Book");
   const isSoldOut = book?.quantity <= 0;
   const forSale = book?.isForSale !== false;
 
@@ -225,10 +226,10 @@ export default function BookDetailsPage() {
         <title>{`${title} · BookSaw`}</title>
       </Helmet>
 
-      <nav aria-label="Breadcrumb" className="mb-4">
+      <nav aria-label={t("Breadcrumb")} className="mb-4">
         <ol className="breadcrumb small mb-0">
           <li className="breadcrumb-item">
-            <Link to="/catalog">Catalogue</Link>
+            <Link to="/catalog">{t("Catalogue")}</Link>
           </li>
           {book?.category?._id && (
             <li className="breadcrumb-item">
@@ -247,23 +248,23 @@ export default function BookDetailsPage() {
         <DetailsSkeleton />
       ) : error || !book ? (
         <ErrorState
-          message={error ? getErrorMessage(error, "We couldn't load this book.") : "This book could not be found."}
+          message={error ? getErrorMessage(error, t("We couldn't load this book.")) : t("This book could not be found.")}
           onRetry={error ? refetch : undefined}
         />
       ) : (
         <>
           <div className="row g-4 g-lg-5">
             <div className="col-md-5 col-lg-4">
-              <BookCover src={book.image} alt={`Cover of ${title}`} className="details-cover" />
+              <BookCover src={book.image} alt={t("Cover of {title}", { title })} className="details-cover" />
             </div>
             <div className="col-md-7 col-lg-8">
               {book.category?.name && <span className="badge badge-soft mb-2">{book.category.name}</span>}
               <h1 className="mb-1">{title}</h1>
-              <p className="text-muted fs-5 mb-3">by {formatName(book.author)}</p>
+              <p className="text-muted fs-5 mb-3">{t("by {author}", { author: formatName(book.author) })}</p>
 
               <section className="mb-4" aria-labelledby="borrow-title">
                 <h2 id="borrow-title" className="h5 d-flex flex-wrap align-items-center gap-2">
-                  Borrow from the library <AvailabilityNote availability={book.availability} className="fw-normal" />
+                  {t("Borrow from the library")} <AvailabilityNote availability={book.availability} className="fw-normal" />
                 </h2>
                 <BranchAvailability availability={book.availability} branches={branches} />
                 <ReservePanel book={book} branches={branches} />
@@ -272,14 +273,14 @@ export default function BookDetailsPage() {
               {forSale && (
                 <section className="mb-4" aria-labelledby="buy-title">
                   <h2 id="buy-title" className="h5">
-                    Buy your own copy
+                    {t("Buy your own copy")}
                   </h2>
                   <div className="d-flex align-items-baseline gap-3 mb-3">
                     <span className="price fs-3">{formatPrice(book.price)}</span>
                     {book.quantity <= LOW_STOCK_THRESHOLD ? (
                       <StockNote quantity={book.quantity} />
                     ) : (
-                      <span className="stock-note text-success">In stock</span>
+                      <span className="stock-note text-success">{t("In stock")}</span>
                     )}
                   </div>
                   {!isSoldOut && (
@@ -296,10 +297,10 @@ export default function BookDetailsPage() {
                         disabled={pendingId === book._id}
                       >
                         {pendingId === book._id ? (
-                          <Spinner label="Adding" />
+                          <Spinner label={t("Adding")} />
                         ) : (
                           <>
-                            <i className="bi bi-bag-plus me-2" aria-hidden="true"></i>Add to cart
+                            <i className="bi bi-bag-plus me-2" aria-hidden="true"></i>{t("Add to cart")}
                           </>
                         )}
                       </button>
@@ -308,15 +309,15 @@ export default function BookDetailsPage() {
                 </section>
               )}
 
-              <h2 className="h5 mt-4">About this book</h2>
+              <h2 className="h5 mt-4">{t("About this book")}</h2>
               <p className="text-muted" style={{ maxWidth: "65ch", whiteSpace: "pre-line" }}>
                 {book.description}
               </p>
               <Metadata book={book} />
             </div>
           </div>
-          <BookRow title="Other editions" books={editions.data} />
-          <BookRow title="You might also like" books={related.data} />
+          <BookRow title={t("Other editions")} books={editions.data} />
+          <BookRow title={t("You might also like")} books={related.data} />
         </>
       )}
     </div>

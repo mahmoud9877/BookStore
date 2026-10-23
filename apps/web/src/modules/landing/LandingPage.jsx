@@ -8,7 +8,7 @@ import ProductPreview from "./ProductPreview.jsx";
 import { scrollToSection, sectionLink } from "./scroll.js";
 import { AUDIENCES, BENEFITS, FEATURES, STEPS } from "./content.js";
 import { selectUser, useAuthStore } from "../auth/auth.store.js";
-import { t, useLanguage } from "../../i18n/index.js";
+import { msg, t, useLanguage } from "../../i18n/index.js";
 
 /** Fades sections in once as they scroll into view (skipped with reduced motion). */
 function useReveal() {
@@ -124,9 +124,9 @@ export default function LandingPage() {
           <div className="container">
             <SectionHeading
               id="features-title"
-              eyebrow="Features"
-              title="Everything a library desk and back office need"
-              text="Each module below is part of BookSaw today, enforced by the same permissions and rules on the server."
+              eyebrow={msg("Features")}
+              title={msg("Everything a library desk and back office need")}
+              text={msg("Each module below is part of BookSaw today, enforced by the same permissions and rules on the server.")}
             />
             <ul className="feature-grid">
               {FEATURES.map((feature) => (
@@ -173,7 +173,7 @@ export default function LandingPage() {
 
         <section className="landing-section" aria-labelledby="modules-title" id="modules">
           <div className="container">
-            <SectionHeading id="modules-title" eyebrow="How it works" title="From set-up to daily routine in four steps" />
+            <SectionHeading id="modules-title" eyebrow={msg("How it works")} title={msg("From set-up to daily routine in four steps")} />
             <ol className="steps">
               {STEPS.map((step, index) => (
                 <li key={step.title} className="step" data-reveal>
@@ -190,7 +190,7 @@ export default function LandingPage() {
 
         <section className="landing-section band" aria-labelledby="benefits-title" id="benefits">
           <div className="container">
-            <SectionHeading id="benefits-title" eyebrow="Benefits" title="Less paperwork, clearer decisions" />
+            <SectionHeading id="benefits-title" eyebrow={msg("Benefits")} title={msg("Less paperwork, clearer decisions")} />
             <ul className="benefit-grid">
               {BENEFITS.map((benefit) => (
                 <li key={benefit.title} className="benefit" data-reveal>
@@ -209,9 +209,9 @@ export default function LandingPage() {
           <div className="container">
             <SectionHeading
               id="audience-title"
-              eyebrow="Who it's for"
-              title="For libraries of different shapes and sizes"
-              text="What fits depends on your policies — membership types, fines and permissions are configured by each library, not built in."
+              eyebrow={msg("Who it's for")}
+              title={msg("For libraries of different shapes and sizes")}
+              text={msg("What fits depends on your policies — membership types, fines and permissions are configured by each library, not built in.")}
             />
             <ul className="audience-grid">
               {AUDIENCES.map((audience) => (

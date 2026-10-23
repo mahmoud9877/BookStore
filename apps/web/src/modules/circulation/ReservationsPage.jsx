@@ -5,13 +5,14 @@ import DataTable from "../../components/ui/DataTable.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import useListState from "../../hooks/useListState.js";
 import { apiClient, useApiMutation, usePagedQuery } from "../../lib/resource.js";
-import { formatDate, formatTitle } from "../../lib/format.js";
+import { formatDate, formatTitle, humanize } from "../../lib/format.js";
 import { usePermissions } from "../auth/auth.queries.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { CIRCULATION_KEYS } from "./circulation-keys.js";
 import BranchSelect from "./BranchSelect.jsx";
 import ReasonModal from "./ReasonModal.jsx";
 import PlaceReservationModal from "./PlaceReservationModal.jsx";
+import { t } from "../../i18n/index.js";
 
 const OPEN = ["waiting", "in_transit", "ready"];
 
@@ -25,40 +26,49 @@ export default function ReservationsPage() {
   const [cancelling, setCancelling] = useState(null);
   const cancel = useApiMutation(({ id, reason }) => apiClient.post(`/reservations/${id}/cancel`, { reason }), {
     invalidate: CIRCULATION_KEYS,
-    success: "Reservation cancelled.",
+    success: t("Reservation cancelled."),
   });
 
   const columns = [
     {
       key: "book",
-      header: "Title",
+      header: t("Title"),
       render: (row) => (
         <>
           <div className="fw-semibold">{formatTitle(row.book?.bookTitle)}</div>
-          {row.copy && <div className="small text-muted">Copy {row.copy.barcode}</div>}
+          {row.copy && <div className="small text-muted">{t("Copy {barcode}", { barcode: row.copy.barcode })}</div>}
         </>
       ),
     },
-    { key: "member", header: "Member", render: (row) => (row.member ? <Link to={`/dashboard/members/${row.member._id}`}>{row.member.name}</Link> : "—") },
-    { key: "pickupBranch", header: "Pickup", render: (row) => row.pickupBranch?.name, hideBelow: "md" },
-    { key: "createdAt", header: "Placed", render: (row) => formatDate(row.createdAt), hideBelow: "lg" },
+    {
+      key: "member",
+      header: t("Member"),
+      render: (row) =>
+        row.member ? (
+          <Link to={`/dashboard/members/${row.member._id}`}>{row.member.name}</Link>
+        ) : (
+          "—"
+        ),
+    },
+    { key: "pickupBranch", header: t("Pickup"), render: (row) => row.pickupBranch?.name, hideBelow: "md" },
+    { key: "createdAt", header: t("Placed"), render: (row) => formatDate(row.createdAt), hideBelow: "lg" },
     {
       key: "status",
-      header: "Status",
+      header: t("Status"),
       render: (row) => (
         <>
           <StatusBadge status={row.status} />
-          {row.status === "ready" && <div className="small text-muted">until {formatDate(row.expiresAt)}</div>}
+          {row.status === "ready" && <div className="small text-muted">{t("until {date}", { date: formatDate(row.expiresAt) })}</div>}
         </>
       ),
     },
     {
       key: "actions",
-      header: <span className="visually-hidden">Actions</span>,
+      header: <span className="visually-hidden">{t("Actions")}</span>,
       className: "text-end",
       render: (row) =>
         canManage && OPEN.includes(row.status) ? (
-          <button type="button" className="btn btn-sm btn-ghost-danger" onClick={() => setCancelling(row)} aria-label={`Cancel reservation of ${formatTitle(row.book?.bookTitle)} for ${row.member?.name}`}>
+          <button type="button" className="btn btn-sm btn-ghost-danger" onClick={() => setCancelling(row)} aria-label={t("Cancel reservation of {title} for {name}", { title: formatTitle(row.book?.bookTitle), name: row.member?.name })}>
             <i className="bi bi-x-circle" aria-hidden="true"></i>
           </button>
         ) : null,
@@ -69,40 +79,41 @@ export default function ReservationsPage() {
     <>
       <div>
         <label htmlFor="reservation-status" className="form-label small mb-1">
-          Status
+          {t("Status")}
         </label>
         <select id="reservation-status" className="form-select form-select-sm" value={filters.status} onChange={(event) => setFilter("status", event.target.value)}>
-          <option value="">All</option>
+          <option value="">{t("All")}</option>
           {["waiting", "in_transit", "ready", "fulfilled", "cancelled", "expired"].map((status) => (
             <option key={status} value={status}>
-              {status.replace("_", " ")}
+              {humanize(status)}
             </option>
           ))}
         </select>
       </div>
-      <BranchSelect id="reservation-pickup" label="Pickup branch" value={filters.pickupBranch} onChange={(value) => setFilter("pickupBranch", value)} />
+      <BranchSelect id="reservation-pickup" label={t("Pickup branch")} value={filters.pickupBranch} onChange={(value) => setFilter("pickupBranch", value)} />
     </>
   );
 
   return (
     <>
       <PageHeader
-        title="Reservations"
-        description="Holds waiting, travelling to their pickup branch, or ready to collect."
+        title={t("Reservations")}
+        description={t("Holds waiting, travelling to their pickup branch, or ready to collect.")}
         actions={
           canManage && (
             <button type="button" className="btn btn-primary" onClick={() => setPlacing(true)}>
-              <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>Place reservation
+              <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
+              {t("Place reservation")}
             </button>
           )
         }
       />
-      <DataTable columns={columns} query={query} onPageChange={setPage} toolbar={toolbar} caption="Reservations" empty={{ icon: "bookmark-star", title: "No reservations match" }} />
+      <DataTable columns={columns} query={query} onPageChange={setPage} toolbar={toolbar} caption={t("Reservations")} empty={{ icon: "bookmark-star", title: t("No reservations match") }} />
       {placing && <PlaceReservationModal onClose={() => setPlacing(false)} />}
       {cancelling && (
         <ReasonModal
-          title="Cancel this reservation?"
-          confirmLabel="Cancel reservation"
+          title={t("Cancel this reservation?")}
+          confirmLabel={t("Cancel reservation")}
           required={false}
           onClose={() => setCancelling(null)}
           onSubmit={({ reason }) => cancel.mutateAsync({ id: cancelling._id, reason })}

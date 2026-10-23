@@ -3,6 +3,7 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { usePermissions } from "../auth/auth.queries.js";
 import { useAuthStore } from "../auth/auth.store.js";
 import { useRolesQuery } from "../roles/role.queries.js";
+import { roleName } from "../roles/role-labels.js";
 import { useActiveBranches } from "../branches/branch.queries.js";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { initials, pluralize } from "../../lib/format.js";
@@ -15,6 +16,7 @@ import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { useChangeUserRole, useUpdateUserAccess, useUsersQuery } from "./user.queries.js";
+import { t } from "../../i18n/index.js";
 
 const NO_ROLES = [];
 const selectUserId = (state) => state.user?.id;
@@ -27,14 +29,14 @@ function RoleSelect({ user, roles, onChange, disabled }) {
     <select
       className="form-select form-select-sm"
       style={{ maxWidth: 220 }}
-      aria-label={`Role of ${user.userName}`}
+      aria-label={t("Role of {name}", { name: user.userName })}
       value={user.role}
       disabled={disabled}
       onChange={(event) => onChange(user, event.target.value)}
     >
       {names.map((name) => (
         <option key={name} value={name}>
-          {name}
+          {roleName(name)}
         </option>
       ))}
     </select>
@@ -47,8 +49,8 @@ function BranchesForm({ user, branches, onSubmit }) {
   return (
     <form id="branches-form" onSubmit={(event) => { event.preventDefault(); onSubmit(selected); }}>
       <fieldset>
-        <legend className="form-label">Branches</legend>
-        <p className="small text-muted">A role limited to assigned branches only works in these.</p>
+        <legend className="form-label">{t("Branches")}</legend>
+        <p className="small text-muted">{t("A role limited to assigned branches only works in these.")}</p>
         {branches.map((branch) => (
           <div className="form-check" key={branch._id}>
             <input id={`branch-${branch._id}`} type="checkbox" className="form-check-input" checked={selected.includes(branch._id)} onChange={() => toggle(branch._id)} />
@@ -79,42 +81,42 @@ export default function UsersPage() {
   async function handleRoleChange(user, role) {
     try {
       await changeRole.mutateAsync({ userId: user._id, role });
-      toast.success(`${user.userName} is now ${role}.`);
+      toast.success(t("{name} is now {role}.", { name: user.userName, role: roleName(role) }));
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't change this role."));
+      toast.error(getErrorMessage(err, t("Couldn't change this role.")));
     }
   }
 
   async function handleBranches(selected) {
     try {
       await updateAccess.mutateAsync({ userId: editingBranches._id, access: { branches: selected } });
-      toast.success(`Updated ${editingBranches.userName}'s branches.`);
+      toast.success(t("Updated {name}'s branches.", { name: editingBranches.userName }));
       setEditingBranches(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't update the branches."));
+      toast.error(getErrorMessage(err, t("Couldn't update the branches.")));
     }
   }
 
   async function handleActive(user) {
     const deactivate = user.isActive !== false;
     const ok = await confirm({
-      title: deactivate ? `Deactivate ${user.userName}?` : `Reactivate ${user.userName}?`,
-      message: deactivate ? "They are signed out everywhere and can't sign in until reactivated." : "They will be able to sign in again.",
-      confirmLabel: deactivate ? "Deactivate" : "Reactivate",
+      title: deactivate ? t("Deactivate {name}?", { name: user.userName }) : t("Reactivate {name}?", { name: user.userName }),
+      message: deactivate ? t("They are signed out everywhere and can't sign in until reactivated.") : t("They will be able to sign in again."),
+      confirmLabel: deactivate ? t("Deactivate") : t("Reactivate"),
       tone: deactivate ? "danger" : "primary",
     });
     if (!ok) return;
     try {
       await updateAccess.mutateAsync({ userId: user._id, access: { isActive: !deactivate } });
-      toast.success(deactivate ? `${user.userName} was deactivated.` : `${user.userName} can sign in again.`);
+      toast.success(deactivate ? t("{name} was deactivated.", { name: user.userName }) : t("{name} can sign in again.", { name: user.userName }));
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't change this account."));
+      toast.error(getErrorMessage(err, t("Couldn't change this account.")));
     }
   }
 
   return (
     <>
-      <PageHeader title="Users" description={isLoading ? "Loading…" : pluralize(data?.meta?.total ?? 0, "account")} />
+      <PageHeader title={t("Users")} description={isLoading ? t("Loading…") : pluralize(data?.meta?.total ?? 0, "account")} />
 
       <div className="card">
         <div className="p-3 border-bottom">
@@ -122,8 +124,8 @@ export default function UsersPage() {
             type="search"
             className="form-control"
             style={{ maxWidth: 360 }}
-            placeholder="Search by name or email"
-            aria-label="Search users"
+            placeholder={t("Search by name or email")}
+            aria-label={t("Search users")}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -133,26 +135,26 @@ export default function UsersPage() {
         </div>
         {isLoading ? (
           <p className="text-muted p-4 mb-0" aria-busy="true">
-            Loading accounts…
+            {t("Loading accounts…")}
           </p>
         ) : error ? (
           <div className="p-3">
-            <ErrorState message={getErrorMessage(error, "Failed to fetch users.")} onRetry={refetch} />
+            <ErrorState message={getErrorMessage(error, t("Failed to fetch users."))} onRetry={refetch} />
           </div>
         ) : users.length === 0 ? (
           <div className="p-3">
-            <StatePanel icon="search" title="No accounts match your search" />
+            <StatePanel icon="search" title={t("No accounts match your search")} />
           </div>
         ) : (
           <div className="table-responsive">
             <table className="table data-table align-middle">
               <thead>
                 <tr>
-                  <th scope="col">Account</th>
-                  <th scope="col">Role</th>
-                  <th scope="col" className="d-none d-md-table-cell">Branches</th>
-                  <th scope="col" className="d-none d-md-table-cell">Status</th>
-                  <th scope="col" className="text-end"><span className="visually-hidden">Actions</span></th>
+                  <th scope="col">{t("Account")}</th>
+                  <th scope="col">{t("Role")}</th>
+                  <th scope="col" className="d-none d-md-table-cell">{t("Branches")}</th>
+                  <th scope="col" className="d-none d-md-table-cell">{t("Status")}</th>
+                  <th scope="col" className="text-end"><span className="visually-hidden">{t("Actions")}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -167,7 +169,7 @@ export default function UsersPage() {
                           <div className="min-w-0">
                             <div className="fw-semibold text-truncate">
                               {user.userName}
-                              {isSelf && <span className="text-muted fw-normal"> (you)</span>}
+                              {isSelf && <span className="text-muted fw-normal"> {t("(you)")}</span>}
                             </div>
                             <div className="small text-muted text-truncate">{user.email}</div>
                           </div>
@@ -177,27 +179,27 @@ export default function UsersPage() {
                         {canManage && !isSelf ? (
                           <RoleSelect user={user} roles={roles} onChange={handleRoleChange} disabled={changeRole.isPending} />
                         ) : (
-                          <span className="badge badge-soft">{user.role}</span>
+                          <span className="badge badge-soft">{roleName(user.role)}</span>
                         )}
                       </td>
                       <td className="d-none d-md-table-cell small">
-                        {(user.branches ?? []).length ? user.branches.map((id) => branchName[id] ?? "?").join(", ") : <span className="text-muted">None</span>}
+                        {(user.branches ?? []).length ? user.branches.map((id) => branchName[id] ?? "?").join(", ") : <span className="text-muted">{t("None")}</span>}
                       </td>
                       <td className="d-none d-md-table-cell">
-                        <StatusBadge status={active ? "active" : "suspended"} label={active ? "Active" : "Deactivated"} />
-                        {!user.confirmEmail && <div className="small text-muted">Email not confirmed</div>}
+                        <StatusBadge status={active ? "active" : "suspended"} label={active ? t("Active") : t("Deactivated")} />
+                        {!user.confirmEmail && <div className="small text-muted">{t("Email not confirmed")}</div>}
                       </td>
                       <td className="text-end text-nowrap">
                         {canManage && !isSelf && (
                           <>
-                            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingBranches(user)} aria-label={`Branches of ${user.userName}`}>
+                            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingBranches(user)} aria-label={t("Branches of {name}", { name: user.userName })}>
                               <i className="bi bi-building" aria-hidden="true"></i>
                             </button>
                             <button
                               type="button"
                               className={`btn btn-sm ${active ? "btn-ghost-danger" : "btn-ghost"}`}
                               onClick={() => handleActive(user)}
-                              aria-label={`${active ? "Deactivate" : "Reactivate"} ${user.userName}`}
+                              aria-label={active ? t("Deactivate {name}", { name: user.userName }) : t("Reactivate {name}", { name: user.userName })}
                             >
                               <i className={`bi bi-${active ? "person-slash" : "person-check"}`} aria-hidden="true"></i>
                             </button>
@@ -211,19 +213,19 @@ export default function UsersPage() {
             </table>
           </div>
         )}
-        <Pagination meta={data?.meta} onPageChange={setPage} label="User pages" />
+        <Pagination meta={data?.meta} onPageChange={setPage} label={t("User pages")} />
       </div>
 
       {editingBranches && (
         <Modal
-          title={`Branches for ${editingBranches.userName}`}
+          title={t("Branches for {name}", { name: editingBranches.userName })}
           size="sm"
           onClose={() => !updateAccess.isPending && setEditingBranches(null)}
           footer={
             <>
-              <button type="button" className="btn btn-light" onClick={() => setEditingBranches(null)} disabled={updateAccess.isPending}>Cancel</button>
+              <button type="button" className="btn btn-light" onClick={() => setEditingBranches(null)} disabled={updateAccess.isPending}>{t("Cancel")}</button>
               <button type="submit" form="branches-form" className="btn btn-primary" disabled={updateAccess.isPending}>
-                {updateAccess.isPending ? <Spinner label="Saving" /> : "Save branches"}
+                {updateAccess.isPending ? <Spinner label={t("Saving")} /> : t("Save branches")}
               </button>
             </>
           }

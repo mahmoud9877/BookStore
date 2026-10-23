@@ -8,6 +8,7 @@ import useListState from "../../hooks/useListState.js";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { apiClient, fetchJson, useApiMutation, usePagedQuery } from "../../lib/resource.js";
 import { formatDateTime } from "../../lib/format.js";
+import { t } from "../../i18n/index.js";
 import { selectIsSignedIn, useAuthStore } from "../auth/auth.store.js";
 import { accountKeys } from "../account/account.queries.js";
 
@@ -21,22 +22,22 @@ export default function EventsPage() {
   const invalidate = [["events"], accountKeys.events()];
   const register = useApiMutation((event) => apiClient.post(`/events/${event._id}/register`), {
     invalidate,
-    success: (event) => `You're registered for “${event.title}”.`,
+    success: (event) => t("You're registered for “{title}”.", { title: event.title }),
   });
-  const unregister = useApiMutation((event) => apiClient.post(`/events/${event._id}/unregister`), { invalidate, success: "Registration cancelled." });
+  const unregister = useApiMutation((event) => apiClient.post(`/events/${event._id}/unregister`), { invalidate, success: t("Registration cancelled.") });
   const items = events.data?.data ?? [];
 
   return (
     <div className="container">
-      <PageHeader title="Events" description="Book clubs, talks and workshops at our branches." />
+      <PageHeader title={t("Events")} description={t("Book clubs, talks and workshops at our branches.")} />
       {events.isLoading ? (
         <p className="text-muted" aria-busy="true">
-          Loading events…
+          {t("Loading events…")}
         </p>
       ) : events.error ? (
-        <ErrorState message={getErrorMessage(events.error, "Couldn't load events.")} onRetry={events.refetch} />
+        <ErrorState message={getErrorMessage(events.error, t("Couldn't load events."))} onRetry={events.refetch} />
       ) : items.length === 0 ? (
-        <StatePanel icon="calendar-event" title="No upcoming events" message="Check back soon." />
+        <StatePanel icon="calendar-event" title={t("No upcoming events")} message={t("Check back soon.")} />
       ) : (
         <>
           <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
@@ -55,19 +56,19 @@ export default function EventsPage() {
                       </div>
                       {event.description && <p className="small">{event.description}</p>}
                       <div className="small text-muted mt-auto mb-2">
-                        {event.capacity - event.registered} of {event.capacity} places left
+                        {t("{left} of {capacity} places left", { left: event.capacity - event.registered, capacity: event.capacity })}
                       </div>
                       {!isSignedIn ? (
                         <Link to="/login" className="btn btn-sm btn-outline-primary">
-                          Sign in to register
+                          {t("Sign in to register")}
                         </Link>
                       ) : registered ? (
                         <button type="button" className="btn btn-sm btn-light" onClick={() => unregister.mutate(event)} disabled={unregister.isPending}>
-                          <i className="bi bi-check2 me-1" aria-hidden="true"></i>Registered — cancel
+                          <i className="bi bi-check2 me-1" aria-hidden="true"></i>{t("Registered — cancel")}
                         </button>
                       ) : (
                         <button type="button" className="btn btn-sm btn-primary" onClick={() => register.mutate(event)} disabled={full || register.isPending}>
-                          {full ? "Full" : `Register for ${event.title}`}
+                          {full ? t("Full") : t("Register for {title}", { title: event.title })}
                         </button>
                       )}
                     </div>
@@ -76,7 +77,7 @@ export default function EventsPage() {
               );
             })}
           </div>
-          <Pagination meta={events.data?.meta} onPageChange={setPage} label="Event pages" />
+          <Pagination meta={events.data?.meta} onPageChange={setPage} label={t("Event pages")} />
         </>
       )}
     </div>

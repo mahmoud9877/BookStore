@@ -4,6 +4,7 @@ import Spinner from "../../components/ui/Spinner.jsx";
 import FormField from "../../components/ui/FormField.jsx";
 import { apiClient, useApiMutation } from "../../lib/resource.js";
 import { formatMoney, toMinorUnits } from "../../lib/format.js";
+import { t } from "../../i18n/index.js";
 import { useMemberLookup } from "../circulation/useMemberLookup.js";
 import { FINANCE_KEYS, newIdempotencyKey } from "./finance-keys.js";
 
@@ -23,15 +24,15 @@ export default function CashPaymentModal({ member: givenMember, onClose }) {
   const balance = member?.summary?.balance;
   const pay = useApiMutation(
     ({ memberId, minor }) => apiClient.post("/payments", { member: memberId, amount: minor }, { headers: { "Idempotency-Key": idempotencyKey } }),
-    { invalidate: FINANCE_KEYS, success: (payment) => `Payment recorded. Receipt ${payment.receiptNumber}.`, failure: "Couldn't record the payment." }
+    { invalidate: FINANCE_KEYS, success: (payment) => t("Payment recorded. Receipt {receipt}.", { receipt: payment.receiptNumber }), failure: t("Couldn't record the payment.") }
   );
 
   async function submit(event) {
     event.preventDefault();
     const minor = toMinorUnits(amount);
-    if (!member) return setError("Choose a member.");
-    if (!(minor > 0)) return setError("Enter an amount greater than zero.");
-    if (balance != null && minor > balance) return setError(`The member owes ${formatMoney(balance)}.`);
+    if (!member) return setError(t("Choose a member."));
+    if (!(minor > 0)) return setError(t("Enter an amount greater than zero."));
+    if (balance != null && minor > balance) return setError(t("The member owes {amount}.", { amount: formatMoney(balance) }));
     setError("");
     try {
       await pay.mutateAsync({ memberId: member._id, minor });
@@ -43,16 +44,16 @@ export default function CashPaymentModal({ member: givenMember, onClose }) {
 
   return (
     <Modal
-      title="Record a cash payment"
+      title={t("Record a cash payment")}
       size="sm"
       onClose={() => !pay.isPending && onClose()}
       footer={
         <>
           <button type="button" className="btn btn-light" onClick={onClose} disabled={pay.isPending}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="submit" form="cash-payment-form" className="btn btn-primary" disabled={pay.isPending}>
-            {pay.isPending ? <Spinner label="Recording" /> : "Record payment"}
+            {pay.isPending ? <Spinner label={t("Recording")} /> : t("Record payment")}
           </button>
         </>
       }
@@ -63,10 +64,10 @@ export default function CashPaymentModal({ member: givenMember, onClose }) {
             <strong>{givenMember.name}</strong> <span className="text-muted">({givenMember.memberNumber})</span>
           </p>
         ) : (
-          <FormField label="Member number" value={memberRef} onChange={(event) => setMemberRef(event.target.value)} hint={lookup.data ? lookup.data.name : undefined} autoComplete="off" />
+          <FormField label={t("Member number")} value={memberRef} onChange={(event) => setMemberRef(event.target.value)} hint={lookup.data ? lookup.data.name : undefined} autoComplete="off" />
         )}
-        {balance != null && <p className="small text-muted">Outstanding balance: {formatMoney(balance)}. Oldest fines are paid first.</p>}
-        <FormField label="Amount" type="number" min="0" step="0.01" className="" value={amount} onChange={(event) => setAmount(event.target.value)} error={error || undefined} />
+        {balance != null && <p className="small text-muted">{t("Outstanding balance: {amount}. Oldest fines are paid first.", { amount: formatMoney(balance) })}</p>}
+        <FormField label={t("Amount")} type="number" min="0" step="0.01" className="" value={amount} onChange={(event) => setAmount(event.target.value)} error={error || undefined} />
       </form>
     </Modal>
   );

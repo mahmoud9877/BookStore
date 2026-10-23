@@ -8,15 +8,17 @@ import { getErrorMessage, responseData } from "../../lib/api-client.js";
 import { humanize } from "../../lib/format.js";
 import { toForm, toPayload } from "./settings-form.js";
 import MembershipTypesPanel from "./MembershipTypesPanel.jsx";
+import { msg, t } from "../../i18n/index.js";
 
+// The {{placeholders}} each notification template may use.
 const TEMPLATE_HINTS = {
-  "loan.due_soon": "{{memberName}} {{title}} {{barcode}} {{dueDate}}",
-  "loan.overdue": "{{memberName}} {{title}} {{barcode}} {{dueDate}}",
-  "reservation.ready": "{{memberName}} {{title}} {{branchName}} {{expiresAt}}",
-  "reservation.expired": "{{memberName}} {{title}}",
-  "membership.expiring": "{{memberName}} {{membershipType}} {{expiresAt}}",
-  "payment.received": "{{memberName}} {{amount}} {{receiptNumber}}",
-  "fine.issued": "{{memberName}} {{fineType}} {{amount}} {{reason}}",
+  "loan.due_soon": ["memberName", "title", "barcode", "dueDate"],
+  "loan.overdue": ["memberName", "title", "barcode", "dueDate"],
+  "reservation.ready": ["memberName", "title", "branchName", "expiresAt"],
+  "reservation.expired": ["memberName", "title"],
+  "membership.expiring": ["memberName", "membershipType", "expiresAt"],
+  "payment.received": ["memberName", "amount", "receiptNumber"],
+  "fine.issued": ["memberName", "fineType", "amount", "reason"],
 };
 
 function Section({ title, description, children }) {
@@ -78,84 +80,84 @@ function PoliciesForm({ settings, onReload }) {
     try {
       const saved = (await responseData(apiClient.put("/settings", toPayload(form, version)))).data;
       setState(toForm(saved));
-      toast.success("Settings saved.");
+      toast.success(t("Settings saved."));
     } catch (error) {
       if (error?.response?.status === 409) setConflict(getErrorMessage(error));
-      else toast.error(getErrorMessage(error, "Couldn't save the settings."));
+      else toast.error(getErrorMessage(error, t("Couldn't save the settings.")));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate aria-label="Library policies">
+    <form onSubmit={handleSubmit} noValidate aria-label={t("Library policies")}>
       {conflict && (
         <div className="alert alert-warning d-flex flex-wrap gap-2 align-items-center justify-content-between" role="alert">
           <span>{conflict}</span>
-          <button type="button" className="btn btn-sm btn-outline-primary" onClick={onReload}>Reload settings</button>
+          <button type="button" className="btn btn-sm btn-outline-primary" onClick={onReload}>{t("Reload settings")}</button>
         </div>
       )}
       <p className="text-muted small">
-        These are your library's own policies. The defaults charge no fines and block nobody until you set them. Amounts are in {currency}.
+        {t("These are your library's own policies. The defaults charge no fines and block nobody until you set them. Amounts are in {currency}.", { currency })}
       </p>
 
-      <Section title="Currency" description="Fines and payments are recorded in this currency (ISO code). Changing it does not convert existing records.">
+      <Section title={t("Currency")} description={t("Fines and payments are recorded in this currency (ISO code). Changing it does not convert existing records.")}>
         <div className="col-sm-4">
-          <label htmlFor="currency" className="form-label">Currency code</label>
+          <label htmlFor="currency" className="form-label">{t("Currency code")}</label>
           <input id="currency" className="form-control text-uppercase" maxLength={3} value={form.currency} onChange={(event) => setState((current) => ({ ...current, form: { ...current.form, currency: event.target.value.toUpperCase() } }))} />
         </div>
       </Section>
 
-      <Section title="Circulation" description="Loan limits and periods come from each membership type; these rules apply to everyone.">
-        <NumberField id="block-balance" label={`Block borrowing above balance (${currency})`} step="0.01" value={form.circulation.blockBorrowingAboveBalance} onChange={set("circulation", "blockBorrowingAboveBalance")} placeholder="No limit" hint="Leave empty to never block borrowing for unpaid fines." />
-        <Toggle id="renew-reserved" label="Allow renewals while others are waiting" hint="Off: a loan can't be renewed if members are queued for the title." checked={form.circulation.allowRenewalWhenReserved} onChange={set("circulation", "allowRenewalWhenReserved")} />
-        <Toggle id="return-home" label="Send copies returned elsewhere back to their branch" hint="Off: a copy returned at another branch stays there and becomes part of its stock." checked={form.circulation.returnToHomeBranch} onChange={set("circulation", "returnToHomeBranch")} />
+      <Section title={t("Circulation")} description={t("Loan limits and periods come from each membership type; these rules apply to everyone.")}>
+        <NumberField id="block-balance" label={t("Block borrowing above balance ({currency})", { currency })} step="0.01" value={form.circulation.blockBorrowingAboveBalance} onChange={set("circulation", "blockBorrowingAboveBalance")} placeholder={t("No limit")} hint={t("Leave empty to never block borrowing for unpaid fines.")} />
+        <Toggle id="renew-reserved" label={t("Allow renewals while others are waiting")} hint={t("Off: a loan can't be renewed if members are queued for the title.")} checked={form.circulation.allowRenewalWhenReserved} onChange={set("circulation", "allowRenewalWhenReserved")} />
+        <Toggle id="return-home" label={t("Send copies returned elsewhere back to their branch")} hint={t("Off: a copy returned at another branch stays there and becomes part of its stock.")} checked={form.circulation.returnToHomeBranch} onChange={set("circulation", "returnToHomeBranch")} />
       </Section>
 
-      <Section title="Reservations">
-        <NumberField id="hold-days" label="Days to collect a ready reservation" min={1} value={form.reservations.holdPickupDays} onChange={int("reservations", "holdPickupDays")} hint="After this the reservation expires and the copy goes to the next member." />
-        <Toggle id="cross-branch" label="Allow pickup at a branch other than the copy's" hint="On: copies travel to the member's chosen branch." checked={form.reservations.allowCrossBranchPickup} onChange={set("reservations", "allowCrossBranchPickup")} />
+      <Section title={t("Reservations")}>
+        <NumberField id="hold-days" label={t("Days to collect a ready reservation")} min={1} value={form.reservations.holdPickupDays} onChange={int("reservations", "holdPickupDays")} hint={t("After this the reservation expires and the copy goes to the next member.")} />
+        <Toggle id="cross-branch" label={t("Allow pickup at a branch other than the copy's")} hint={t("On: copies travel to the member's chosen branch.")} checked={form.reservations.allowCrossBranchPickup} onChange={set("reservations", "allowCrossBranchPickup")} />
       </Section>
 
-      <Section title="Fines" description="Charged automatically when an item comes back late, damaged, or is declared lost.">
-        <NumberField id="per-day" label={`Overdue fine per day (${currency})`} step="0.01" value={form.fines.overduePerDay} onChange={set("fines", "overduePerDay")} hint="0 charges no overdue fines." />
-        <NumberField id="grace" label="Grace days" value={form.fines.graceDays} onChange={int("fines", "graceDays")} hint="Days late before the overdue fine starts." />
-        <NumberField id="max-overdue" label={`Maximum overdue fine per loan (${currency})`} step="0.01" value={form.fines.maxOverduePerLoan} onChange={set("fines", "maxOverduePerLoan")} placeholder="No cap" />
-        <NumberField id="lost-fee" label={`Lost item fee (${currency})`} step="0.01" value={form.fines.lostItemFee} onChange={set("fines", "lostItemFee")} placeholder="The copy's recorded cost" hint="Empty: charge the copy's recorded cost." />
-        <NumberField id="damaged-fee" label={`Damaged item fee (${currency})`} step="0.01" value={form.fines.damagedItemFee} onChange={set("fines", "damagedItemFee")} />
+      <Section title={t("Fines")} description={t("Charged automatically when an item comes back late, damaged, or is declared lost.")}>
+        <NumberField id="per-day" label={t("Overdue fine per day ({currency})", { currency })} step="0.01" value={form.fines.overduePerDay} onChange={set("fines", "overduePerDay")} hint={t("0 charges no overdue fines.")} />
+        <NumberField id="grace" label={t("Grace days")} value={form.fines.graceDays} onChange={int("fines", "graceDays")} hint={t("Days late before the overdue fine starts.")} />
+        <NumberField id="max-overdue" label={t("Maximum overdue fine per loan ({currency})", { currency })} step="0.01" value={form.fines.maxOverduePerLoan} onChange={set("fines", "maxOverduePerLoan")} placeholder={t("No cap")} />
+        <NumberField id="lost-fee" label={t("Lost item fee ({currency})", { currency })} step="0.01" value={form.fines.lostItemFee} onChange={set("fines", "lostItemFee")} placeholder={t("The copy's recorded cost")} hint={t("Empty: charge the copy's recorded cost.")} />
+        <NumberField id="damaged-fee" label={t("Damaged item fee ({currency})", { currency })} step="0.01" value={form.fines.damagedItemFee} onChange={set("fines", "damagedItemFee")} />
       </Section>
 
-      <Section title="Notifications" description="Members get in-app messages; email is sent by the background worker when enabled.">
-        <Toggle id="email-enabled" label="Send email notifications" checked={form.notifications.emailEnabled} onChange={set("notifications", "emailEnabled")} />
-        <NumberField id="due-soon" label="Due-date reminder (days before)" min={1} value={form.notifications.dueSoonDays} onChange={int("notifications", "dueSoonDays")} />
-        <NumberField id="expiry-days" label="Membership expiry reminder (days before)" min={1} value={form.notifications.membershipExpiryDays} onChange={int("notifications", "membershipExpiryDays")} />
+      <Section title={t("Notifications")} description={t("Members get in-app messages; email is sent by the background worker when enabled.")}>
+        <Toggle id="email-enabled" label={t("Send email notifications")} checked={form.notifications.emailEnabled} onChange={set("notifications", "emailEnabled")} />
+        <NumberField id="due-soon" label={t("Due-date reminder (days before)")} min={1} value={form.notifications.dueSoonDays} onChange={int("notifications", "dueSoonDays")} />
+        <NumberField id="expiry-days" label={t("Membership expiry reminder (days before)")} min={1} value={form.notifications.membershipExpiryDays} onChange={int("notifications", "membershipExpiryDays")} />
         <div className="col-12">
-          <h2 className="h6 mt-2">Message templates</h2>
-          <p className="small text-muted mb-2">Use the listed {"{{placeholders}}"}; unknown ones are left empty.</p>
+          <h2 className="h6 mt-2">{t("Message templates")}</h2>
+          <p className="small text-muted mb-2">{t("Use the listed {placeholders}; unknown ones are left empty.", { placeholders: "{{placeholders}}" })}</p>
           {Object.entries(form.notifications.templates).map(([type, template]) => (
             <details key={type} className="border rounded p-2 mb-2">
               <summary className="fw-semibold">{humanize(type.replace(".", " "))}</summary>
               <div className="mt-2">
-                <label htmlFor={`${type}-subject`} className="form-label small">Subject</label>
+                <label htmlFor={`${type}-subject`} className="form-label small">{t("Subject")}</label>
                 <input id={`${type}-subject`} className="form-control form-control-sm mb-2" value={template.subject} onChange={setTemplate(type, "subject")} />
-                <label htmlFor={`${type}-body`} className="form-label small">Message</label>
+                <label htmlFor={`${type}-body`} className="form-label small">{t("Message")}</label>
                 <textarea id={`${type}-body`} className="form-control form-control-sm" rows={4} value={template.body} onChange={setTemplate(type, "body")} aria-describedby={`${type}-hint`} />
-                <div id={`${type}-hint`} className="form-text">Placeholders: {TEMPLATE_HINTS[type] ?? "{{memberName}}"}</div>
+                <div id={`${type}-hint`} className="form-text">{t("Placeholders:")} {(TEMPLATE_HINTS[type] ?? ["memberName"]).map((name) => `{{${name}}}`).join(" ")}</div>
               </div>
             </details>
           ))}
         </div>
       </Section>
 
-      <Section title="Rooms" description="Limits for bookings members make themselves (staff bookings are not limited).">
-        <NumberField id="max-hours" label="Longest booking (hours)" min={1} value={form.rooms.maxBookingHours} onChange={int("rooms", "maxBookingHours")} />
-        <NumberField id="advance" label="Book up to (days ahead)" min={1} value={form.rooms.maxAdvanceDays} onChange={int("rooms", "maxAdvanceDays")} />
-        <NumberField id="cutoff" label="Cancel at least (hours before)" value={form.rooms.cancellationCutoffHours} onChange={int("rooms", "cancellationCutoffHours")} />
+      <Section title={t("Rooms")} description={t("Limits for bookings members make themselves (staff bookings are not limited).")}>
+        <NumberField id="max-hours" label={t("Longest booking (hours)")} min={1} value={form.rooms.maxBookingHours} onChange={int("rooms", "maxBookingHours")} />
+        <NumberField id="advance" label={t("Book up to (days ahead)")} min={1} value={form.rooms.maxAdvanceDays} onChange={int("rooms", "maxAdvanceDays")} />
+        <NumberField id="cutoff" label={t("Cancel at least (hours before)")} value={form.rooms.cancellationCutoffHours} onChange={int("rooms", "cancellationCutoffHours")} />
       </Section>
 
       <div className="d-flex justify-content-end">
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? <Spinner label="Saving" /> : "Save settings"}
+          {saving ? <Spinner label={t("Saving")} /> : t("Save settings")}
         </button>
       </div>
     </form>
@@ -169,12 +171,12 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Borrowing, fine, reservation, notification and room policies." />
+      <PageHeader title={t("Settings")} description={t("Borrowing, fine, reservation, notification and room policies.")} />
       <ul className="nav nav-tabs mb-3" role="tablist">
-        {[["policies", "Policies"], ["types", "Membership types"]].map(([key, label]) => (
+        {[["policies", msg("Policies")], ["types", msg("Membership types")]].map(([key, label]) => (
           <li className="nav-item" role="presentation" key={key}>
             <button type="button" role="tab" aria-selected={tab === key} className={`nav-link ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
-              {label}
+              {t(label)}
             </button>
           </li>
         ))}
@@ -182,9 +184,9 @@ export default function SettingsPage() {
       {tab === "types" ? (
         <MembershipTypesPanel />
       ) : query.isLoading ? (
-        <p className="text-muted" aria-busy="true">Loading settings…</p>
+        <p className="text-muted" aria-busy="true">{t("Loading settings…")}</p>
       ) : query.error ? (
-        <ErrorState message={getErrorMessage(query.error, "Couldn't load the settings.")} onRetry={query.refetch} />
+        <ErrorState message={getErrorMessage(query.error, t("Couldn't load the settings."))} onRetry={query.refetch} />
       ) : (
         <PoliciesForm settings={query.data} onReload={query.refetch} />
       )}

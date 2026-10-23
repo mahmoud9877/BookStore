@@ -12,10 +12,10 @@ const KPIS = [
 ];
 
 const ACTIVITY = [
-  { title: "The Name of the Rose", who: "M-0004182", action: msg("Returned"), status: msg("Shelved"), tone: "success" },
-  { title: "A Brief History of Time", who: "M-0001057", action: msg("Checked out"), status: msg("Due in 14 days"), tone: "primary" },
-  { title: "Pride and Prejudice", who: "M-0002230", action: msg("Reserved"), status: msg("Ready for pickup"), tone: "info" },
-  { title: "The Selfish Gene", who: "M-0000918", action: msg("Overdue"), status: msg("6 days late"), tone: "danger" },
+  { book: "The Name of the Rose", who: "M-0004182", action: msg("Returned"), status: msg("Shelved"), tone: "success" },
+  { book: "A Brief History of Time", who: "M-0001057", action: msg("Checked out"), status: msg("Due in 14 days"), tone: "primary" },
+  { book: "Pride and Prejudice", who: "M-0002230", action: msg("Reserved"), status: msg("Ready for pickup"), tone: "info" },
+  { book: "The Selfish Gene", who: "M-0000918", action: msg("Overdue"), status: msg("6 days late"), tone: "danger" },
 ];
 
 const NAV = [msg("Overview"), msg("Circulation desk"), msg("Loans"), msg("Reservations"), msg("Members"), msg("Copies"), msg("Reports")];
@@ -79,8 +79,8 @@ export default function ProductPreview({ variant = "dashboard" }) {
                 <div className="preview-table">
                   <div className="preview-table-head">{t("Recent circulation")}</div>
                   {ACTIVITY.map((row) => (
-                    <div key={row.title} className="preview-row">
-                      <span className="preview-row-title">{row.title}</span>
+                    <div key={row.book} className="preview-row">
+                      <span className="preview-row-title">{row.book}</span>
                       <span className="preview-row-who ltr">{row.who}</span>
                       <span className="preview-row-action">{t(row.action)}</span>
                       <span className={`preview-pill tone-${row.tone}`}>{t(row.status)}</span>

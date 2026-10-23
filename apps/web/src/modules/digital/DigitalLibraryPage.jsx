@@ -10,17 +10,18 @@ import { apiClient, getErrorMessage } from "../../lib/api-client.js";
 import { usePagedQuery } from "../../lib/resource.js";
 import { humanize } from "../../lib/format.js";
 import { selectIsSignedIn, useAuthStore } from "../auth/auth.store.js";
+import { msg, t } from "../../i18n/index.js";
 
 const FORMATS = ["", "pdf", "epub", "audio", "video"];
 const FORMAT_ICONS = { pdf: "file-earmark-pdf", epub: "book-half", audio: "headphones", video: "camera-video" };
-const ACCESS_LABELS = { public: "Free for everyone", members: "Library members", membership_types: "Selected memberships" };
+const ACCESS_LABELS = { public: msg("Free for everyone"), members: msg("Library members"), membership_types: msg("Selected memberships") };
 
 /** Messages for the access errors the file endpoint returns. */
 function openError(error) {
   const status = error?.response?.status;
-  if (status === 401) return "Sign in with your library account to open this publication.";
-  if (status === 403) return "Your membership doesn't include this publication.";
-  return getErrorMessage(error, "Couldn't open this publication.");
+  if (status === 401) return t("Sign in with your library account to open this publication.");
+  if (status === 403) return t("Your membership doesn't include this publication.");
+  return getErrorMessage(error, t("Couldn't open this publication."));
 }
 
 /**
@@ -66,38 +67,38 @@ export default function DigitalLibraryPage() {
 
   return (
     <div className="container">
-      <PageHeader title="Digital library" description="E-books, audiobooks and recordings you can open online." />
+      <PageHeader title={t("Digital library")} description={t("E-books, audiobooks and recordings you can open online.")} />
       <div className="d-flex flex-wrap gap-2 mb-3">
         <input
           type="search"
           className="form-control"
           style={{ maxWidth: 320 }}
-          placeholder="Search by title or author"
-          aria-label="Search the digital library"
+          placeholder={t("Search by title or author")}
+          aria-label={t("Search the digital library")}
           value={filters.search}
           onChange={(event) => setFilter("search", event.target.value)}
         />
-        <select className="form-select w-auto" aria-label="Format" value={filters.format} onChange={(event) => setFilter("format", event.target.value)}>
+        <select className="form-select w-auto" aria-label={t("Format")} value={filters.format} onChange={(event) => setFilter("format", event.target.value)}>
           {FORMATS.map((format) => (
             <option key={format || "all"} value={format}>
-              {format ? humanize(format) : "All formats"}
+              {format ? humanize(format) : t("All formats")}
             </option>
           ))}
         </select>
       </div>
       {!isSignedIn && (
         <p className="alert alert-info">
-          Most titles are for library members. <Link to="/login">Sign in</Link> to open them.
+          {t("Most titles are for library members.")} <Link to="/login">{t("Sign in")}</Link> {t("to open them.")}
         </p>
       )}
       {publications.isLoading ? (
         <p className="text-muted" aria-busy="true">
-          Loading…
+          {t("Loading…")}
         </p>
       ) : publications.error ? (
-        <ErrorState message={getErrorMessage(publications.error, "Couldn't load the digital library.")} onRetry={publications.refetch} />
+        <ErrorState message={getErrorMessage(publications.error, t("Couldn't load the digital library."))} onRetry={publications.refetch} />
       ) : items.length === 0 ? (
-        <StatePanel icon="file-earmark" title="No digital publications found" />
+        <StatePanel icon="file-earmark" title={t("No digital publications found")} />
       ) : (
         <>
           <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
@@ -114,16 +115,16 @@ export default function DigitalLibraryPage() {
                     </div>
                     {publication.description && <p className="small text-muted">{publication.description}</p>}
                     <div className="small text-muted mt-auto mb-2">
-                      {humanize(publication.format)} · {ACCESS_LABELS[publication.access] ?? humanize(publication.access)}
+                      {humanize(publication.format)} · {ACCESS_LABELS[publication.access] ? t(ACCESS_LABELS[publication.access]) : humanize(publication.access)}
                     </div>
                     {publication.canOpen ? (
                       <button type="button" className="btn btn-sm btn-primary" onClick={() => open(publication)} disabled={openingId === publication._id}>
-                        {openingId === publication._id ? <Spinner label="Opening" /> : `Open ${publication.title}`}
+                        {openingId === publication._id ? <Spinner label={t("Opening")} /> : t("Open {title}", { title: publication.title })}
                       </button>
                     ) : (
                       <span className="small text-muted">
                         <i className="bi bi-lock me-1" aria-hidden="true"></i>
-                        {isSignedIn ? "Not included in your membership" : "Sign in as a member to open"}
+                        {isSignedIn ? t("Not included in your membership") : t("Sign in as a member to open")}
                       </span>
                     )}
                   </div>
@@ -131,7 +132,7 @@ export default function DigitalLibraryPage() {
               </div>
             ))}
           </div>
-          <Pagination meta={publications.data?.meta} onPageChange={setPage} label="Digital library pages" />
+          <Pagination meta={publications.data?.meta} onPageChange={setPage} label={t("Digital library pages")} />
         </>
       )}
     </div>

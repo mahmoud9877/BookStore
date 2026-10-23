@@ -7,6 +7,7 @@ import { formatName, formatTitle, humanize } from "../../lib/format.js";
 import { CIRCULATION_KEYS } from "./circulation-keys.js";
 import { useMemberLookup } from "./useMemberLookup.js";
 import BranchSelect from "./BranchSelect.jsx";
+import { t } from "../../i18n/index.js";
 
 /** Staff place a reservation for a member: find the member, the title and the pickup branch. */
 export default function PlaceReservationModal({ onClose, initialMember = "" }) {
@@ -22,8 +23,8 @@ export default function PlaceReservationModal({ onClose, initialMember = "" }) {
   });
   const place = useApiMutation((body) => apiClient.post("/reservations", body), {
     invalidate: CIRCULATION_KEYS,
-    success: (reservation) => `Reservation placed (${humanize(reservation.status).toLowerCase()}).`,
-    failure: "Couldn't place this reservation.",
+    success: (reservation) => t("Reservation placed ({status}).", { status: humanize(reservation.status).toLowerCase() }),
+    failure: t("Couldn't place this reservation."),
   });
 
   const ready = member.data && book && pickupBranch;
@@ -41,15 +42,15 @@ export default function PlaceReservationModal({ onClose, initialMember = "" }) {
 
   return (
     <Modal
-      title="Place a reservation"
+      title={t("Place a reservation")}
       onClose={() => !place.isPending && onClose()}
       footer={
         <>
           <button type="button" className="btn btn-light" onClick={onClose} disabled={place.isPending}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="submit" form="reservation-form" className="btn btn-primary" disabled={!ready || place.isPending}>
-            {place.isPending ? <Spinner label="Placing" /> : "Place reservation"}
+            {place.isPending ? <Spinner label={t("Placing")} /> : t("Place reservation")}
           </button>
         </>
       }
@@ -57,21 +58,21 @@ export default function PlaceReservationModal({ onClose, initialMember = "" }) {
       <form id="reservation-form" onSubmit={submit} noValidate>
         <div className="mb-3">
           <label htmlFor="reservation-member" className="form-label">
-            Member number
+            {t("Member number")}
           </label>
           <input id="reservation-member" className="form-control scan-input" value={memberRef} onChange={(event) => setMemberRef(event.target.value)} autoComplete="off" />
           {member.data && <div className="form-text text-success">{member.data.name}</div>}
-          {member.error && <div className="form-text text-danger">No member with this number.</div>}
+          {member.error && <div className="form-text text-danger">{t("No member with this number.")}</div>}
         </div>
         <div className="mb-3">
           <label htmlFor="reservation-book" className="form-label">
-            Title
+            {t("Title")}
           </label>
           {book ? (
             <div className="d-flex align-items-center gap-2">
               <span className="fw-semibold">{formatTitle(book.bookTitle)}</span>
               <button type="button" className="btn btn-sm btn-link" onClick={() => setBook(null)}>
-                Change
+                {t("Change")}
               </button>
             </div>
           ) : (
@@ -80,32 +81,32 @@ export default function PlaceReservationModal({ onClose, initialMember = "" }) {
                 id="reservation-book"
                 type="search"
                 className="form-control"
-                placeholder="Search by title, author or ISBN"
+                placeholder={t("Search by title, author or ISBN")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
               {books.data?.data?.length > 0 && (
-                <ul className="list-group mt-2" aria-label="Matching titles">
+                <ul className="list-group mt-2" aria-label={t("Matching titles")}>
                   {books.data.data.map((item) => (
                     <li key={item._id} className="list-group-item d-flex justify-content-between align-items-center gap-2">
                       <span>
-                        {formatTitle(item.bookTitle)} <span className="small text-muted">by {formatName(item.author)}</span>
+                        {formatTitle(item.bookTitle)} <span className="small text-muted">{t("by {author}", { author: formatName(item.author) })}</span>
                         <span className="d-block small text-muted">
-                          {item.availability?.available ?? 0} of {item.availability?.total ?? 0} available
+                          {t("{available} of {total} available", { available: item.availability?.available ?? 0, total: item.availability?.total ?? 0 })}
                         </span>
                       </span>
-                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setBook(item)} aria-label={`Choose ${formatTitle(item.bookTitle)}`}>
-                        Choose
+                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setBook(item)} aria-label={t("Choose {title}", { title: formatTitle(item.bookTitle) })}>
+                        {t("Choose")}
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-              {books.data?.data?.length === 0 && <div className="form-text">No matching titles.</div>}
+              {books.data?.data?.length === 0 && <div className="form-text">{t("No matching titles.")}</div>}
             </>
           )}
         </div>
-        <BranchSelect id="reservation-branch" label="Pickup branch" value={pickupBranch} onChange={setPickupBranch} allLabel="Choose…" />
+        <BranchSelect id="reservation-branch" label={t("Pickup branch")} value={pickupBranch} onChange={setPickupBranch} allLabel={t("Choose…")} />
       </form>
     </Modal>
   );

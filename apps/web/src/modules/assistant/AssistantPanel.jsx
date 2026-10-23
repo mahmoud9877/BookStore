@@ -4,8 +4,9 @@ import BookCard from "../books/BookCard.jsx";
 import Spinner from "../../components/ui/Spinner.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { askAssistant, getAssistantStatus } from "./assistant.service.js";
+import { msg, t } from "../../i18n/index.js";
 
-const EXAMPLES = ["A short science book I can borrow today", "Novels about growing up in the American South", "Something like Dune"];
+const EXAMPLES = [msg("A short science book I can borrow today"), msg("Novels about growing up in the American South"), msg("Something like Dune")];
 
 /**
  * "Ask the catalogue": a natural-language question answered from the public
@@ -33,38 +34,38 @@ export default function AssistantPanel({ onAddToCart, pendingId }) {
         <div className="d-flex align-items-center gap-2 mb-2">
           <i className="bi bi-chat-square-text text-primary" aria-hidden="true"></i>
           <h2 id={`${inputId}-title`} className="h5 mb-0">
-            Ask the catalogue
+            {t("Ask the catalogue")}
           </h2>
           {status.data && (
-            <span className="badge badge-soft" title={isAi ? "Answers are written by an AI assistant from catalogue records" : "Keyword search"}>
-              {isAi ? "AI assistant" : "Keyword search"}
+            <span className="badge badge-soft" title={isAi ? t("Answers are written by an AI assistant from catalogue records") : t("Keyword search")}>
+              {isAi ? t("AI assistant") : t("Keyword search")}
             </span>
           )}
         </div>
         <form onSubmit={submit} className="d-flex flex-column flex-sm-row gap-2">
           <label htmlFor={inputId} className="visually-hidden">
-            Describe what you are looking for
+            {t("Describe what you are looking for")}
           </label>
           <input
             id={inputId}
             className="form-control"
-            placeholder="Describe what you'd like to read"
+            placeholder={t("Describe what you'd like to read")}
             maxLength={500}
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
           />
           <button type="submit" className="btn btn-primary text-nowrap" disabled={ask.isPending || question.trim().length < 3}>
-            {ask.isPending ? <Spinner label="Searching" /> : "Ask"}
+            {ask.isPending ? <Spinner label={t("Searching")} /> : t("Ask")}
           </button>
         </form>
         {!result && !ask.error && (
           <p className="small text-muted mt-2 mb-0">
-            Try:{" "}
+            {t("Try:")}{" "}
             {EXAMPLES.map((example, index) => (
               <React.Fragment key={example}>
                 {index > 0 && " · "}
                 <button type="button" className="btn btn-link btn-sm p-0 align-baseline" onClick={() => setQuestion(example)}>
-                  {example}
+                  {t(example)}
                 </button>
               </React.Fragment>
             ))}
@@ -73,8 +74,8 @@ export default function AssistantPanel({ onAddToCart, pendingId }) {
         {ask.error && (
           <p className="alert alert-warning mt-3 mb-0" role="alert">
             {ask.error?.response?.status === 429
-              ? "You've asked a lot of questions in a short time. Please wait a minute and try again."
-              : getErrorMessage(ask.error, "The assistant couldn't answer. Please try again.")}
+              ? t("You've asked a lot of questions in a short time. Please wait a minute and try again.")
+              : getErrorMessage(ask.error, t("The assistant couldn't answer. Please try again."))}
           </p>
         )}
         {result && (
@@ -88,7 +89,7 @@ export default function AssistantPanel({ onAddToCart, pendingId }) {
                   <div className="col" key={book._id}>
                     <BookCard
                       book={book}
-                      badge={recommended.has(String(book._id)) ? "Recommended" : undefined}
+                      badge={recommended.has(String(book._id)) ? t("Recommended") : undefined}
                       onAddToCart={onAddToCart}
                       isAdding={pendingId === book._id}
                     />

@@ -4,6 +4,7 @@ import { formatPrice } from "../../lib/format.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import FormField from "../../components/ui/FormField.jsx";
 import { PAYMENT_METHODS, checkoutSchema } from "./checkout.validation.js";
+import { t } from "../../i18n/index.js";
 
 /** Delivery and payment details; `onSubmit` receives `{ address, phone, note, paymentType }`. */
 export default function OrderForm({ total, isSubmitting, onSubmit, onCancel }) {
@@ -15,20 +16,20 @@ export default function OrderForm({ total, isSubmitting, onSubmit, onCancel }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate aria-labelledby="checkout-title">
       <h2 id="checkout-title" className="h5 mb-3">
-        Delivery details
+        {t("Delivery details")}
       </h2>
-      <FormField label="Delivery address" autoComplete="street-address" {...field("address")} />
+      <FormField label={t("Delivery address")} autoComplete="street-address" {...field("address")} />
       <FormField
-        label="Phone"
+        label={t("Phone")}
         type="tel"
         autoComplete="tel"
-        hint="The courier will call this number."
+        hint={t("The courier will call this number.")}
         {...field("phone")}
       />
-      <FormField label="Note for the courier (optional)" as="textarea" rows={2} {...field("note")} />
+      <FormField label={t("Note for the courier (optional)")} as="textarea" rows={2} {...field("note")} />
 
       <fieldset className="mb-3">
-        <legend className="form-label fs-6">Payment</legend>
+        <legend className="form-label fs-6">{t("Payment")}</legend>
         <div className="d-grid gap-2">
           {PAYMENT_METHODS.map(({ value, label, description }) => (
             <label key={value} className="payment-option">
@@ -41,8 +42,8 @@ export default function OrderForm({ total, isSubmitting, onSubmit, onCancel }) {
                 onChange={handleChange}
               />
               <span>
-                <span className="fw-semibold d-block">{label}</span>
-                <span className="small text-muted">{description}</span>
+                <span className="fw-semibold d-block">{t(label)}</span>
+                <span className="small text-muted">{t(description)}</span>
               </span>
             </label>
           ))}
@@ -51,15 +52,15 @@ export default function OrderForm({ total, isSubmitting, onSubmit, onCancel }) {
 
       <button type="submit" className="btn btn-primary w-100 py-2" disabled={isSubmitting}>
         {isSubmitting ? (
-          <Spinner label="Placing order" />
+          <Spinner label={t("Placing order")} />
         ) : values.paymentType === "card" ? (
-          `Continue to payment · ${formatPrice(total)}`
+          t("Continue to payment · {total}", { total: formatPrice(total) })
         ) : (
-          `Place order · ${formatPrice(total)}`
+          t("Place order · {total}", { total: formatPrice(total) })
         )}
       </button>
       <button type="button" className="btn btn-link w-100 mt-1" onClick={onCancel} disabled={isSubmitting}>
-        Back to cart
+        {t("Back to cart")}
       </button>
     </form>
   );

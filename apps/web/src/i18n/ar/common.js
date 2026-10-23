@@ -38,6 +38,9 @@ export const messages = {
   "The page you're looking for doesn't exist or has moved.": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
   "An unexpected error occurred. Please try again.": "حدث خطأ غير متوقع. يُرجى المحاولة مرة أخرى.",
   "Back to the home page": "العودة إلى الصفحة الرئيسية",
+
+  // Phone numbers (checked with libphonenumber-js, see lib/phone.js)
+  "Enter a valid mobile number.": "أدخل رقم هاتف محمول صالحًا.",
   "You're offline. Some actions won't work until your connection is back.": "أنت غير متصل بالإنترنت. لن تعمل بعض الإجراءات حتى يعود الاتصال.",
   "Your session has expired. Please sign in again.": "انتهت صلاحية جلستك. يُرجى تسجيل الدخول مرة أخرى.",
   "This account has been deactivated.": "تم إيقاف هذا الحساب.",

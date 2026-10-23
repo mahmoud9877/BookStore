@@ -6,6 +6,7 @@ import { formatTitle, formatName } from "../../lib/format.js";
 import BookCover from "../../components/ui/BookCover.jsx";
 import FormField from "../../components/ui/FormField.jsx";
 import { usePublisherOptions } from "./publisher.queries.js";
+import { t } from "../../i18n/index.js";
 
 const BOOK_FIELDS = [
   "bookTitle", "author", "description", "category", "isbn", "edition", "publisher",
@@ -68,14 +69,14 @@ export default function BookForm({ book, categories, onSubmit }) {
     <form id="book-form" onSubmit={handleSubmit(submitBook)} noValidate>
       <div className="row g-3">
         <div className="col-sm-7">
-          <FormField label="Title" className="" {...field("bookTitle")} />
+          <FormField label={t("Title")} className="" {...field("bookTitle")} />
         </div>
         <div className="col-sm-5">
-          <FormField label="Author" className="" {...field("author")} />
+          <FormField label={t("Author")} className="" {...field("author")} />
         </div>
         <div className="col-sm-6">
-          <FormField label="Category" as="select" className="" {...field("category")}>
-            <option value="">Choose…</option>
+          <FormField label={t("Category")} as="select" className="" {...field("category")}>
+            <option value="">{t("Choose…")}</option>
             {categories.map((category) => (
               <option key={category._id} value={category._id}>
                 {category.name.charAt(0).toUpperCase() + category.name.slice(1)}
@@ -84,8 +85,8 @@ export default function BookForm({ book, categories, onSubmit }) {
           </FormField>
         </div>
         <div className="col-sm-6">
-          <FormField label="Publisher" as="select" className="" {...field("publisher")}>
-            <option value="">Not set</option>
+          <FormField label={t("Publisher")} as="select" className="" {...field("publisher")}>
+            <option value="">{t("Not set")}</option>
             {publishers.map((publisher) => (
               <option key={publisher._id} value={publisher._id}>
                 {publisher.name}
@@ -94,25 +95,25 @@ export default function BookForm({ book, categories, onSubmit }) {
           </FormField>
         </div>
         <div className="col-sm-6">
-          <FormField label="ISBN" className="" hint="ISBN-10 or ISBN-13; one record per edition." {...field("isbn")} />
+          <FormField label="ISBN" className="" hint={t("ISBN-10 or ISBN-13; one record per edition.")} {...field("isbn")} />
         </div>
         <div className="col-6 col-sm-3">
-          <FormField label="Edition" className="" {...field("edition")} />
+          <FormField label={t("Edition")} className="" {...field("edition")} />
         </div>
         <div className="col-6 col-sm-3">
-          <FormField label="Year" type="number" className="" {...field("publicationYear")} />
+          <FormField label={t("Year")} type="number" className="" {...field("publicationYear")} />
         </div>
         <div className="col-6 col-sm-3">
-          <FormField label="Language" className="" {...field("language")} />
+          <FormField label={t("Language")} className="" {...field("language")} />
         </div>
         <div className="col-6 col-sm-3">
-          <FormField label="Pages" type="number" min="1" className="" {...field("pageCount")} />
+          <FormField label={t("Pages")} type="number" min="1" className="" {...field("pageCount")} />
         </div>
         <div className="col-sm-6">
-          <FormField label="Subjects" className="" hint="Comma-separated" {...field("subjects")} />
+          <FormField label={t("Subjects")} className="" hint={t("Comma-separated")} {...field("subjects")} />
         </div>
         <div className="col-sm-6">
-          <FormField label="Keywords" className="" hint="Comma-separated" {...field("keywords")} />
+          <FormField label={t("Keywords")} className="" hint={t("Comma-separated")} {...field("keywords")} />
         </div>
         <div className="col-12">
           <div className="form-check">
@@ -124,28 +125,28 @@ export default function BookForm({ book, categories, onSubmit }) {
               onChange={(event) => handleChange({ target: { name: "isForSale", value: event.target.checked } })}
             />
             <label htmlFor="book-for-sale" className="form-check-label">
-              For sale in the shop
+              {t("For sale in the shop")}
             </label>
           </div>
         </div>
         {values.isForSale && (
           <>
             <div className="col-6 col-sm-3">
-              <FormField label={`Price (${CURRENCY})`} type="number" min="0" step="0.01" className="" {...field("price")} />
+              <FormField label={t("Price ({currency})", { currency: CURRENCY })} type="number" min="0" step="0.01" className="" {...field("price")} />
             </div>
             <div className="col-6 col-sm-3">
-              <FormField label="Shop stock" type="number" min="0" step="1" className="" {...field("quantity")} />
+              <FormField label={t("Shop stock")} type="number" min="0" step="1" className="" {...field("quantity")} />
             </div>
           </>
         )}
         <div className="col-12">
-          <FormField label="Description" as="textarea" rows={3} className="" {...field("description")} />
+          <FormField label={t("Description")} as="textarea" rows={3} className="" {...field("description")} />
         </div>
         <div className="col-12 d-flex gap-3 align-items-start">
-          <BookCover src={preview ?? book?.image} alt="Cover preview" className="image-preview" />
+          <BookCover src={preview ?? book?.image} alt={t("Cover preview")} className="image-preview" />
           <div className="flex-grow-1">
             <label htmlFor="book-image" className="form-label">
-              Cover image <span className="text-muted fw-normal">(optional)</span>
+              {t("Cover image")} <span className="text-muted fw-normal">{t("(optional)")}</span>
             </label>
             <input
               id="book-image"
@@ -158,7 +159,7 @@ export default function BookForm({ book, categories, onSubmit }) {
             {errors.image ? (
               <div className="invalid-feedback">{errors.image}</div>
             ) : (
-              <div className="form-text">JPEG, PNG, GIF or WebP. {isEditing && "Leave empty to keep the current cover."}</div>
+              <div className="form-text">{t("JPEG, PNG, GIF or WebP.")} {isEditing && t("Leave empty to keep the current cover.")}</div>
             )}
           </div>
         </div>

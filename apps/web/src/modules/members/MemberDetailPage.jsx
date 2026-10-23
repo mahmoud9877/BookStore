@@ -18,12 +18,13 @@ import PlaceReservationModal from "../circulation/PlaceReservationModal.jsx";
 import { FinesTable, PaymentsTable } from "../finance/FinesPage.jsx";
 import CashPaymentModal from "../finance/CashPaymentModal.jsx";
 import MemberFormModal from "./MemberFormModal.jsx";
+import { msg, t } from "../../i18n/index.js";
 
 const TABS = [
-  { key: "loans", label: "Loans" },
-  { key: "reservations", label: "Reservations" },
-  { key: "fines", label: "Fines & payments" },
-  { key: "history", label: "Membership history" },
+  { key: "loans", label: msg("Loans") },
+  { key: "reservations", label: msg("Reservations") },
+  { key: "fines", label: msg("Fines & payments") },
+  { key: "history", label: msg("Membership history") },
 ];
 
 function MemberLoans({ memberId }) {
@@ -32,45 +33,45 @@ function MemberLoans({ memberId }) {
   const toolbar = (
     <div>
       <label htmlFor="member-loan-status" className="form-label small mb-1">
-        Show
+        {t("Show")}
       </label>
       <select id="member-loan-status" className="form-select form-select-sm" value={filters.status} onChange={(event) => setFilter("status", event.target.value)}>
-        <option value="active">On loan now</option>
-        <option value="">Full history</option>
+        <option value="active">{t("On loan now")}</option>
+        <option value="">{t("Full history")}</option>
       </select>
     </div>
   );
-  return <LoanTable query={query} onPageChange={setPage} showMember={false} toolbar={toolbar} empty={{ icon: "book", title: "Nothing on loan" }} />;
+  return <LoanTable query={query} onPageChange={setPage} showMember={false} toolbar={toolbar} empty={{ icon: "book", title: t("Nothing on loan") }} />;
 }
 
 function MemberReservations({ memberId }) {
   const { params, setPage } = useListState({});
   const query = usePagedQuery(["reservations", "member", memberId], "/reservations", { ...params, member: memberId });
   const columns = [
-    { key: "book", header: "Title", render: (row) => formatTitle(row.book?.bookTitle) },
-    { key: "pickupBranch", header: "Pickup", render: (row) => row.pickupBranch?.name },
-    { key: "createdAt", header: "Placed", render: (row) => formatDate(row.createdAt) },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+    { key: "book", header: t("Title"), render: (row) => formatTitle(row.book?.bookTitle) },
+    { key: "pickupBranch", header: t("Pickup"), render: (row) => row.pickupBranch?.name },
+    { key: "createdAt", header: t("Placed"), render: (row) => formatDate(row.createdAt) },
+    { key: "status", header: t("Status"), render: (row) => <StatusBadge status={row.status} /> },
   ];
-  return <DataTable columns={columns} query={query} onPageChange={setPage} caption="Reservations" empty={{ icon: "bookmark", title: "No reservations" }} />;
+  return <DataTable columns={columns} query={query} onPageChange={setPage} caption={t("Reservations")} empty={{ icon: "bookmark", title: t("No reservations") }} />;
 }
 
 function MembershipHistory({ memberId }) {
   const query = useDataQuery(["members", memberId, "history"], `/members/${memberId}/history`);
   const columns = [
-    { key: "createdAt", header: "When", render: (row) => formatDateTime(row.createdAt) },
-    { key: "type", header: "Event", render: (row) => humanize(row.type) },
+    { key: "createdAt", header: t("When"), render: (row) => formatDateTime(row.createdAt) },
+    { key: "type", header: t("Event"), render: (row) => humanize(row.type) },
     {
       key: "details",
-      header: "Details",
+      header: t("Details"),
       render: (row) => (
         <span className="small text-muted">
-          {row.details?.reason || row.details?.membershipType || (row.details?.to && `until ${formatDate(row.details.to)}`) || ""}
+          {row.details?.reason || row.details?.membershipType || (row.details?.to && t("until {date}", { date: formatDate(row.details.to) })) || ""}
         </span>
       ),
     },
   ];
-  return <DataTable columns={columns} rows={query.data ?? []} query={query} caption="Membership history" empty={{ icon: "clock-history", title: "No history yet" }} />;
+  return <DataTable columns={columns} rows={query.data ?? []} query={query} caption={t("Membership history")} empty={{ icon: "clock-history", title: t("No history yet") }} />;
 }
 
 /** One member: standing, profile, status actions, loans, reservations, money and history. */
@@ -83,37 +84,48 @@ export default function MemberDetailPage() {
   const member = useDataQuery(["members", memberId], `/members/${memberId}`);
   const action = useApiMutation(({ verb, reason }) => apiClient.post(`/members/${memberId}/${verb}`, reason ? { reason } : {}), {
     invalidate: [["members"]],
-    success: (saved, { verb }) => ({ renew: `Membership renewed until ${formatDate(saved.expiresAt)}.`, suspend: "Membership suspended.", reactivate: "Membership reactivated.", cancel: "Membership cancelled." })[verb],
+    success: (saved, { verb }) =>
+      ({
+        renew: t("Membership renewed until {date}.", { date: formatDate(saved.expiresAt) }),
+        suspend: t("Membership suspended."),
+        reactivate: t("Membership reactivated."),
+        cancel: t("Membership cancelled."),
+      })[verb],
   });
 
   if (member.isLoading) {
     return (
       <p className="text-muted mt-4" aria-busy="true">
-        Loading member…
+        {t("Loading member…")}
       </p>
     );
   }
   if (member.error) {
     return (
       <div className="mt-4">
-        <ErrorState message={getErrorMessage(member.error, "Couldn't load this member.")} onRetry={member.refetch} />
+        <ErrorState message={getErrorMessage(member.error, t("Couldn't load this member."))} onRetry={member.refetch} />
       </div>
     );
   }
   const data = member.data;
 
   async function renew() {
-    if (await confirm({ title: "Renew this membership?", message: `Extends ${data.name}'s membership by its type's period.`, confirmLabel: "Renew", tone: "primary" })) {
+    if (await confirm({
+        title: t("Renew this membership?"),
+        message: t("Extends {name}'s membership by its type's period.", { name: data.name }),
+        confirmLabel: t("Renew"),
+        tone: "primary",
+      })) {
       action.mutate({ verb: "renew" });
     }
   }
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="mt-3">
+      <nav aria-label={t("Breadcrumb")} className="mt-3">
         <ol className="breadcrumb small mb-0">
           <li className="breadcrumb-item">
-            <Link to="/dashboard/members">Members</Link>
+            <Link to="/dashboard/members">{t("Members")}</Link>
           </li>
           <li className="breadcrumb-item active" aria-current="page">
             {data.name}
@@ -122,42 +134,42 @@ export default function MemberDetailPage() {
       </nav>
       <PageHeader
         title={data.name}
-        description={`${data.memberNumber} · member since ${formatDate(data.joinedAt)}`}
+        description={t("{number} · member since {date}", { number: data.memberNumber, date: formatDate(data.joinedAt) })}
         actions={
           <>
             {can(PERMISSIONS.PaymentsManage) && data.summary?.balance > 0 && (
               <button type="button" className="btn btn-primary" onClick={() => setModal("payment")}>
-                Take payment
+                {t("Take payment")}
               </button>
             )}
             {can(PERMISSIONS.ReservationsManage) && (
               <button type="button" className="btn btn-outline-primary" onClick={() => setModal("reserve")}>
-                Reserve
+                {t("Reserve")}
               </button>
             )}
             {canManage && (
               <>
                 <button type="button" className="btn btn-outline-primary" onClick={() => setModal("edit")}>
-                  Edit
+                  {t("Edit")}
                 </button>
                 {data.status !== "cancelled" && (
                   <button type="button" className="btn btn-outline-primary" onClick={renew}>
-                    Renew
+                    {t("Renew")}
                   </button>
                 )}
                 {data.status === "active" && (
                   <button type="button" className="btn btn-outline-danger" onClick={() => setModal("suspend")}>
-                    Suspend
+                    {t("Suspend")}
                   </button>
                 )}
                 {data.status === "suspended" && (
                   <button type="button" className="btn btn-outline-primary" onClick={() => setModal("reactivate")}>
-                    Reactivate
+                    {t("Reactivate")}
                   </button>
                 )}
                 {data.status !== "cancelled" && (
                   <button type="button" className="btn btn-ghost-danger" onClick={() => setModal("cancel")}>
-                    Close membership
+                    {t("Close membership")}
                   </button>
                 )}
               </>
@@ -173,22 +185,22 @@ export default function MemberDetailPage() {
         <div className="col-lg-5">
           <div className="card card-body h-100 small">
             <dl className="row mb-0">
-              <dt className="col-4 text-muted fw-normal">Kind</dt>
+              <dt className="col-4 text-muted fw-normal">{t("Kind")}</dt>
               <dd className="col-8">
                 {humanize(data.kind)}
                 {data.institution && ` · ${data.institution}`}
               </dd>
-              <dt className="col-4 text-muted fw-normal">Email</dt>
+              <dt className="col-4 text-muted fw-normal">{t("Email")}</dt>
               <dd className="col-8">{data.email || "—"}</dd>
-              <dt className="col-4 text-muted fw-normal">Phone</dt>
+              <dt className="col-4 text-muted fw-normal">{t("Phone")}</dt>
               <dd className="col-8">{data.phone || "—"}</dd>
-              <dt className="col-4 text-muted fw-normal">Address</dt>
+              <dt className="col-4 text-muted fw-normal">{t("Address")}</dt>
               <dd className="col-8">{data.address || "—"}</dd>
-              <dt className="col-4 text-muted fw-normal">Online account</dt>
-              <dd className="col-8">{data.user ? "Linked" : "Not linked"}</dd>
+              <dt className="col-4 text-muted fw-normal">{t("Online account")}</dt>
+              <dd className="col-8">{data.user ? t("Linked") : t("Not linked")}</dd>
               {data.notes && (
                 <>
-                  <dt className="col-4 text-muted fw-normal">Notes</dt>
+                  <dt className="col-4 text-muted fw-normal">{t("Notes")}</dt>
                   <dd className="col-8 mb-0">{data.notes}</dd>
                 </>
               )}
@@ -206,7 +218,7 @@ export default function MemberDetailPage() {
         {TABS.map(({ key, label }) => (
           <li className="nav-item" role="presentation" key={key}>
             <button type="button" role="tab" aria-selected={tab === key} className={`nav-link ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
-              {label}
+              {t(label)}
             </button>
           </li>
         ))}
@@ -226,16 +238,16 @@ export default function MemberDetailPage() {
       {modal === "reserve" && <PlaceReservationModal initialMember={data.memberNumber} onClose={() => setModal(null)} />}
       {modal === "suspend" && (
         <ReasonModal
-          title={`Suspend ${data.name}?`}
-          confirmLabel="Suspend"
+          title={t("Suspend {name}?", { name: data.name })}
+          confirmLabel={t("Suspend")}
           onClose={() => setModal(null)}
           onSubmit={({ reason }) => action.mutateAsync({ verb: "suspend", reason })}
         />
       )}
       {modal === "reactivate" && (
         <ReasonModal
-          title={`Reactivate ${data.name}?`}
-          confirmLabel="Reactivate"
+          title={t("Reactivate {name}'s membership?", { name: data.name })}
+          confirmLabel={t("Reactivate")}
           tone="primary"
           required={false}
           onClose={() => setModal(null)}
@@ -244,8 +256,8 @@ export default function MemberDetailPage() {
       )}
       {modal === "cancel" && (
         <ReasonModal
-          title={`Close ${data.name}'s membership?`}
-          confirmLabel="Close membership"
+          title={t("Close {name}'s membership?", { name: data.name })}
+          confirmLabel={t("Close membership")}
           required={false}
           onClose={() => setModal(null)}
           onSubmit={({ reason }) => action.mutateAsync({ verb: "cancel", reason })}

@@ -12,6 +12,7 @@ import { toast } from "../../components/ui/toast.store.js";
 import { confirm } from "../../components/ui/confirm.store.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { useCategoriesQuery, useDeleteCategory, useSaveCategory } from "./category.queries.js";
+import { t } from "../../i18n/index.js";
 
 const NEW_CATEGORY = Symbol("new category");
 const categorySchema = Joi.object({
@@ -22,7 +23,7 @@ function CategoryForm({ category, onSubmit }) {
   const { field, handleSubmit } = useForm({ name: category?.name ?? "" }, { schema: categorySchema });
   return (
     <form id="category-form" onSubmit={handleSubmit(({ name }) => onSubmit(name))} noValidate>
-      <FormField label="Name" className="" autoComplete="off" {...field("name")} />
+      <FormField label={t("Name")} className="" autoComplete="off" {...field("name")} />
     </form>
   );
 }
@@ -40,69 +41,69 @@ export default function CategoriesPage() {
   async function handleSave(name) {
     try {
       await saveCategory.mutateAsync({ categoryId: editedCategory?._id, name });
-      toast.success(editedCategory ? `Renamed the category to “${name}”.` : `Added the “${name}” category.`);
+      toast.success(editedCategory ? t("Renamed the category to “{name}”.", { name }) : t("Added the “{name}” category.", { name }));
       setEditing(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't save this category."));
+      toast.error(getErrorMessage(err, t("Couldn't save this category.")));
     }
   }
 
   async function handleDelete(category) {
     const confirmed = await confirm({
-      title: "Delete this category?",
-      message: `“${category.name}” will be removed. This can't be undone.`,
-      confirmLabel: "Delete category",
+      title: t("Delete this category?"),
+      message: t("“{name}” will be removed. This can't be undone.", { name: category.name }),
+      confirmLabel: t("Delete category"),
     });
     if (!confirmed) return;
     try {
       await removeCategory.mutateAsync(category._id);
-      toast.success(`Deleted “${category.name}”.`);
+      toast.success(t("Deleted “{name}”.", { name: category.name }));
     } catch (err) {
-      toast.error(getErrorMessage(err, "Couldn't delete this category."));
+      toast.error(getErrorMessage(err, t("Couldn't delete this category.")));
     }
   }
 
   return (
     <div className="container">
       <Helmet>
-        <title>Categories · BookSaw</title>
+        <title>{t("Categories · BookSaw")}</title>
       </Helmet>
       <header className="page-header d-flex flex-wrap gap-3 align-items-end justify-content-between">
         <div>
-          <h1>Categories</h1>
+          <h1>{t("Categories")}</h1>
           <p className="text-muted mb-0">
-            {isLoading ? "Loading…" : `${pluralize(categories.length, "category", "categories")}. Each book belongs to one.`}
+            {isLoading ? t("Loading…") : t("{categories}. Each book belongs to one.", { categories: pluralize(categories.length, "category") })}
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setEditing(NEW_CATEGORY)}>
-          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>Add category
+          <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>{t("Add category")}
         </button>
       </header>
 
       <div className="card">
         {isLoading ? (
           <p className="text-muted p-4 mb-0" aria-busy="true">
-            Loading categories…
+            {t("Loading categories…")}
           </p>
         ) : error ? (
           <div className="p-3">
-            <ErrorState message={getErrorMessage(error, "Failed to fetch categories.")} onRetry={refetch} />
+            <ErrorState message={getErrorMessage(error, t("Failed to fetch categories."))} onRetry={refetch} />
           </div>
         ) : categories.length === 0 ? (
           <div className="p-3">
-            <StatePanel icon="tags" title="No categories yet" message="Add a category before adding books." />
+            <StatePanel icon="tags" title={t("No categories yet")} message={t("Add a category before adding books.")} />
           </div>
         ) : (
           <div className="table-responsive">
             <table className="table data-table align-middle">
               <thead>
                 <tr>
-                  <th scope="col">Name</th>
+                  <th scope="col">{t("Name")}</th>
                   <th scope="col" className="text-end">
-                    Books
+                    {t("Books")}
                   </th>
                   <th scope="col" className="text-end">
-                    <span className="visually-hidden">Actions</span>
+                    <span className="visually-hidden">{t("Actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -122,7 +123,7 @@ export default function CategoriesPage() {
                         type="button"
                         className="btn btn-sm btn-ghost"
                         onClick={() => setEditing(category)}
-                        aria-label={`Rename ${category.name}`}
+                        aria-label={t("Rename {name}", { name: category.name })}
                       >
                         <i className="bi bi-pencil" aria-hidden="true"></i>
                       </button>
@@ -131,8 +132,8 @@ export default function CategoriesPage() {
                         className="btn btn-sm btn-ghost-danger"
                         onClick={() => handleDelete(category)}
                         disabled={category.bookCount > 0}
-                        title={category.bookCount > 0 ? "Move or delete its books first" : undefined}
-                        aria-label={`Delete ${category.name}`}
+                        title={category.bookCount > 0 ? t("Move or delete its books first") : undefined}
+                        aria-label={t("Delete {name}", { name: category.name })}
                       >
                         <i className="bi bi-trash3" aria-hidden="true"></i>
                       </button>
@@ -147,16 +148,16 @@ export default function CategoriesPage() {
 
       {editing && (
         <Modal
-          title={editedCategory ? "Rename category" : "Add a category"}
+          title={editedCategory ? t("Rename category") : t("Add a category")}
           size="sm"
           onClose={closeEditor}
           footer={
             <>
               <button type="button" className="btn btn-light" onClick={closeEditor} disabled={isSaving}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button type="submit" form="category-form" className="btn btn-primary" disabled={isSaving}>
-                {isSaving ? <Spinner label="Saving" /> : editedCategory ? "Save" : "Add category"}
+                {isSaving ? <Spinner label={t("Saving")} /> : editedCategory ? t("Save") : t("Add category")}
               </button>
             </>
           }

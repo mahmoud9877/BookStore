@@ -17,6 +17,7 @@ import {
   CreateOrderDto,
   OrderResponseDto,
 } from "../src/modules/orders/order.dto.js";
+import { BranchDtos } from "../src/modules/branches/branch.dto.js";
 
 const id = () => new Types.ObjectId().toString();
 
@@ -90,8 +91,27 @@ describe("request DTOs", () => {
   test("orders default to cash and always carry phone numbers as a list", () => {
     const { dto } = CreateOrderDto.parse({ address: "1 Nile St", phone: "01012345678", couponName: "x" });
     assert.equal(dto.paymentType, "cash");
-    assert.deepEqual(dto.phone, ["01012345678"]);
+    assert.deepEqual(dto.phone, ["+201012345678"]);
     assert.equal("couponName" in dto, false);
+  });
+
+  test("mobile numbers are validated and stored in international form", () => {
+    for (const phone of ["01012345678", "010 1234 5678", "+20 10 1234 5678"]) {
+      assert.deepEqual(CreateOrderDto.parse({ address: "1 Nile St", phone }).dto.phone, ["+201012345678"]);
+    }
+    assert.deepEqual(CreateOrderDto.parse({ address: "1 Nile St", phone: "+44 7911 123456" }).dto.phone, ["+447911123456"]);
+    // A landline, too short, and not a number.
+    for (const phone of ["0223456789", "12345", "call me"]) {
+      const { error } = CreateOrderDto.parse({ address: "1 Nile St", phone });
+      assert.ok(error, phone);
+    }
+    assert.ok(RegisterUserDto.parse({ userName: "reader", email: "r@example.com", password: "secret1", cPassword: "secret1", phone: "12345" }).error);
+  });
+
+  test("branch and supplier phones accept landlines", () => {
+    assert.equal(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "02 2345 6789" }).dto.phone, "+20223456789");
+    assert.ok(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "12345" }).error);
+    assert.equal(BranchDtos.Create.parse({ code: "MAIN", name: "Main", phone: "" }).dto.phone, "");
   });
 
   test("pagination is lenient: invalid values disable it instead of failing", () => {

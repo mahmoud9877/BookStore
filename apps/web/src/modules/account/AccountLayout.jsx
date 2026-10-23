@@ -7,14 +7,15 @@ import { selectUser, useAuthStore } from "../auth/auth.store.js";
 import StatePanel, { ErrorState } from "../../components/ui/StatePanel.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
 import { useOwnMembership } from "./account.queries.js";
+import { msg, t } from "../../i18n/index.js";
 
 const TABS = [
-  { to: "/account", label: "Overview", icon: "person-vcard", end: true },
-  { to: "/account/loans", label: "Loans", icon: "book" },
-  { to: "/account/reservations", label: "Reservations", icon: "bookmark-star" },
-  { to: "/account/fines", label: "Fines", icon: "cash-coin" },
-  { to: "/account/notifications", label: "Notifications", icon: "bell", withoutMembership: true },
-  { to: "/account/bookings", label: "Rooms & events", icon: "calendar-event" },
+  { to: "/account", label: msg("Overview"), icon: "person-vcard", end: true },
+  { to: "/account/loans", label: msg("Loans"), icon: "book" },
+  { to: "/account/reservations", label: msg("Reservations"), icon: "bookmark-star" },
+  { to: "/account/fines", label: msg("Fines"), icon: "cash-coin" },
+  { to: "/account/notifications", label: msg("Notifications"), icon: "bell", withoutMembership: true },
+  { to: "/account/bookings", label: msg("Rooms & events"), icon: "calendar-event" },
 ];
 
 /** Explains how to get a library card when the account has none linked. */
@@ -22,11 +23,13 @@ function NoMembership() {
   return (
     <StatePanel
       icon="person-vcard"
-      title="No library card is linked to this account"
-      message="Visit any branch with a photo ID to get a library card. Staff will link it to this account's email, and your loans, reservations and fines will appear here. Your account already works for buying books."
+      title={t("No library card is linked to this account")}
+      message={t(
+        "Visit any branch with a photo ID to get a library card. Staff will link it to this account's email, and your loans, reservations and fines will appear here. Your account already works for buying books."
+      )}
       action={
         <Link to="/catalog" className="btn btn-outline-primary">
-          Browse the catalogue
+          {t("Browse the catalogue")}
         </Link>
       }
     />
@@ -44,11 +47,11 @@ export default function AccountLayout() {
   if (membership.isLoading) {
     content = (
       <p className="text-muted" aria-busy="true">
-        Loading your account…
+        {t("Loading your account…")}
       </p>
     );
   } else if (membership.error) {
-    content = <ErrorState message={getErrorMessage(membership.error, "Couldn't load your account.")} onRetry={membership.refetch} />;
+    content = <ErrorState message={getErrorMessage(membership.error, t("Couldn't load your account."))} onRetry={membership.refetch} />;
   } else if (!hasMembership && !allowedWithout) {
     content = <NoMembership />;
   } else {
@@ -60,37 +63,37 @@ export default function AccountLayout() {
   return (
     <>
       <Helmet>
-        <title>My library · BookSaw</title>
+        <title>{`${t("My library")} · BookSaw`}</title>
       </Helmet>
       <section className="portal-hero" aria-labelledby="portal-title">
         <div className="container">
           <div className="portal-hero-inner">
             <div>
-              <p className="eyebrow mb-1">My library</p>
+              <p className="eyebrow mb-1">{t("My library")}</p>
               <h1 id="portal-title" className="font-display">
-                Hello, {member?.name ?? user?.userName}
+                {t("Hello, {name}", { name: member?.name ?? user?.userName })}
               </h1>
             </div>
             {member && (
-              <dl className="portal-card" aria-label="Library card">
+              <dl className="portal-card" aria-label={t("Library card")}>
                 <div>
-                  <dt>Card</dt>
+                  <dt>{t("Card")}</dt>
                   <dd className="tabular">{member.memberNumber}</dd>
                 </div>
                 <div>
-                  <dt>Membership</dt>
+                  <dt>{t("Membership")}</dt>
                   <dd>{member.membershipType?.name}</dd>
                 </div>
                 <div>
-                  <dt>Home branch</dt>
+                  <dt>{t("Home branch")}</dt>
                   <dd>{member.homeBranch?.name}</dd>
                 </div>
                 <div>
-                  <dt>Valid until</dt>
+                  <dt>{t("Valid until")}</dt>
                   <dd>{formatDate(member.expiresAt)}</dd>
                 </div>
                 <div>
-                  <dt>Status</dt>
+                  <dt>{t("Status")}</dt>
                   <dd>
                     <StatusBadge status={member.isExpired ? "expired" : member.status} />
                   </dd>
@@ -98,11 +101,11 @@ export default function AccountLayout() {
               </dl>
             )}
           </div>
-          <nav className="admin-nav portal-tabs" aria-label="My library">
+          <nav className="admin-nav portal-tabs" aria-label={t("My library")}>
             {TABS.filter((tab) => hasMembership || tab.withoutMembership || tab.end).map(({ to, label, icon, end }) => (
               <NavLink key={to} to={to} end={end} className="admin-nav-link">
                 <i className={`bi bi-${icon}`} aria-hidden="true"></i>
-                {label}
+                {t(label)}
               </NavLink>
             ))}
           </nav>

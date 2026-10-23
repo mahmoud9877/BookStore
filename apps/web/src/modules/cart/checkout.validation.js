@@ -1,8 +1,10 @@
 import Joi from "joi";
+import { msg } from "../../i18n/index.js";
+import { isValidMobile } from "../../lib/phone.js";
 
 export const PAYMENT_METHODS = [
-  { value: "card", label: "Card", description: "Pay securely online with Stripe." },
-  { value: "cash", label: "Cash on delivery", description: "Pay when your books arrive." },
+  { value: "card", label: msg("Card"), description: msg("Pay securely online with Stripe.") },
+  { value: "cash", label: msg("Cash on delivery"), description: msg("Pay when your books arrive.") },
 ];
 
 export const checkoutSchema = Joi.object({
@@ -12,12 +14,12 @@ export const checkoutSchema = Joi.object({
   }),
   phone: Joi.string()
     .trim()
-    .pattern(/^\+?[0-9 ()-]{7,20}$/)
     .required()
+    .custom((value, helpers) => (isValidMobile(value) ? value : helpers.error("phone.invalid")))
     .label("Phone")
     .messages({
       "string.empty": "Enter a phone number so the courier can reach you.",
-      "string.pattern.base": "Enter a valid phone number.",
+      "phone.invalid": "Enter a valid mobile number.",
     }),
   note: Joi.string().allow("").max(500).label("Note"),
   paymentType: Joi.string().valid("card", "cash").required(),

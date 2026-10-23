@@ -7,9 +7,11 @@ import { signupSchema } from "./auth.validation.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import { getErrorMessage } from "../../lib/api-client.js";
 import FormField, { PasswordField } from "../../components/ui/FormField.jsx";
+import { msg, t } from "../../i18n/index.js";
 
-const SIGNUP_SUCCESS_NOTICE =
-  "Your account is ready. If we sent you a confirmation email, confirm your address before signing in.";
+const SIGNUP_SUCCESS_NOTICE = msg(
+  "Your account is ready. If we sent you a confirmation email, confirm your address before signing in."
+);
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ export default function SignupPage() {
     { userName: "", email: "", password: "", cPassword: "" },
     {
       schema: signupSchema,
-      errorMessage: (err) => getErrorMessage(err, "We couldn't create your account. Please try again."),
+      errorMessage: (err) => getErrorMessage(err, t("We couldn't create your account. Please try again.")),
     }
   );
 
@@ -28,22 +30,22 @@ export default function SignupPage() {
 
   return (
     <AuthCard
-      title="Create your account"
-      subtitle="Save books to your cart and check out in minutes."
+      title={t("Create your account")}
+      subtitle={t("Save books to your cart and check out in minutes.")}
       error={formError}
       footer={
         <>
-          Already have an account? <Link to="/login">Sign in</Link>
+          {t("Already have an account?")} <Link to="/login">{t("Sign in")}</Link>
         </>
       }
     >
       <form onSubmit={handleSubmit(createAccount)} noValidate>
-        <FormField label="Name" autoComplete="name" autoFocus {...field("userName")} />
-        <FormField label="Email" type="email" autoComplete="email" {...field("email")} />
-        <PasswordField label="Password" autoComplete="new-password" hint="At least 6 characters." {...field("password")} />
-        <PasswordField label="Confirm password" autoComplete="new-password" {...field("cPassword")} />
+        <FormField label={t("Name")} autoComplete="name" autoFocus {...field("userName")} />
+        <FormField label={t("Email")} type="email" autoComplete="email" {...field("email")} />
+        <PasswordField label={t("Password")} autoComplete="new-password" hint={t("At least 6 characters.")} {...field("password")} />
+        <PasswordField label={t("Confirm password")} autoComplete="new-password" {...field("cPassword")} />
         <button className="btn btn-primary w-100 py-2" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? <Spinner label="Creating account" /> : "Create account"}
+          {isSubmitting ? <Spinner label={t("Creating account")} /> : t("Create account")}
         </button>
       </form>
     </AuthCard>

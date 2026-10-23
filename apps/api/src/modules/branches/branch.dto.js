@@ -7,7 +7,7 @@ export const BranchDtos = crudDtos({
     code: joi.string().trim().uppercase().max(12).pattern(/^[A-Z0-9-]+$/),
     name: joi.string().trim().max(120),
     address: joi.string().trim().max(300).allow(""),
-    phone: joi.string().trim().max(40).allow(""),
+    phone: fields.phone().allow(""),
     email: joi.string().email({ tlds: { allow: false } }).allow(""),
     isActive: joi.boolean(),
   },
